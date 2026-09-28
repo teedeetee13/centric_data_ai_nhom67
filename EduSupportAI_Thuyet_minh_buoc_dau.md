@@ -2,7 +2,7 @@
 
 ## Trợ lý hỗ trợ giải đáp sinh viên
 
-*Cuộc thi Centric Data AI 2026 - Lĩnh vực Giáo dục và cộng đồng*
+*Cuộc thi Centric Data AI 2026 - Lĩnh vực Giáo dục và cộng đồng.*
 
 | Thông tin | Nội dung |
 |---|---|

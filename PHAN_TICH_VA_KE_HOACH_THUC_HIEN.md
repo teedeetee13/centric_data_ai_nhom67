@@ -1,8 +1,8 @@
 # BẢN PHÂN TÍCH THUYẾT MINH & KẾ HOẠCH HÀNH ĐỘNG DỰ ÁN
-## Dự án: EduFeedback AI - Hệ thống nâng cao chất lượng dữ liệu và tự động phân loại phản hồi sinh viên
+## Dự án: EduSupport AI - Hệ thống nâng cao chất lượng dữ liệu và tự động phân loại phản hồi sinh viên
 **Cuộc thi:** Centric Data AI 2026 (Khoa CNTT - Trường Đại học Công nghệ Đông Á)  
 **Ngày phân tích:** 27/09/2026  
-**Tài liệu gốc:** `EduFeedback_AI_Thuyet_minh_buoc_dau.docx`
+**Tài liệu gốc:** `EduSupport_AI_Thuyet_minh_buoc_dau.docx`
 
 ---
 
@@ -30,7 +30,7 @@
 ## 1. TỔNG QUAN DỰ ÁN & ĐỊNH VỊ DATA-CENTRIC AI
 
 ### 1.1. Bản chất cốt lõi của đề tài
-* **Tên đề tài:** EduFeedback AI – Hệ thống nâng cao chất lượng dữ liệu và tự động phân loại phản hồi sinh viên.
+* **Tên đề tài:** EduSupport AI – Hệ thống nâng cao chất lượng dữ liệu và tự động phân loại phản hồi sinh viên.
 * **Lĩnh vực:** Giáo dục và cộng đồng.
 * **Định vị tiếp cận:** **Data-Centric AI (DCAI)**. Đề tài **không** cố gắng xây dựng mô hình Deep Learning phức tạp, không train mô hình ngôn ngữ lớn (LLM) từ đầu. Thay vào đó, trọng tâm tuyệt đối nằm ở:
   1. Xây dựng bộ quy chuẩn và chỉ số đo lường chất lượng dữ liệu (Data Quality Profile).
@@ -174,7 +174,7 @@ Theo tài liệu gốc, còn nhiều thông tin đang để ở dạng placehold
 
 ```mermaid
 gantt
-    title LỘ TRÌNH DỰ ÁN EDUFEEDBACK AI (2026)
+    title LỘ TRÌNH DỰ ÁN EduSupport AI (2026)
     dateFormat  YYYY-MM-DD
     section Sprint 1: Vòng Sơ Loại
     Hoàn thiện Thuyết minh & Thông tin nhóm :2026-09-27, 2026-09-29
@@ -266,7 +266,7 @@ gantt
 centric-ai/
 ├── README.md                      # Hướng dẫn cài đặt, chạy ứng dụng và tóm tắt đề tài
 ├── requirements.txt               # Danh sách thư viện (streamlit, scikit-learn, pandas, openpyxl, ...)
-├── EduFeedback_AI_Thuyet_minh_buoc_dau.docx
+├── EduSupport_AI_Thuyet_minh_buoc_dau.docx
 ├── PHAN_TICH_VA_KE_HOACH_THUC_HIEN.md
 │
 ├── data/                          # Quản lý dữ liệu qua các giai đoạn

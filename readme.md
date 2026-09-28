@@ -4,7 +4,7 @@
 
 ---
 
-## 1. MÔ HÌNH PHÂN CHIA VAI TRÒ (2 THÀNH VIÊN)
+## 1. MÔ HÌNH PHÂN CHIA VAI TRÒ (2 THÀNH VIÊN )
 
 Trong mô hình nhóm 2 người, cấu trúc phân vai lý tưởng nhất là: **Một người phụ trách Dữ liệu & Sản phẩm (Data & Product Lead)**, **Một người phụ trách Mô hình & Kỹ thuật lõi (ML & Technical Lead)**.
 
