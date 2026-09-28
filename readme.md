@@ -1,5 +1,5 @@
 # PHÂN CÔNG CÔNG VIỆC CHO NHÓM 2 NGƯỜI
-## Dự án: EduFeedback AI (Cuộc thi Centric Data AI 2026)
+## Dự án: EduSupport AI (Cuộc thi Centric Data AI 2026)
 *Áp dụng cho cấu trúc nhóm 2 thành viên: Tối ưu năng suất, không chồng chéo, tận dụng tối đa thế mạnh của từng người.*
 
 ---
@@ -130,7 +130,7 @@ Khi Ban Giám khảo đặt câu hỏi, 2 thành viên cần phân định rõ r
 ## 5. CHECKLIST 48 GIỜ TỚI CHO 2 BẠN (CỰC KỲ KHẨN CẤP)
 
 ### Việc Thành viên 1 làm ngay:
-- [ ] Mở file `EduFeedback_AI_Thuyet_minh_buoc_dau.docx`, điền tên nhóm, họ tên, MSSV, lớp của cả 2 bạn.
+- [ ] Mở file `EduSupport_AI_Thuyet_minh_buoc_dau.docx`, điền tên nhóm, họ tên, MSSV, lớp của cả 2 bạn.
 - [ ] Nhắn tin xin thầy/cô GVHD đồng ý đứng tên hướng dẫn đề tài.
 - [ ] Lên Google Forms tạo form: gồm 1 ô nhập câu phản hồi (có giải thích mục đích nghiên cứu, ghi rõ không thu thập họ tên/SĐT).
 - [ ] Gửi link vào các group lớp xin 30-40 phản hồi mẫu.
