@@ -230,10 +230,3 @@ Truy cập ứng dụng tại: `http://localhost:8501` (hoặc `http://127.0.0.1
 
 ---
 
-## 7. QUY CHUẨN ĐÓNG GÓI & TÀI LIỆU NỘP BÀI DỰ THI
-* **Văn bản thuyết minh Word chính thức:** [`KCNTT_Mau thuyet minh vong 1.docx`](KCNTT_Mau%20thuyet%20minh%20vong%201.docx) (đã tích hợp đầy đủ 14 bảng biểu, 6 sơ đồ kiến trúc chuẩn in 200 DPI và đúng mẫu Ban Tổ chức).
-* **Tài liệu hệ thống sơ đồ kỹ thuật & Mermaid:** [`SO_DO_HE_THONG_EDUSUPPORT_AI.md`](SO_DO_HE_THONG_EDUSUPPORT_AI.md).
-* **Kế hoạch phát triển tiếp theo:** [`KE_HOACH_PHAT_TRIEN.md`](KE_HOACH_PHAT_TRIEN.md) (lộ trình chi tiết 4 Sprint nâng cấp hệ thống).
-* **Bảng theo dõi tiến độ công việc:** [`TODO.md`](TODO.md) (checklist tương tác phân vai chi tiết cho 2 thành viên).
-* **Thư mục công cụ phụ trợ tài liệu:** [`docs_tools/`](docs_tools/) (chứa các script tạo sơ đồ và tài liệu bản thảo, đã được đưa vào `.gitignore`).
-* **Mã nguồn dự án:** Sẵn sàng đẩy lên GitHub theo cấu trúc quy chuẩn mô-đun hóa độc lập.
