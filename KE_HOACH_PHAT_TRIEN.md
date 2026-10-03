@@ -49,6 +49,8 @@ gantt
 
 ## 4. BẢNG TODO LIST CHI TIẾT THEO SPRINT
 
+> **Theo dõi và cập nhật tiến độ công việc hàng ngày tại tệp riêng:** [`TODO.md`](TODO.md)
+
 ### SPRINT 1: MỞ RỘNG DỮ LIỆU THỰC TẾ & KHO TRI THỨC QUY CHẾ (TUẦN 1)
 *Mục tiêu: Đưa dữ liệu thực tế của EAUT vào hệ thống và hoàn thiện kho tri thức quy chế bao quát toàn trường.*
 
