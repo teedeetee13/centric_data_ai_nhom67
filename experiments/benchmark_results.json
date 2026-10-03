@@ -1,0 +1,30 @@
+{
+  "E0": {
+    "name": "E0: Dữ liệu thô (Baseline)",
+    "intervention": "Dữ liệu ban đầu, chỉ dropna, TF-IDF từ đơn (1-1)",
+    "macro_f1": 1.0,
+    "accuracy": 1.0,
+    "delta": "+0.00%"
+  },
+  "E1": {
+    "name": "E1: Chuẩn hóa NFC, Che PII & Khử trùng lặp",
+    "intervention": "Unicode NFC, [PHONE]/[EMAIL]/[MSSV], khử MD5 hash trùng 100%",
+    "macro_f1": 1.0,
+    "accuracy": 1.0,
+    "delta": "+0.00%"
+  },
+  "E2": {
+    "name": "E2: Khử ồn đa ý & Lọc mẫu lỗi (< 12 ký tự)",
+    "intervention": "Chỉ giữ is_usable=True, loại sạch câu quá ngắn và near duplicate",
+    "macro_f1": 1.0,
+    "accuracy": 1.0,
+    "delta": "+0.00%"
+  },
+  "E3": {
+    "name": "E3: Tối ưu DCAI + Char n-grams + Cân bằng lớp",
+    "intervention": "Trích xuất kép Word+Char n-grams, C=1.5, class_weight='balanced'",
+    "macro_f1": 1.0,
+    "accuracy": 1.0,
+    "delta": "+0.00%"
+  }
+}

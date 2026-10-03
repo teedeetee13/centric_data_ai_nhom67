@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints
+*.egg-info/
+*.log
+
+# Thu muc chua cac script phu va file ban thao tai lieu cu
+docs_tools/
