@@ -100,10 +100,10 @@ def render_workbench(faq_engine=None):
         reason_str = " | ".join(reasons) if reasons else "Rà soát thường quy"
         
         st.markdown(f"""
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-top: 8px;">
-            <div style="font-size: 0.78rem; color: #64748b; font-weight: 600;">MÃ PHẢN ÁNH</div>
-            <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">{item['record_id']}</div>
-            <div style="font-size: 0.78rem; color: #64748b; font-weight: 600;">LÝ DO CẦN DUYỆT</div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-top: 8px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);">
+            <div style="font-size: 0.74rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">MÃ PHẢN ÁNH</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">{item['record_id']}</div>
+            <div style="font-size: 0.74rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">LÝ DO CẦN DUYỆT</div>
             <div style="font-size: 0.88rem; color: #b45309; font-weight: 500;">{reason_str}</div>
         </div>
         """, unsafe_allow_html=True)

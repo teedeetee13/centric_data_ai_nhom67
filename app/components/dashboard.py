@@ -198,18 +198,33 @@ def render_dashboard(clf_model=None):
         tc.columns = ["Chuyên môn", "Số lượng"]
         tc["Tên"] = tc["Chuyên môn"].map(lambda x: TOPIC_VIETNAMESE.get(x, x))
 
+        topic_color_map = {
+            "Học phí & Chính sách": "#1d4ed8",
+            "Lịch học & Lịch thi": "#0284c7",
+            "Điểm số & Khảo thí": "#0f766e",
+            "Thủ tục hành chính": "#6366f1",
+            "Cơ sở vật chất": "#d97706",
+            "Hệ thống CNTT": "#059669",
+            "Ý kiến khác": "#64748b",
+            "Nội dung không hợp lệ": "#94a3b8"
+        }
+
         fig_pie = px.pie(
             tc,
             names="Tên",
             values="Số lượng",
             hole=0.48,
-            color_discrete_sequence=px.colors.qualitative.Safe
+            color="Tên",
+            color_discrete_map=topic_color_map
         )
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
         fig_pie.update_layout(
             margin=dict(t=10, b=10, l=10, r=10),
             showlegend=False,
-            height=270
+            height=270,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#0f172a")
         )
         st.plotly_chart(fig_pie, use_container_width=True)
 
@@ -222,7 +237,7 @@ def render_dashboard(clf_model=None):
             "Khẩn cấp": "#dc2626",
             "Cao": "#ea580c",
             "Bình thường": "#0284c7",
-            "Thấp": "#64748b"
+            "Thấp": "#94a3b8"
         }
 
         fig_bar = px.bar(
@@ -237,7 +252,10 @@ def render_dashboard(clf_model=None):
             yaxis_title="",
             margin=dict(t=10, b=10, l=10, r=10),
             height=270,
-            showlegend=False
+            showlegend=False,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#0f172a")
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 

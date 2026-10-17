@@ -31,10 +31,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS phong cách tối giản, trang nhã, chuyên nghiệp
+# Custom CSS phong cách Sapphire Academic & Slate chuyên nghiệp
 st.markdown("""
 <style>
-    /* Font và khoảng cách khung chứa */
+    /* Khoảng cách khung trang */
     .block-container {
         padding-top: 1.8rem;
         padding-bottom: 2.5rem;
@@ -51,16 +51,16 @@ st.markdown("""
         margin-bottom: 1.4rem;
     }
     .app-title {
-        font-size: 1.55rem;
+        font-size: 1.6rem;
         font-weight: 700;
         color: #0f172a;
         margin: 0;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.025em;
     }
     .app-subtitle {
         font-size: 0.88rem;
         color: #475569;
-        margin-top: 2px;
+        margin-top: 3px;
     }
     .status-badge {
         font-size: 0.78rem;
@@ -68,22 +68,67 @@ st.markdown("""
         color: #047857;
         background-color: #ecfdf5;
         border: 1px solid #a7f3d0;
-        padding: 4px 10px;
+        padding: 4px 11px;
         border-radius: 9999px;
         display: inline-flex;
         align-items: center;
     }
 
-    /* Thẻ tóm tắt kết quả */
+    /* Tùy biến thanh Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 1.8rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .stTabs [data-baseweb="tab"] {
+        padding: 8px 2px 12px 2px;
+        font-size: 0.94rem;
+        font-weight: 500;
+        color: #64748b;
+        background-color: transparent !important;
+        border: none !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #1d4ed8 !important;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #1d4ed8 !important;
+    }
+
+    /* Nút bấm nghiệp vụ chuẩn */
+    .stButton > button[kind="primary"] {
+        background-color: #1d4ed8 !important;
+        color: #ffffff !important;
+        border: none !important;
+        font-weight: 600 !important;
+        border-radius: 6px !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background-color: #1e40af !important;
+        color: #ffffff !important;
+    }
+    .stButton > button:not([kind="primary"]) {
+        background-color: #ffffff !important;
+        color: #334155 !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
+    }
+    .stButton > button:not([kind="primary"]):hover {
+        background-color: #f8fafc !important;
+        border-color: #94a3b8 !important;
+        color: #0f172a !important;
+    }
+
+    /* Thẻ thông số kết quả */
     .metric-card {
-        background-color: #f8fafc;
+        background-color: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        padding: 12px 16px;
-        margin-bottom: 12px;
+        padding: 13px 16px;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
     }
     .metric-label {
-        font-size: 0.76rem;
+        font-size: 0.74rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -96,45 +141,45 @@ st.markdown("""
         color: #0f172a;
     }
 
-    /* Badge mức độ ưu tiên */
+    /* Huy hiệu mức độ ưu tiên */
     .badge-urgent {
-        color: #b91c1c;
+        color: #991b1b;
         background-color: #fef2f2;
         border: 1px solid #fecaca;
-        padding: 2px 8px;
+        padding: 3px 9px;
         border-radius: 4px;
         font-size: 0.82rem;
         font-weight: 600;
     }
     .badge-high {
-        color: #c2410c;
+        color: #9a3412;
         background-color: #fff7ed;
         border: 1px solid #fed7aa;
-        padding: 2px 8px;
+        padding: 3px 9px;
         border-radius: 4px;
         font-size: 0.82rem;
         font-weight: 600;
     }
     .badge-normal {
-        color: #0369a1;
+        color: #075985;
         background-color: #f0f9ff;
         border: 1px solid #bae6fd;
-        padding: 2px 8px;
+        padding: 3px 9px;
         border-radius: 4px;
         font-size: 0.82rem;
         font-weight: 600;
     }
     .badge-low {
-        color: #475569;
+        color: #334155;
         background-color: #f8fafc;
         border: 1px solid #e2e8f0;
-        padding: 2px 8px;
+        padding: 3px 9px;
         border-radius: 4px;
         font-size: 0.82rem;
         font-weight: 600;
     }
 
-    /* Ẩn bớt sidebar mặc định không cần thiết */
+    /* Ẩn sidebar kỹ thuật */
     section[data-testid="stSidebar"] {
         display: none;
     }
