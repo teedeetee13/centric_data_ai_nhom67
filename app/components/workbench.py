@@ -39,10 +39,11 @@ def load_review_queue():
     conn = get_connection()
     query = """
     SELECT * FROM processed_requests 
-    WHERE status = 'pending_review' 
-       OR confidence_score < 0.60 
-       OR quality_flags LIKE '%near_duplicate%'
-       OR quality_flags LIKE '%has_%'
+    WHERE status = 'pending_review'
+       AND (confidence_score < 0.60 
+           OR quality_flags LIKE '%near_duplicate%'
+           OR quality_flags LIKE '%has_%'
+           OR priority_level = 'Khẩn cấp')
     ORDER BY 
         CASE priority_level 
             WHEN 'Khẩn cấp' THEN 1 
@@ -145,3 +146,22 @@ def render_workbench(faq_engine=None):
                 log_review_action(selected_id, "reject", item["predicted_topic"], final_topic, "Từ chối do spam.", notes)
                 st.toast(f"Đã từ chối {selected_id}!")
                 st.rerun()
+
+    st.markdown("---")
+    with st.expander("Nhật ký kiểm duyệt thực tế gần nhất (review_logs từ SQLite)"):
+        conn = get_connection()
+        try:
+            df_logs = pd.read_sql_query(
+                "SELECT id, record_id, officer_action, original_predicted_topic, final_topic, officer_notes, reviewed_at FROM review_logs ORDER BY id DESC LIMIT 20",
+                conn
+            )
+        except Exception:
+            df_logs = pd.DataFrame()
+        finally:
+            conn.close()
+
+        if not df_logs.empty:
+            df_logs.columns = ["ID", "Mã phản ánh", "Hành động", "Nhãn AI ban đầu", "Nhãn chốt", "Ghi chú cán bộ", "Thời điểm duyệt"]
+            st.dataframe(df_logs, use_container_width=True, hide_index=True)
+        else:
+            st.caption("Chưa có thao tác kiểm duyệt nào được ghi lại. Hãy chọn một phản ánh ở trên và bấm [Duyệt & Gửi] hoặc [Đổi nhãn & Duyệt] để kiểm chứng.")

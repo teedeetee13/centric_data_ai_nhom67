@@ -112,10 +112,27 @@ def render_dashboard(clf_model=None):
 
     # NGUỒN 1: TẢI LÊN TỆP THỰC TẾ
     if data_source == "Tải lên tệp dữ liệu thực tế (Excel / CSV)":
-        uploaded_file = st.file_uploader(
-            "Tải lên tệp phản ánh của sinh viên (.xlsx hoặc .csv):",
-            type=["csv", "xlsx"]
-        )
+        c_up1, c_up2 = st.columns([3, 2], gap="medium")
+        with c_up1:
+            uploaded_file = st.file_uploader(
+                "Tải lên tệp phản ánh của sinh viên (.xlsx hoặc .csv):",
+                type=["csv", "xlsx"]
+            )
+        with c_up2:
+            st.caption("Hoặc thử nghiệm nhanh với dữ liệu thực tế EAUT:")
+            sample_real_path = "data/mau_phan_anh_thuc_te_eaut.csv"
+            if os.path.exists(sample_real_path):
+                with open(sample_real_path, "rb") as f_samp:
+                    st.download_button(
+                        "Tải tệp 50 phản ánh mẫu thực tế (.csv)",
+                        data=f_samp.read(),
+                        file_name="mau_phan_anh_thuc_te_eaut.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                if st.button("Nạp trực tiếp 50 phản ánh thực tế EAUT", use_container_width=True):
+                    st.session_state["use_sample_real"] = True
+
         if uploaded_file is not None:
             try:
                 if uploaded_file.name.endswith(".csv"):
@@ -131,8 +148,12 @@ def render_dashboard(clf_model=None):
             except Exception as e:
                 st.error(f"Lỗi khi đọc tệp: {e}")
                 return
+        elif st.session_state.get("use_sample_real", False) and os.path.exists(sample_real_path):
+            df_target = pd.read_csv(sample_real_path)
+            text_column = "raw_text"
+            st.caption(f"Đang hiển thị phân tích trực tiếp từ tệp mẫu thực tế EAUT: **{sample_real_path}** ({len(df_target)} bản ghi).")
         else:
-            st.info("Chưa có tệp dữ liệu nào được tải lên. Vui lòng chọn tệp CSV hoặc Excel chứa phản ánh thực tế từ máy tính của bạn.")
+            st.info("Chưa có tệp dữ liệu nào được tải lên. Vui lòng chọn tệp CSV/Excel từ máy tính hoặc bấm nút 'Nạp trực tiếp 50 phản ánh thực tế EAUT' ở trên.")
             return
 
     # NGUỒN 2: DỮ LIỆU TIẾP NHẬN TRONG SQLITE

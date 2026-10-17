@@ -115,9 +115,9 @@ class FAQEngine:
         draft = (
             f"Chào bạn,\n\n"
             f"Bộ phận hỗ trợ sinh viên Trường ĐH Công nghệ Đông Á xin phản hồi thắc mắc của bạn như sau:\n\n"
-            f"📌 CĂN CỨ QUY CHẾ ({kb_id} - {reg_title}):\n"
+            f"[CĂN CỨ QUY CHẾ ({kb_id} - {reg_title})]:\n"
             f"\"{content}\"\n\n"
-            f"👉 HƯỚNG DẪN XỬ LÝ:\n"
+            f"[HƯỚNG DẪN XỬ LÝ]:\n"
             f"Bạn vui lòng thực hiện theo đúng hướng dẫn trên. Nếu cần nộp hồ sơ hoặc xác minh thêm thông tin, bạn hãy liên hệ trực tiếp tại {dept}.\n\n"
             f"Chúc bạn học tập và rèn luyện tốt!"
         )

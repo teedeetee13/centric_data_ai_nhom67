@@ -134,33 +134,45 @@ tab_process, tab_review, tab_analytics = st.tabs([
 # TAB 1: XỬ LÝ PHẢN ÁNH
 # -----------------------------------------------------------------------------
 with tab_process:
-    sample_queries = [
-        "Em đã đóng học phí qua ngân hàng từ hôm qua nhưng cổng vẫn báo chưa nộp, số điện thoại em 0987654321, mssv 2022601234.",
-        "Lịch thi kết thúc học phần môn Cơ sở dữ liệu bị trùng giờ với môn Mạng máy tính vào ngày 15/10 ạ.",
-        "Điểm thi môn Trí tuệ nhân tạo của em trên cổng bị sai 2.0, em muốn nộp đơn phúc khảo bài thi.",
-        "Em cần xin giấy xác nhận sinh viên để làm thủ tục tạm hoãn nghĩa vụ quân sự ở quê.",
-        "Điều hòa phòng 305 nhà C bị hỏng chảy nước, máy chiếu cũng không bật lên được.",
-        "Em quên mật khẩu cổng thông tin daotao.eaut.edu.vn, email em là sv.eaut@student.edu.vn.",
-        "Học phí",
+    sample_scenarios = [
+        ("-- Chọn kịch bản kiểm thử mẫu thực tế --", ""),
+        ("1. [Khẩn cấp + PII] Trùng ca thi kết thúc học phần (Kèm SĐT, MSSV)", 
+         "Dạ em chào thầy cô, lịch thi kết thúc học phần môn Mạng máy tính và Hệ điều hành của em bị trùng ca thi lúc 7h30 sáng ngày 20/10 tại nhà B. Sđt em 0987123456, mssv 2022601234, cứu em với gấp ạ!"),
+        ("2. [Học phí + PII] Đóng học phí qua ngân hàng cổng vẫn báo nợ (Kèm SĐT, MSSV)", 
+         "Em đã đóng học phí 8.500.000đ qua ngân hàng từ hôm qua nhưng cổng vẫn báo chưa nộp, số điện thoại em 0987654321, mssv 2022601234, mong phòng tài chính kiểm tra giúp em."),
+        ("3. [Khảo thí] Phúc khảo điểm thi kết thúc học phần bị chấm sai", 
+         "Điểm thi môn Trí tuệ nhân tạo của em trên cổng bị sai 2.0, trong khi bài làm của em đạt yêu cầu, em muốn nộp đơn phúc khảo bài thi thì nộp ở đâu ạ?"),
+        ("4. [Hành chính] Xin giấy xác nhận sinh viên tạm hoãn nghĩa vụ quân sự", 
+         "Em cần xin giấy xác nhận sinh viên đang theo học tại trường để làm thủ tục tạm hoãn nghĩa vụ quân sự ở quê thì làm đơn online hay đến trực tiếp phòng nào ạ?"),
+        ("5. [Cơ sở vật chất] Hỏng điều hòa và máy chiếu phòng học giảng đường", 
+         "Điều hòa phòng 305 nhà C bị hỏng chảy nước lênh láng, máy chiếu cũng không bật lên được, cả lớp không học được mong nhà trường khắc phục."),
+        ("6. [Hệ thống CNTT] Quên mật khẩu cổng thông tin sinh viên", 
+         "Em quên mật khẩu đăng nhập cổng daotao.eaut.edu.vn, ấn quên pass nhưng không thấy gửi mã xác thực về email sv.eaut@student.edu.vn."),
+        ("7. [Lọc rác Data-Centric] Phản ánh quá ngắn / rác (Dưới 12 ký tự)", 
+         "Học phí"),
+        ("8. [Độ tự tin thấp] Câu hỏi đa ý học vụ cần Cán bộ duyệt", 
+         "Em muốn hỏi vừa xin gia hạn nộp học phí vừa xin đổi lịch thi học kỳ phụ thì làm đơn chung được không ạ?")
     ]
 
     col_input, col_sample = st.columns([3, 2], gap="medium")
+    with col_sample:
+        st.caption("Hoặc chọn kịch bản mẫu kiểm thử nhanh:")
+        chosen_idx = st.selectbox(
+            "Chọn câu mẫu:",
+            options=list(range(len(sample_scenarios))),
+            format_func=lambda i: sample_scenarios[i][0],
+            label_visibility="collapsed"
+        )
+        selected_text = sample_scenarios[chosen_idx][1]
+
     with col_input:
         user_text = st.text_area(
             "Nội dung phản ánh:",
+            value=selected_text,
             placeholder="Nhập câu hỏi, thắc mắc hoặc phản ánh của sinh viên...",
             height=90,
             label_visibility="collapsed"
         )
-    with col_sample:
-        st.caption("Hoặc chọn câu hỏi mẫu kịch bản:")
-        chosen_sample = st.selectbox(
-            "Chọn câu mẫu:",
-            options=["-- Chọn câu mẫu nhanh --"] + sample_queries,
-            label_visibility="collapsed"
-        )
-        if chosen_sample != "-- Chọn câu mẫu nhanh --":
-            user_text = chosen_sample
 
     btn_analyze = st.button("Phân tích ngay", type="primary")
 

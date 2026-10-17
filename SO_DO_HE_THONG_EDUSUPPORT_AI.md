@@ -313,7 +313,7 @@ flowchart TD
   - Tích hợp toàn diện 6 hình ảnh sơ đồ (`Hình 1` đến `Hình 6`) căn chỉnh chuẩn khổ in 5.85 inches.
   - Phụ lục D tuân thủ chuẩn 4 đề mục của Ban Tổ chức: Sơ đồ quy trình xử lý dữ liệu, Mẫu trực quan hóa dữ liệu, Code demo (link GitHub/Google Colab), Tài liệu tham khảo.
 * **Thư mục ảnh sơ đồ chất lượng cao (200 DPI PNG):**  
-  📁 [`images/`](images/)
+  - [`images/`](images/)
   - [`so_do_1_kien_truc_tong_the.png`](images/so_do_1_kien_truc_tong_the.png) — Hình 1: Kiến trúc phân tầng tổng thể
   - [`so_do_5_use_case.png`](images/so_do_5_use_case.png) — Hình 2: Sơ đồ Use Case tổng thể hệ thống
   - [`so_do_2_pipeline_du_lieu.png`](images/so_do_2_pipeline_du_lieu.png) — Hình 3: Pipeline tiền xử lý & kiểm soát chất lượng
