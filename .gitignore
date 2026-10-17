@@ -9,3 +9,5 @@ __pycache__/
 
 # Thu muc chua cac script phu va file ban thao tai lieu cu
 docs_tools/
+.agent/
+.gemini/
