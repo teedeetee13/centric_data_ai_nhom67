@@ -15,7 +15,12 @@ import json
 import re
 import pandas as pd
 import streamlit as st
-from src.config import TOPICS, DEFAULT_TEST_EMAIL, describe_flags
+from src.config import TOPICS, describe_flags
+try:
+    from src.config import DEFAULT_TEST_EMAIL
+except ImportError:
+    import os
+    DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
 from src.database import list_requests, log_review_action, save_draft
 from src.email_service import build_resolution_email, send_resolution_email
 

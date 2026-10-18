@@ -14,10 +14,22 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import os
 import re
+import importlib
 import pandas as pd
 import streamlit as st
-from src.config import KB_PATH, MODEL_PATH, TOPICS, AUTO_APPROVE_CONFIDENCE_THRESHOLD, DEFAULT_TEST_EMAIL, describe_flags
+
+import src.config as config_mod
+try:
+    importlib.reload(config_mod)
+except Exception:
+    pass
+
+from src.config import KB_PATH, MODEL_PATH, TOPICS, describe_flags
+AUTO_APPROVE_CONFIDENCE_THRESHOLD = getattr(config_mod, "AUTO_APPROVE_CONFIDENCE_THRESHOLD", float(os.environ.get("AUTO_APPROVE_CONFIDENCE_THRESHOLD", "0.70")))
+DEFAULT_TEST_EMAIL = getattr(config_mod, "DEFAULT_TEST_EMAIL", os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com"))
+
 from src.database import init_db, sync_kb_from_csv, save_request, get_request, save_draft, list_requests, log_review_action
 from src.email_service import build_resolution_email, send_resolution_email
 from src.service import RequestService

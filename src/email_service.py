@@ -19,7 +19,12 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from src.config import DEFAULT_TEST_EMAIL, TOPICS, database_path
+from src.config import TOPICS, database_path
+try:
+    from src.config import DEFAULT_TEST_EMAIL
+except ImportError:
+    import os
+    DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
 from src.database import ClosingConnection, get_connection
 
 def get_smtp_config() -> Dict[str, str]:
