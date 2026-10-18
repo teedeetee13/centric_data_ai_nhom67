@@ -3,10 +3,10 @@
 Module: src.cleaner
 Pipeline làm sạch dữ liệu và bảo mật PII theo triết lý Data-Centric AI (DCAI):
 1. Chuẩn hóa font Unicode dựng sẵn (NFC) & khoảng trắng
-2. Che giấu thông tin định danh cá nhân PII ([PHONE], [EMAIL], [STUDENT_ID])
-3. Phát hiện và gắn cờ câu quá ngắn (< 12 ký tự)
+2. Che giấu thông tin định danh cá nhân PII ([PHONE], [EMAIL], [STUDENT_ID], [URL])
+3. Phát hiện và gắn cờ câu rỗng, câu quá ngắn (< 12 ký tự)
 4. Khử trùng lặp tuyệt đối (Canonical MD5 Hash) và gần trùng lặp (SequenceMatcher >= 0.93)
-5. Xuất tập dữ liệu sạch và phân chia Train / Val / Test (Fixed Test Set 70 mẫu niêm phong)
+5. Xuất tập dữ liệu sạch chuẩn hóa, không rò rỉ dữ liệu gốc
 """
 
 import os
@@ -15,29 +15,33 @@ import hashlib
 import unicodedata
 import difflib
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from pathlib import Path
 
-# Regex patterns cho PII tiếng Việt và sinh viên EAUT
-REGEX_PHONE = re.compile(r'(\b0[3|5|7|8|9][0-9]{8}\b)')
-REGEX_EMAIL = re.compile(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
-REGEX_STUDENT_ID = re.compile(r'(\b(20[0-9]{6}|[0-9]{8,10})\b)')
+# Regex patterns chuẩn hóa cho PII tiếng Việt, sinh viên EAUT và URL
+REGEX_PHONE = re.compile(r'(?<!\w)(?:\+?84|0)[ .()-]?[35789](?:[ .()-]*\d){8}(?!\w)')
+REGEX_EMAIL = re.compile(r'[a-zA-Z0-9_.+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}')
+REGEX_STUDENT_ID = re.compile(r'(?<!\w)20\d{6,8}(?!\w)')
+REGEX_CONTEXT_ID = re.compile(r'((?:mssv|mã\s*(?:sinh\s*viên|sv))\s*[:\-]?\s*)([a-zA-Z0-9]{6,15})\b', re.I)
+REGEX_URL = re.compile(r'(?:https?://|www\.)[^\s<>]+', re.I)
 
 def normalize_unicode_and_whitespace(text: str) -> str:
     """Chuẩn hóa Unicode NFC và dọn dẹp khoảng trắng thừa."""
     if not isinstance(text, str):
         return ""
-    # Chuẩn hóa Unicode dựng sẵn (NFC)
     text = unicodedata.normalize('NFC', text)
-    # Gộp khoảng trắng thừa
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 def mask_pii(text: str) -> tuple[str, list[str]]:
     """
-    Che giấu PII thành các token chuẩn hóa: [PHONE], [EMAIL], [STUDENT_ID].
+    Che giấu PII thành các token chuẩn hóa: [PHONE], [EMAIL], [STUDENT_ID], [URL].
     Trả về (text_đã_che, danh_sách_cờ_pii).
     """
     pii_flags = []
+    
+    if REGEX_URL.search(text):
+        pii_flags.append('has_url')
+        text = REGEX_URL.sub('[URL]', text)
     
     if REGEX_PHONE.search(text):
         pii_flags.append("has_phone")
@@ -50,6 +54,11 @@ def mask_pii(text: str) -> tuple[str, list[str]]:
     if REGEX_STUDENT_ID.search(text):
         pii_flags.append("has_student_id")
         text = REGEX_STUDENT_ID.sub('[STUDENT_ID]', text)
+
+    if REGEX_CONTEXT_ID.search(text):
+        if 'has_student_id' not in pii_flags:
+            pii_flags.append('has_student_id')
+        text = REGEX_CONTEXT_ID.sub(lambda m: m.group(1) + '[STUDENT_ID]', text)
 
     return text, pii_flags
 
@@ -69,7 +78,10 @@ def clean_text_single(raw_text: str) -> dict:
     flags = list(pii_flags)
     is_usable = True
 
-    if len(norm) < 12:
+    if not norm:
+        flags.append('empty')
+        is_usable = False
+    elif len(norm) < 12:
         flags.append("too_short")
         is_usable = False
 
@@ -81,122 +93,60 @@ def clean_text_single(raw_text: str) -> dict:
         "char_len": len(masked)
     }
 
-def run_cleaning_pipeline(
-    raw_path="data/raw/synthetic_demo_424.csv",
-    processed_path="data/processed/dataset_clean.csv",
-    splits_dir="data/splits"
-):
+def clean_dataframe(df, text_col='raw_text'):
     """
-    Thực thi toàn bộ quy trình làm sạch từ tệp dữ liệu thô:
-    - Gắn thẻ chất lượng
-    - Khử trùng lặp
-    - Lưu tệp sạch
-    - Tách tập dữ liệu train / val / test_sealed
+    Làm sạch toàn bộ DataFrame phục vụ thống kê chất lượng và xuất dữ liệu an toàn.
+    Đầu ra chỉ chứa các cột đã chuẩn hóa, không mang theo cột thô gốc.
     """
-    if not os.path.exists(raw_path):
-        raise FileNotFoundError(f"Không tìm thấy tệp đầu vào: {raw_path}")
-
-    df = pd.read_csv(raw_path)
-    print(f"[*] Tiếp nhận {len(df)} bản ghi từ {raw_path}")
-
-    clean_records = []
-    seen_hashes = {}
-    cleaned_corpus = [] # Lưu các câu sạch để so sánh SequenceMatcher
-
-    for idx, row in df.iterrows():
-        raw_text = str(row["raw_text"])
-        res = clean_text_single(raw_text)
-        
-        flags = res["quality_flags"]
-        is_usable = res["is_usable"]
-        clean_t = res["clean_text"]
-
-        # Kiểm tra trùng lặp tuyệt đối (Canonical Hash)
-        c_hash = get_canonical_hash(clean_t)
-        if c_hash in seen_hashes:
-            flags.append("exact_duplicate")
-            is_usable = False
-        else:
-            seen_hashes[c_hash] = row["record_id"]
-
-            # Nếu không trùng tuyệt đối, kiểm tra gần trùng lặp (SequenceMatcher >= 0.93)
-            # Chỉ kiểm tra với các câu có độ dài > 20 ký tự
-            if is_usable and len(clean_t) > 20:
-                is_near = False
-                for prev_id, prev_text in cleaned_corpus[-50:]: # So với 50 câu gần nhất
-                    sim = difflib.SequenceMatcher(None, clean_t, prev_text).ratio()
-                    if sim >= 0.93:
-                        flags.append(f"near_duplicate_{prev_id}")
-                        is_usable = False
-                        is_near = True
-                        break
-                if not is_near:
-                    cleaned_corpus.append((row["record_id"], clean_t))
-
-        record_data = dict(row)
-        record_data["clean_text"] = clean_t
-        record_data["quality_flags"] = ";".join(flags) if flags else "CLEAN"
-        record_data["is_usable"] = is_usable
-        record_data["char_length"] = len(clean_t)
-        clean_records.append(record_data)
-
-    df_clean = pd.DataFrame(clean_records)
+    if text_col not in df.columns:
+        raise ValueError('Không tìm thấy cột nội dung đã chọn.')
     
-    os.makedirs(os.path.dirname(processed_path), exist_ok=True)
-    df_clean.to_csv(processed_path, index=False, encoding="utf-8")
-    print(f"[*] Đã xuất dữ liệu sạch tại: {processed_path}")
+    rows, seen, corpus = [], set(), []
+    for position, value in enumerate(df[text_col].tolist(), start=1):
+        result = clean_text_single(value)
+        text = result['clean_text']
+        flags = list(result['quality_flags'])
+        digest = get_canonical_hash(text)
+        usable = result['is_usable']
 
-    # Thống kê kết quả làm sạch
-    total = len(df_clean)
-    usable_count = df_clean["is_usable"].sum()
-    exact_dups = df_clean["quality_flags"].str.contains("exact_duplicate").sum()
-    near_dups = df_clean["quality_flags"].str.contains("near_duplicate").sum()
-    pii_count = df_clean["quality_flags"].str.contains("has_").sum()
-    short_count = df_clean["quality_flags"].str.contains("too_short").sum()
+        if digest in seen:
+            flags.append('exact_duplicate')
+            usable = False
+        else:
+            seen.add(digest)
+            if usable and len(text) > 20:
+                for previous in corpus:
+                    if min(len(text), len(previous)) / max(len(text), len(previous)) < 0.85:
+                        continue
+                    if difflib.SequenceMatcher(None, text.lower(), previous.lower()).ratio() >= 0.93:
+                        flags.append('near_duplicate')
+                        usable = False
+                        break
+                if usable:
+                    corpus.append(text)
 
-    print("\n--- BÁO CÁO CHỈ SỐ LÀM SẠCH DỮ LIỆU ---")
-    print(f"Tổng số mẫu tiếp nhận: {total}")
-    print(f"- Số mẫu hợp lệ sử dụng được (is_usable = True): {usable_count} ({usable_count/total*100:.2f}%)")
-    print(f"- Số mẫu trùng lặp tuyệt đối đã khử: {exact_dups} ({exact_dups/total*100:.2f}%)")
-    print(f"- Số mẫu gần trùng lặp đã gắn cờ: {near_dups} ({near_dups/total*100:.2f}%)")
-    print(f"- Số mẫu chứa PII đã che giấu an toàn: {pii_count} ({pii_count/total*100:.2f}%)")
-    print(f"- Số mẫu quá ngắn đã loại bỏ: {short_count} ({short_count/total*100:.2f}%)")
+        rows.append({
+            'row_number': position,
+            'clean_text': text,
+            'quality_flags': ';'.join(flags) if flags else 'CLEAN',
+            'is_usable': usable,
+            'char_length': len(text)
+        })
 
-    # Phân chia dữ liệu Train / Val / Test (Fixed Test Set 70 mẫu niêm phong)
-    usable_df = df_clean[df_clean["is_usable"] == True].copy()
-    os.makedirs(splits_dir, exist_ok=True)
+    return pd.DataFrame(rows, columns=['row_number', 'clean_text', 'quality_flags', 'is_usable', 'char_length'])
 
-    # Cố định test_sealed.csv với đúng 70 mẫu phân tầng đều qua 7 lớp (10 mẫu/lớp)
-    test_sealed_list = []
-    for label, group in usable_df.groupby("target_label_gold"):
-        test_sealed_list.append(group.sample(n=min(len(group), 10), random_state=42))
-    test_sealed = pd.concat(test_sealed_list).sample(frac=1.0, random_state=42).reset_index(drop=True)
-
-    # Lấy các mẫu còn lại làm Train và Val
-    remaining_df = usable_df[~usable_df["record_id"].isin(test_sealed["record_id"])].copy()
-
-    # Phân chia Train (80%) và Val (20%) có stratified
-    train_df, val_df = train_test_split(
-        remaining_df,
-        test_size=0.20,
-        random_state=42,
-        stratify=remaining_df["target_label_gold"]
-    )
-
-    test_path = os.path.join(splits_dir, "test_sealed.csv")
-    train_path = os.path.join(splits_dir, "train.csv")
-    val_path = os.path.join(splits_dir, "val.csv")
-
-    test_sealed.to_csv(test_path, index=False, encoding="utf-8")
-    train_df.to_csv(train_path, index=False, encoding="utf-8")
-    val_df.to_csv(val_path, index=False, encoding="utf-8")
-
-    print(f"\n[*] Đã phân chia tập dữ liệu chuẩn mốc thực nghiệm:")
-    print(f"    - Fixed Test Set (niêm phong E0-E3): {len(test_sealed)} mẫu -> {test_path}")
-    print(f"    - Train Set: {len(train_df)} mẫu -> {train_path}")
-    print(f"    - Validation Set: {len(val_df)} mẫu -> {val_path}")
-
-    return df_clean
+def run_cleaning_pipeline(raw_path=None, processed_path=None):
+    """Thực thi pipeline làm sạch và xuất dữ liệu an toàn ra tệp CSV."""
+    from src.config import ROOT, RAW_DEMO_PATH
+    raw_path = raw_path or RAW_DEMO_PATH
+    processed_path = processed_path or (ROOT / 'data' / 'processed' / 'dataset_clean.csv')
+    
+    frame = pd.read_csv(raw_path)
+    clean = clean_dataframe(frame, 'raw_text')
+    os.makedirs(os.path.dirname(str(processed_path)), exist_ok=True)
+    clean.to_csv(processed_path, index=False, encoding='utf-8')
+    print(f"[*] Đã xuất {len(clean)} dòng, {int(clean.is_usable.sum())} dòng dùng được vào {processed_path}")
+    return clean
 
 if __name__ == "__main__":
     run_cleaning_pipeline()

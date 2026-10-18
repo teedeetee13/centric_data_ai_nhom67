@@ -2,188 +2,116 @@
 """
 Module: app.components.workbench
 Bàn làm việc cán bộ tiếp nhận & kiểm duyệt (Human-in-the-Loop)
-Thiết kế tối giản, trực quan, hỗ trợ xử lý nhanh các phản ánh cần rà soát.
-Không emoji - Loại bỏ các thông số kỹ thuật dư thừa.
+Thiết kế tối giản, trực quan, hỗ trợ duyệt nguyên tử và bảo mật PII.
+Không emoji - Đồng bộ trạng thái form theo từng bản ghi.
 """
 
-import os
-import sys
-from pathlib import Path
-
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-
-import streamlit as st
+import json
 import pandas as pd
-from src.database import get_connection, log_review_action
+import streamlit as st
+from src.config import TOPICS, describe_flags
+from src.database import list_requests, log_review_action, save_draft
 
-ALL_TOPICS = [
-    "Hoc_phi", "Lich_hoc_lich_thi", "Diem_khao_thi", 
-    "Thu_tuc_hanh_chinh", "Co_so_vat_chat", "He_thong_CNTT", "Khac"
-]
-
-TOPIC_VIETNAMESE = {
-    "Hoc_phi": "Học phí & Chính sách",
-    "Lich_hoc_lich_thi": "Lịch học & Lịch thi",
-    "Diem_khao_thi": "Điểm số & Khảo thí",
-    "Thu_tuc_hanh_chinh": "Thủ tục hành chính",
-    "Co_so_vat_chat": "Cơ sở vật chất",
-    "He_thong_CNTT": "Hệ thống CNTT",
-    "Khac": "Ý kiến khác"
-}
+ALL_TOPICS = list(TOPICS.keys())
+TOPIC_VIETNAMESE = TOPICS
 
 def load_review_queue():
-    """Tải các yêu cầu đang chờ xử lý từ SQLite."""
-    conn = get_connection()
-    query = """
-    SELECT * FROM processed_requests 
-    WHERE status = 'pending_review'
-       AND (confidence_score < 0.60 
-           OR quality_flags LIKE '%near_duplicate%'
-           OR quality_flags LIKE '%has_%'
-           OR priority_level = 'Khẩn cấp')
-    ORDER BY 
-        CASE priority_level 
-            WHEN 'Khẩn cấp' THEN 1 
-            WHEN 'Cao' THEN 2 
-            WHEN 'Bình thường' THEN 3 
-            ELSE 4 
-        END,
-        id DESC
-    LIMIT 60
-    """
-    try:
-        df = pd.read_sql_query(query, conn)
-    except Exception:
-        df = pd.DataFrame()
-    finally:
-        conn.close()
-    return df
+    return pd.DataFrame(list_requests(pending_only=True))
 
 def render_workbench(faq_engine=None):
-    df_queue = load_review_queue()
+    queue = list_requests(pending_only=True)
+    st.subheader('Bàn duyệt cán bộ')
+    st.caption('Mọi yêu cầu đều cần cán bộ duyệt và kiểm tra quy chế. Lưu nội bộ, không gửi email tự động.')
 
-    if df_queue.empty:
-        st.success("Hàng đợi hoàn tất — Hiện không có phản ánh nào cần rà soát thêm.")
+    if not queue:
+        st.success('Hàng đợi hoàn tất — Không có yêu cầu nào đang chờ duyệt.')
         return
 
-    st.markdown(f"##### Hàng đợi cần rà soát ({len(df_queue)} phản ánh đang chờ)")
+    ids = [row['record_id'] for row in queue]
+    focus = st.session_state.get('focus_review_id')
+    if focus in ids and st.session_state.get('_focused_once') != focus:
+        st.session_state['review_id'] = focus
+        st.session_state['_focused_once'] = focus
 
-    col_nav, col_detail = st.columns([1, 2], gap="large")
+    if st.session_state.get('review_id') not in ids:
+        st.session_state['review_id'] = ids[0]
 
-    with col_nav:
-        st.caption("Chọn phản ánh cần xử lý:")
-        options = []
-        for _, row in df_queue.iterrows():
-            label = f"[{row['priority_level']}] {row['record_id']} - {TOPIC_VIETNAMESE.get(row['predicted_topic'], row['predicted_topic'])}"
-            options.append((row["record_id"], label))
+    by_id = {row['record_id']: row for row in queue}
+    rid = st.selectbox(
+        'Chọn yêu cầu cần xử lý',
+        options=ids,
+        key='review_id',
+        format_func=lambda k: f"{k} · {TOPICS.get(by_id[k]['predicted_topic'], 'Khác')} · {by_id[k]['priority_level']}"
+    )
+    item = by_id[rid]
 
-        selected_id = st.selectbox(
-            "Danh sách:",
-            options=[opt[0] for opt in options],
-            format_func=lambda x: next(opt[1] for opt in options if opt[0] == x),
-            label_visibility="collapsed"
-        )
-
-        item = df_queue[df_queue["record_id"] == selected_id].iloc[0]
-
-        # Thẻ thông tin nhanh về lý do chuyển rà soát
-        reasons = []
-        if item["priority_level"] == "Khẩn cấp":
-            reasons.append("Ưu tiên Khẩn cấp")
-        if item["quality_flags"] and "has_" in str(item["quality_flags"]):
-            reasons.append("Chứa thông tin cá nhân (PII)")
-        if item["confidence_score"] < 0.60:
-            reasons.append("Yêu cầu cần xác minh nghiệp vụ")
-
-        reason_str = " | ".join(reasons) if reasons else "Rà soát thường quy"
-        
-        st.markdown(f"""
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-top: 8px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);">
-            <div style="font-size: 0.74rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">MÃ PHẢN ÁNH</div>
-            <div style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">{item['record_id']}</div>
-            <div style="font-size: 0.74rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">LÝ DO CẦN DUYỆT</div>
-            <div style="font-size: 0.88rem; color: #b45309; font-weight: 500;">{reason_str}</div>
+    # Khung tóm tắt Sapphire Academic
+    st.markdown(f"""
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 14px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 0.74rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">MÃ YÊU CẦU: <strong style="color: #0f172a;">{rid}</strong></span>
+            <span style="font-size: 0.78rem; font-weight: 600; color: #1d4ed8; background: #eff6ff; padding: 2px 8px; border-radius: 4px;">Độ tự tin: {item['confidence_score']:.1%}</span>
         </div>
-        """, unsafe_allow_html=True)
+        <div style="font-size: 0.88rem; color: #334155;">
+            Hàng đợi: <strong>{len(queue)}</strong> yêu cầu chờ duyệt | Đơn vị gợi ý: <strong>{item['department']}</strong> | Mức độ: <strong>{item['priority_level']}</strong>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    with col_detail:
-        # So sánh nội dung gốc và nội dung đã che PII
-        c1, c2 = st.columns(2, gap="medium")
-        with c1:
-            st.caption("Nội dung gửi ban đầu của sinh viên:")
-            st.text_area("Gốc", value=item["raw_text"], height=95, disabled=True, label_visibility="collapsed")
-        with c2:
-            st.caption("Nội dung đã bảo mật thông tin cá nhân:")
-            st.text_area("Sạch", value=item["clean_text"], height=95, disabled=True, label_visibility="collapsed")
+    c_detail1, c_detail2 = st.columns([1, 1], gap="medium")
+    with c_detail1:
+        st.caption('Nội dung phản ánh đã bảo mật (Che PII):')
+        st.text_area('Yêu cầu đã che thông tin', value=item['clean_text'], disabled=True, key='review_clean_' + rid, height=120)
+        st.caption('Chất lượng dữ liệu: ' + describe_flags(item['quality_flags']))
 
-        # Căn cứ quy chế nếu có
-        if item.get("matched_kb_id") and pd.notna(item["matched_kb_id"]):
-            st.caption(f"Căn cứ điều khoản trích xuất: **{item['matched_kb_id']}**")
-
-        # Điều chỉnh phân loại & soạn thảo phản hồi
-        f_col1, f_col2 = st.columns([1, 1], gap="medium")
-        with f_col1:
-            curr_idx = ALL_TOPICS.index(item["predicted_topic"]) if item["predicted_topic"] in ALL_TOPICS else 0
-            final_topic = st.selectbox(
-                "Đơn vị chuyên môn phụ trách:",
-                options=ALL_TOPICS,
-                index=curr_idx,
-                format_func=lambda x: f"{TOPIC_VIETNAMESE.get(x, x)}"
-            )
-        with f_col2:
-            notes = st.text_input("Ghi chú xử lý:", placeholder="Nhập ghi chú nếu có...")
-
-        draft_val = item["draft_response"] if pd.notna(item["draft_response"]) and item["draft_response"] != "" else (
-            f"Chào bạn,\nBộ phận hỗ trợ đã tiếp nhận phản ánh của bạn về vấn đề {TOPIC_VIETNAMESE.get(final_topic, final_topic)}.\nTrân trọng."
-        )
-
-        st.caption("Nội dung phản hồi chính thức gửi sinh viên:")
-        response_text = st.text_area("Nội dung phản hồi", value=draft_val, height=135, label_visibility="collapsed")
-
-        # 3 nút hành động nghiệp vụ dứt khoát
-        b1, b2, b3 = st.columns(3, gap="medium")
-        with b1:
-            if st.button("Duyệt & Gửi phản hồi", use_container_width=True, type="primary"):
-                log_review_action(selected_id, "approve", item["predicted_topic"], final_topic, response_text, notes)
-                st.toast(f"Đã duyệt và gửi phản hồi cho {selected_id}!")
-                st.rerun()
-        with b2:
-            if st.button("Chuyển đơn vị khác", use_container_width=True):
-                log_review_action(selected_id, "edit_label", item["predicted_topic"], final_topic, response_text, notes)
-                st.toast(f"Đã chuyển đơn vị xử lý cho {selected_id}!")
-                st.rerun()
-        with b3:
-            if st.button("Từ chối / Tin rác", use_container_width=True):
-                log_review_action(selected_id, "reject", item["predicted_topic"], final_topic, "Từ chối do nội dung không hợp lệ.", notes)
-                st.toast(f"Đã từ chối {selected_id}!")
-                st.rerun()
-
-    # Nhật ký kiểm duyệt gần nhất
-    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-    with st.expander("Lịch sử kiểm duyệt gần đây"):
-        conn = get_connection()
-        try:
-            df_logs = pd.read_sql_query(
-                "SELECT id, record_id, officer_action, original_predicted_topic, final_topic, officer_notes, reviewed_at FROM review_logs ORDER BY id DESC LIMIT 15",
-                conn
-            )
-        except Exception:
-            df_logs = pd.DataFrame()
-        finally:
-            conn.close()
-
-        if not df_logs.empty:
-            action_map = {
-                "approve": "Đã duyệt gửi",
-                "edit_label": "Đã đổi đơn vị",
-                "reject": "Đã từ chối"
-            }
-            df_logs["officer_action"] = df_logs["officer_action"].map(lambda a: action_map.get(a, a))
-            df_logs["original_predicted_topic"] = df_logs["original_predicted_topic"].map(lambda t: TOPIC_VIETNAMESE.get(t, t))
-            df_logs["final_topic"] = df_logs["final_topic"].map(lambda t: TOPIC_VIETNAMESE.get(t, t))
-            df_logs.columns = ["STT", "Mã phản ánh", "Hành động", "Đơn vị ban đầu", "Đơn vị chốt", "Ghi chú", "Thời điểm"]
-            st.dataframe(df_logs, use_container_width=True, hide_index=True)
+    with c_detail2:
+        st.caption('Tài liệu quy chế tham chiếu:')
+        articles = json.loads(item['articles_json']) if item.get('articles_json') else []
+        if articles:
+            for article in articles:
+                with st.expander(f"{article['kb_id']} — {article['question_standard']}"):
+                    st.caption('Nguồn đã xác minh' if article.get('verified') else 'Tài liệu minh họa, chưa xác minh')
+                    st.write(article.get('content_extract', ''))
+                    if article.get('source_url'):
+                        st.write(f"Nguồn: {article['source_url']}")
         else:
-            st.caption("Chưa có phản ánh nào được xử lý trong ca làm việc hiện tại.")
+            st.info('Không có điều khoản quy chế tương ứng. Cán bộ đối chiếu quy định thủ công.')
+
+    # Form duyệt phản hồi
+    topics = list(TOPICS.keys())
+    response_key = 'response_' + rid
+    if response_key not in st.session_state:
+        st.session_state[response_key] = item['draft_response']
+
+    with st.form('review_form_' + rid):
+        curr_topic = item['predicted_topic'] if item['predicted_topic'] in topics else 'Khac'
+        final_topic = st.selectbox(
+            'Nhóm phân loại cuối cùng',
+            options=topics,
+            index=topics.index(curr_topic),
+            format_func=lambda t: TOPICS.get(t, t),
+            key='topic_' + rid
+        )
+        response = st.text_area('Nội dung phản hồi chính thức', key=response_key, height=170)
+        notes = st.text_input('Ghi chú xử lý nội bộ', key='notes_' + rid, placeholder='Nhập ghi chú hoặc lý do nếu có...')
+
+        c1, c2, c3 = st.columns(3)
+        draft_button = c1.form_submit_button('Lưu nháp', width='stretch')
+        approve = c2.form_submit_button('Duyệt và lưu', type='primary', width='stretch')
+        reject = c3.form_submit_button('Từ chối', width='stretch')
+
+    if draft_button or approve or reject:
+        try:
+            if draft_button:
+                save_draft(rid, response)
+                st.session_state.pop('intake_draft_' + rid, None)
+                message = f'Đã lưu bản nháp cho yêu cầu {rid}.'
+            else:
+                action = 'reject' if reject else ('edit_label' if final_topic != item['predicted_topic'] else 'approve')
+                final_resp = 'Yêu cầu bị từ chối.' if reject else response
+                log_review_action(rid, action, item['predicted_topic'], final_topic, final_resp, notes)
+                message = f'Đã xử lý xong {rid}. Bản ghi đã rời khỏi hàng đợi.'
+            st.session_state['notice'] = message
+            st.rerun()
+        except ValueError as exc:
+            st.error(str(exc))

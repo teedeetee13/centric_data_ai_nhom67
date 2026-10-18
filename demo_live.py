@@ -18,7 +18,8 @@ if str(ROOT_DIR) not in sys.path:
 from src.cleaner import clean_text_single, get_canonical_hash
 from src.model import EduSupportClassifier
 from src.faq_engine import FAQEngine
-from src.database import init_db, sync_kb_from_csv, get_connection, log_review_action
+from src.database import init_db, sync_kb_from_csv, get_connection, log_review_action, save_request
+from src.service import RequestService
 from src.quality_profiler import profile_dataset
 
 def print_separator(title=""):
@@ -94,6 +95,9 @@ def run_live_demo():
     # 5. Tinh huong 4: Kiem duyet Cán bo & Ghi vet Kiem toan SQLite (Human-in-the-Loop)
     print_separator("TINH HUONG 4: KIEM DUYET CAN BO & GHI VET KIEM TOAN SQLITE")
     test_record_id = f"REC_DEMO_{int(time.time())}"
+    svc = RequestService(classifier=clf, faq=faq_engine)
+    processed = svc.process(raw_query_1)
+    save_request(processed, record_id=test_record_id)
     print(f"Gia lap Can bo phe duyet phan anh: {test_record_id}")
     
     log_review_action(

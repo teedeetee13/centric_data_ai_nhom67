@@ -3,269 +3,240 @@
 Module: app.components.dashboard
 Thống kê chất lượng & Phân tích phản ánh học vụ sinh viên.
 Thiết kế tối giản, trực quan, tính toán trực tiếp từ dữ liệu thực tế.
-Không emoji - Loại bỏ các tùy chọn kỹ thuật nội bộ.
+Không emoji - Hỗ trợ xuất dữ liệu an toàn chống Formula Injection và bảo mật PII.
 """
 
-import os
-import sys
-from pathlib import Path
-
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-
-import streamlit as st
+import io
+import json
+import hashlib
 import pandas as pd
 import plotly.express as px
-from src.database import get_connection
-from src.cleaner import clean_text_single
-from src.model import EduSupportClassifier, determine_priority
+import streamlit as st
 
-TOPIC_VIETNAMESE = {
-    "Hoc_phi": "Học phí & Chính sách",
-    "Lich_hoc_lich_thi": "Lịch học & Lịch thi",
-    "Diem_khao_thi": "Điểm số & Khảo thí",
-    "Thu_tuc_hanh_chinh": "Thủ tục hành chính",
-    "Co_so_vat_chat": "Cơ sở vật chất",
-    "He_thong_CNTT": "Hệ thống CNTT",
-    "Khac": "Ý kiến khác"
-}
+from src.cleaner import clean_dataframe, clean_text_single
+from src.config import RAW_DEMO_PATH, TOPICS, describe_flags
+from src.database import list_requests, review_history, save_request, get_request
 
-def analyze_dataframe_realtime(df, text_col, clf_model=None):
-    """Phân tích các chỉ số chất lượng thực tế từ một DataFrame cụ thể."""
-    total = len(df)
-    if total == 0:
+def analyze_dataframe_realtime(df, text_col='raw_text', clf_model=None):
+    """
+    Phân tích các chỉ số chất lượng thực tế từ một DataFrame.
+    Đầu ra chuẩn hóa phục vụ đồng thời cho giao diện kiểm tra chất lượng và kiểm thử tự động.
+    """
+    cleaned = clean_dataframe(df, text_col)
+    if cleaned.empty:
         return None
-
-    texts = df[text_col].fillna("").astype(str)
-
-    # 1. Rỗng & quá ngắn
-    empty_count = int((texts.str.strip() == "").sum() + df[text_col].isna().sum())
-    short_count = int((texts.apply(len) < 12).sum())
-
-    # 2. Trùng lặp
-    duplicate_count = int(texts.duplicated().sum())
-
-    # 3. Quét thông tin cá nhân (PII) thực tế bằng Regex
-    pii_phone_count = int(texts.str.contains(r'0[3|5|7|8|9]\d{8}').sum())
-    pii_email_count = int(texts.str.contains(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+').sum())
-    pii_mssv_count = int(texts.str.contains(r'20\d{6}').sum())
-    pii_total_records = int(((texts.str.contains(r'0[3|5|7|8|9]\d{8}')) | 
-                            (texts.str.contains(r'@[a-zA-Z0-9-]+\.')) | 
-                            (texts.str.contains(r'20\d{6}'))).sum())
-
-    # 4. Xác định chuyên môn
-    if "predicted_topic" in df.columns:
-        topic_series = df["predicted_topic"]
-    elif "target_label_gold" in df.columns:
-        topic_series = df["target_label_gold"]
-    elif clf_model is not None:
-        topic_series = texts.apply(lambda t: clf_model.predict_single(clean_text_single(t)["clean_text"])["predicted_topic"] if len(t) >= 12 else "Khac")
-    else:
-        topic_series = pd.Series(["Chưa phân loại"] * total)
-
-    # 5. Mức độ ưu tiên
-    if "priority_level" in df.columns:
-        prio_series = df["priority_level"]
-    elif "priority_gold" in df.columns:
-        prio_series = df["priority_gold"]
-    else:
-        prio_series = texts.apply(determine_priority)
-
-    usable_count = total - duplicate_count - short_count
-
+    flags = cleaned['quality_flags']
+    total = len(cleaned)
     return {
-        "total": total,
-        "empty_count": empty_count,
-        "short_count": short_count,
-        "usable_count": max(0, usable_count),
-        "usable_ratio": float(max(0, usable_count) / total * 100),
-        "duplicate_count": duplicate_count,
-        "duplicate_ratio": float(duplicate_count / total * 100),
-        "pii_total": pii_total_records,
-        "pii_phone": pii_phone_count,
-        "pii_email": pii_email_count,
-        "pii_mssv": pii_mssv_count,
-        "topic_counts": topic_series.value_counts(),
-        "priority_counts": prio_series.value_counts(),
-        "df_processed": df.assign(chuyen_mon=topic_series.map(lambda x: TOPIC_VIETNAMESE.get(x, x)), muc_uu_tien=prio_series)
+        'total': total,
+        'empty_count': int(flags.str.contains('empty').sum()),
+        'short_count': int(flags.str.contains('too_short').sum()),
+        'usable_count': int(cleaned['is_usable'].sum()),
+        'usable_ratio': float(cleaned['is_usable'].mean() * 100) if total > 0 else 0.0,
+        'duplicate_count': int(flags.str.contains('exact_duplicate').sum()),
+        'near_duplicate_count': int(flags.str.contains('near_duplicate').sum()),
+        'pii_total': int(flags.str.contains('has_').sum()),
+        'pii_phone': int(flags.str.contains('has_phone').sum()),
+        'pii_email': int(flags.str.contains('has_email').sum()),
+        'pii_mssv': int(flags.str.contains('has_student_id').sum()),
+        'df_processed': cleaned
     }
 
-def render_dashboard(clf_model=None):
-    col_mode, col_info = st.columns([2, 1], gap="large")
-    
-    with col_mode:
-        data_source = st.radio(
-            "Nguồn dữ liệu:",
-            options=[
-                "Dữ liệu đang tiếp nhận trong hệ thống",
-                "Tải lên tệp phản ánh mới (Excel / CSV)"
-            ],
-            horizontal=True,
-            label_visibility="collapsed"
+def export_csv(df):
+    """
+    Xuất dữ liệu an toàn ra định dạng CSV (UTF-8 with BOM):
+    - Khử triệt để PII còn sót lại trong các chuỗi văn bản tự do.
+    - Trung hòa các ký tự khởi đầu công thức (=, +, -, @) chống Spreadsheet Formula Injection.
+    """
+    safe = df.copy()
+    def sanitize_cell(value):
+        if isinstance(value, str):
+            value = clean_text_single(value)['clean_text']
+            if value.lstrip().startswith(('=', '+', '-', '@')):
+                value = "'" + value
+        return value
+
+    for col in safe.columns:
+        safe[col] = safe[col].map(sanitize_cell)
+    return safe.to_csv(index=False).encode('utf-8-sig')
+
+def hashlib_bytes(frame, text_col):
+    return hashlib.sha256(frame[text_col].fillna('').astype(str).str.cat(sep='\n').encode()).hexdigest()
+
+def render_dashboard(service=None, clf_model=None):
+    rows = list_requests()
+    logs = review_history()
+
+    # Hàng chỉ số cấp cao
+    m1, m2, m3 = st.columns(3)
+    m1.metric('Yêu cầu đã lưu', len(rows))
+    m2.metric('Đang chờ duyệt', sum(r['status'] == 'pending_review' for r in rows))
+    m3.metric('Lượt xử lý đã lưu', len(logs))
+
+    # Bảng yêu cầu đã lưu
+    if rows:
+        st.subheader('Danh sách yêu cầu trong hệ thống')
+        view = pd.DataFrame(rows)[['record_id', 'clean_text', 'predicted_topic', 'confidence_score', 'priority_level', 'source_type', 'status', 'processed_at']]
+        display = view.copy()
+        display['predicted_topic'] = display['predicted_topic'].map(TOPICS)
+        display['status'] = display['status'].map({
+            'pending_review': 'Chờ duyệt',
+            'reviewed_approve': 'Đã duyệt',
+            'reviewed_edit_label': 'Đã duyệt và đổi nhãn',
+            'reviewed_reject': 'Đã từ chối'
+        })
+        display['source_type'] = display['source_type'].map({
+            'manual_demo': 'Nhập thủ công',
+            'controlled_demo': 'Mẫu kiểm thử'
+        })
+        display = display.rename(columns={
+            'record_id': 'Mã yêu cầu',
+            'clean_text': 'Nội dung đã che',
+            'predicted_topic': 'Nhóm dự đoán',
+            'confidence_score': 'Độ tự tin',
+            'priority_level': 'Ưu tiên',
+            'source_type': 'Nguồn',
+            'status': 'Trạng thái',
+            'processed_at': 'Thời điểm UTC'
+        })
+        st.dataframe(display, width='stretch', hide_index=True)
+        st.download_button(
+            'Tải danh sách đã che thông tin',
+            data=export_csv(view),
+            file_name='yeu_cau_da_che.csv',
+            mime='text/csv'
         )
 
-    df_target = None
-    text_column = None
+        # Trực quan hóa phân bổ yêu cầu
+        c_pie, c_bar = st.columns(2)
+        with c_pie:
+            st.markdown('##### Phân bổ theo Đơn vị chuyên môn')
+            topic_df = view['predicted_topic'].map(TOPICS).value_counts().reset_index()
+            topic_df.columns = ['Chuyên môn', 'Số lượng']
+            fig_pie = px.pie(topic_df, names='Chuyên môn', values='Số lượng', hole=0.45,
+                             color_discrete_sequence=['#1d4ed8', '#0284c7', '#0f766e', '#6366f1', '#d97706', '#059669', '#64748b'])
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+            fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), showlegend=False, height=250,
+                                  paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_pie, width='stretch')
 
-    # NGUỒN 1: DỮ LIỆU ĐANG TIẾP NHẬN TRONG HỆ THỐNG
-    if data_source == "Dữ liệu đang tiếp nhận trong hệ thống":
-        conn = get_connection()
-        try:
-            df_target = pd.read_sql_query("SELECT * FROM processed_requests", conn)
-        except Exception:
-            df_target = pd.DataFrame()
-        finally:
-            conn.close()
+        with c_bar:
+            st.markdown('##### Phân bổ theo Mức độ ưu tiên')
+            prio_df = view['priority_level'].value_counts().reset_index()
+            prio_df.columns = ['Mức ưu tiên', 'Số lượng']
+            prio_colors = {'Khẩn cấp': '#dc2626', 'Cao': '#ea580c', 'Bình thường': '#0284c7', 'Thấp': '#94a3b8'}
+            fig_bar = px.bar(prio_df, x='Mức ưu tiên', y='Số lượng', color='Mức ưu tiên', color_discrete_map=prio_colors)
+            fig_bar.update_layout(xaxis_title='', yaxis_title='', margin=dict(t=10, b=10, l=10, r=10), height=250,
+                                  showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_bar, width='stretch')
 
-        if df_target.empty:
-            fallback_clean = "data/processed/dataset_clean.csv"
-            if os.path.exists(fallback_clean):
-                df_target = pd.read_csv(fallback_clean)
-                text_column = "clean_text"
-            else:
-                st.info("Hệ thống chưa có phản ánh nào được ghi nhận.")
-                return
-        else:
-            text_column = "clean_text" if "clean_text" in df_target.columns else "raw_text"
+    # Bảng nhật ký duyệt
+    if logs:
+        st.subheader('Nhật ký duyệt của cán bộ')
+        history = pd.DataFrame(logs)
+        visible = history.drop(columns=['id']).copy()
+        visible['original_predicted_topic'] = visible['original_predicted_topic'].map(TOPICS)
+        visible['final_topic'] = visible['final_topic'].map(TOPICS)
+        visible['officer_action'] = visible['officer_action'].map({
+            'approve': 'Duyệt',
+            'edit_label': 'Đổi nhãn và duyệt',
+            'reject': 'Từ chối'
+        })
+        visible = visible.rename(columns={
+            'record_id': 'Mã yêu cầu',
+            'officer_action': 'Thao tác',
+            'original_predicted_topic': 'Nhãn dự đoán',
+            'final_topic': 'Nhãn cuối',
+            'final_response': 'Trả lời đã lưu',
+            'officer_notes': 'Ghi chú',
+            'reviewed_at': 'Thời điểm UTC'
+        })
+        st.dataframe(visible, width='stretch', hide_index=True)
+        st.download_button(
+            'Tải nhật ký duyệt',
+            data=export_csv(history),
+            file_name='nhat_ky_duyet.csv',
+            mime='text/csv'
+        )
 
-        with col_info:
-            st.caption(f"Đang hiển thị thống kê từ **{len(df_target):,}** phản ánh sinh viên.")
+    # Phân hệ Kiểm tra chất lượng dữ liệu
+    st.subheader('Kiểm tra chất lượng dữ liệu')
+    source = st.radio('Nguồn kiểm tra', ['Bộ mô phỏng 424 dòng', 'Tải CSV hoặc XLSX'], horizontal=True)
+    target = None
+    text_col = 'raw_text'
 
-    # NGUỒN 2: TẢI LÊN TỆP MỚI
+    if source == 'Bộ mô phỏng 424 dòng':
+        target = pd.read_csv(RAW_DEMO_PATH)
+        text_col = 'raw_text'
+        st.caption('Đây là dữ liệu mô phỏng. Các số liệu được tính toán thời gian thực bằng bộ xử lý thống nhất.')
     else:
-        c_up1, c_up2 = st.columns([3, 2], gap="large")
-        with c_up1:
-            uploaded_file = st.file_uploader(
-                "Chọn tệp bảng tính phản ánh (.xlsx hoặc .csv):",
-                type=["csv", "xlsx"]
-            )
-        with c_up2:
-            st.caption("Hoặc nạp nhanh dữ liệu mẫu kiểm thử:")
-            sample_real_path = "data/mau_phan_anh_thuc_te_eaut.csv"
-            if os.path.exists(sample_real_path):
-                if st.button("Nạp tệp mẫu 50 phản ánh thực tế EAUT", use_container_width=True):
-                    st.session_state["use_sample_real"] = True
-
-        if uploaded_file is not None:
-            try:
-                if uploaded_file.name.endswith(".csv"):
-                    df_target = pd.read_csv(uploaded_file)
-                else:
-                    df_target = pd.read_excel(uploaded_file)
-                
-                possible_cols = [c for c in df_target.columns if any(k in str(c).lower() for k in ["text", "noi_dung", "cau_hoi", "phan_anh", "content", "tin_nhan"])]
-                text_column = possible_cols[0] if possible_cols else df_target.columns[0]
-                st.caption(f"Đã nạp tệp: **{uploaded_file.name}** ({len(df_target):,} dòng).")
-            except Exception as e:
-                st.error(f"Lỗi khi đọc tệp: {e}")
+        uploaded = st.file_uploader('Chọn tệp dữ liệu', type=['csv', 'xlsx'])
+        if uploaded is not None:
+            if uploaded.size > 5_000_000:
+                st.warning('Hệ thống nhận tệp tối đa 5 MB.')
                 return
-        elif st.session_state.get("use_sample_real", False) and os.path.exists(sample_real_path):
-            df_target = pd.read_csv(sample_real_path)
-            text_column = "raw_text"
-            st.caption(f"Đang phân tích tệp mẫu thực tế EAUT ({len(df_target)} bản ghi).")
-        else:
-            st.info("Vui lòng tải lên tệp CSV/Excel từ máy tính hoặc bấm nút 'Nạp tệp mẫu 50 phản ánh thực tế EAUT'.")
+            try:
+                target = pd.read_csv(uploaded) if uploaded.name.lower().endswith('.csv') else pd.read_excel(uploaded)
+            except Exception as exc:
+                st.error('Không đọc được tệp. Kiểm tra định dạng và mã hóa UTF-8. ' + str(exc))
+                return
+            if not len(target.columns):
+                st.warning('Tệp chưa có cột.')
+                return
+            if len(target) > 500:
+                st.warning('Giới hạn kiểm tra tối đa 500 dòng mỗi tệp.')
+                return
+            preferred = next((c for c in ('raw_text', 'clean_text', 'noi_dung', 'content') if c in target.columns), target.columns[0])
+            text_col = st.selectbox('Cột chứa nội dung', list(target.columns), index=list(target.columns).index(preferred))
+
+    if target is not None:
+        if target.empty:
+            st.info('Tệp không có dòng dữ liệu.')
             return
 
-    # PHÂN TÍCH CHỈ SỐ
-    stats = analyze_dataframe_realtime(df_target, text_column, clf_model=clf_model)
-    if stats is None:
-        st.warning("Tệp dữ liệu không có dòng nào.")
-        return
+        signature = (source, hashlib_bytes(target, text_col))
+        if st.session_state.get('_profile_signature') != signature:
+            st.session_state.pop('profile_result', None)
+            st.session_state['_profile_signature'] = signature
 
-    st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
+        if st.button('Kiểm tra và che thông tin', key='profile_data', width='stretch'):
+            st.session_state['profile_result'] = analyze_dataframe_realtime(target, text_col)
 
-    # 4 THẺ TỔNG QUAN
-    m1, m2, m3, m4 = st.columns(4, gap="medium")
-    with m1:
-        st.metric("Tổng phản ánh", f"{stats['total']:,}")
-    with m2:
-        st.metric("Hợp lệ xử lý", f"{stats['usable_ratio']:.1f}%", f"{stats['usable_count']} phản ánh")
-    with m3:
-        st.metric("Đã bảo mật PII", f"{stats['pii_total']} ca", f"SĐT: {stats['pii_phone']} | Email: {stats['pii_email']}")
-    with m4:
-        st.metric("Trùng lặp đã lọc", f"{stats['duplicate_count']} ca", f"{stats['duplicate_ratio']:.1f}%")
+        stats = st.session_state.get('profile_result')
+        if stats:
+            x, y, z = st.columns(3)
+            x.metric('Dòng hợp lệ để dùng', f"{stats['usable_count']}/{stats['total']}")
+            y.metric('Dòng rỗng', stats['empty_count'])
+            z.metric('Dòng có thông tin cá nhân', stats['pii_total'])
+            st.caption(f"Trùng hoàn toàn: {stats['duplicate_count']} | Gần trùng: {stats['near_duplicate_count']} | Ngắn: {stats['short_count']}.")
+            display = stats['df_processed'].copy()
+            display['quality_flags'] = display['quality_flags'].map(describe_flags)
+            display = display.rename(columns={
+                'row_number': 'Dòng',
+                'clean_text': 'Nội dung đã che',
+                'quality_flags': 'Chất lượng',
+                'is_usable': 'Dùng được',
+                'char_length': 'Số ký tự'
+            })
+            st.dataframe(display, width='stretch', hide_index=True)
+            st.download_button(
+                'Tải dữ liệu đã che',
+                data=export_csv(stats['df_processed']),
+                file_name='du_lieu_da_che.csv',
+                mime='text/csv'
+            )
 
-    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
-
-    # BIỂU ĐỒ TRỰC QUAN
-    c1, c2 = st.columns(2, gap="large")
-
-    with c1:
-        st.markdown("##### Phân bổ theo Đơn vị chuyên môn")
-        tc = stats["topic_counts"].reset_index()
-        tc.columns = ["Chuyên môn", "Số lượng"]
-        tc["Tên"] = tc["Chuyên môn"].map(lambda x: TOPIC_VIETNAMESE.get(x, x))
-
-        topic_color_map = {
-            "Học phí & Chính sách": "#1d4ed8",
-            "Lịch học & Lịch thi": "#0284c7",
-            "Điểm số & Khảo thí": "#0f766e",
-            "Thủ tục hành chính": "#6366f1",
-            "Cơ sở vật chất": "#d97706",
-            "Hệ thống CNTT": "#059669",
-            "Ý kiến khác": "#64748b",
-            "Nội dung không hợp lệ": "#94a3b8"
-        }
-
-        fig_pie = px.pie(
-            tc,
-            names="Tên",
-            values="Số lượng",
-            hole=0.48,
-            color="Tên",
-            color_discrete_map=topic_color_map
-        )
-        fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-        fig_pie.update_layout(
-            margin=dict(t=10, b=10, l=10, r=10),
-            showlegend=False,
-            height=270,
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#0f172a")
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    with c2:
-        st.markdown("##### Phân bổ theo Mức độ ưu tiên")
-        pc = stats["priority_counts"].reset_index()
-        pc.columns = ["Mức ưu tiên", "Số lượng"]
-        
-        prio_color_map = {
-            "Khẩn cấp": "#dc2626",
-            "Cao": "#ea580c",
-            "Bình thường": "#0284c7",
-            "Thấp": "#94a3b8"
-        }
-
-        fig_bar = px.bar(
-            pc,
-            x="Mức ưu tiên",
-            y="Số lượng",
-            color="Mức ưu tiên",
-            color_discrete_map=prio_color_map
-        )
-        fig_bar.update_layout(
-            xaxis_title="",
-            yaxis_title="",
-            margin=dict(t=10, b=10, l=10, r=10),
-            height=270,
-            showlegend=False,
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#0f172a")
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-    # NÚT XUẤT DỮ LIỆU SẠCH
-    st.markdown("<div style='margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
-    csv_bytes = stats["df_processed"].to_csv(index=False, encoding="utf-8").encode("utf-8")
-    st.download_button(
-        "Tải bảng dữ liệu đã xử lý và phân loại (CSV)",
-        data=csv_bytes,
-        file_name="du_lieu_phan_anh_da_xu_ly.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
+    # Nạp dữ liệu mẫu vào bàn duyệt
+    st.subheader('Nạp ba yêu cầu mẫu vào bàn duyệt')
+    st.caption('Nạp lại không tạo bản ghi trùng và bảo toàn trạng thái đã duyệt trước đó.')
+    if st.button('Nạp 3 yêu cầu demo', width='stretch') and service:
+        for index, text in enumerate([
+            'Em đã chuyển học phí hôm qua nhưng cổng vẫn báo còn nợ, mã sinh viên 20991234.',
+            'Em không đăng nhập được cổng sinh viên, số điện thoại 0912 345 678.',
+            'Hai môn của em bị trùng lịch thi sáng thứ Hai.',
+        ], start=1):
+            rid = 'DEMO_' + str(index).zfill(3)
+            if not get_request(rid):
+                save_request(service.process(text), record_id=rid, source_type='controlled_demo')
+        st.session_state['notice'] = 'Đã nạp các mẫu còn thiếu. Kết quả duyệt trước đó được giữ nguyên.'
+        st.rerun()

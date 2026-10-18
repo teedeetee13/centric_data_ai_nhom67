@@ -1,138 +1,94 @@
 # -*- coding: utf-8 -*-
 """
 Module: src.faq_engine
-Engine tra cứu quy chế học vụ và tự động gợi ý bản nháp phản hồi (DRAFT RESPONSE GENERATOR).
-- Nạp kho tri thức quy chế từ data/kb/eaut_faq_kb.csv (hoặc SQLite knowledge_base)
-- Trích xuất TF-IDF và tính độ tương đồng Cosine Similarity
-- Tìm kiếm điều khoản quy định phù hợp nhất với thắc mắc của sinh viên
-- Tự động biên tập bản nháp phản hồi có cấu trúc chuẩn mực:
-  + Chào hỏi lịch sự
-  + Trích dẫn điều khoản quy chế (Mã KB, Tên văn bản)
-  + Hướng dẫn quy trình xử lý cụ thể
-  + Chỉ định phòng ban phụ trách tiếp nhận & xử lý
+Engine tra cứu quy chế học vụ và tự động gợi ý bản nháp phản hồi.
+Tích hợp cơ chế kiểm soát chất lượng:
+- Ngưỡng Cosine tối thiểu (0.15) ngăn việc ép câu hỏi vô nghĩa khớp quy chế
+- Phân biệt rõ nguồn tài liệu đã xác minh và tài liệu minh họa
+- Định dạng bản nháp chuẩn mực hành chính, không emoji
 """
 
 import os
 import pandas as pd
-import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
-KB_DEFAULT_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "kb", "eaut_faq_kb.csv")
+from src.config import KB_PATH
 
 class FAQEngine:
-    def __init__(self, kb_path=KB_DEFAULT_PATH):
-        self.kb_path = kb_path
-        self.df_kb = None
-        self.vectorizer = None
-        self.kb_vectors = None
-        self._load_and_index()
-
-    def _load_and_index(self):
-        """Nạp dữ liệu tri thức và xây dựng chỉ mục ma trận TF-IDF."""
-        if not os.path.exists(self.kb_path):
-            raise FileNotFoundError(f"Không tìm thấy kho tri thức quy chế tại: {self.kb_path}")
-
-        self.df_kb = pd.read_csv(self.kb_path)
+    def __init__(self, kb_path=None, min_similarity=0.15):
+        self.kb_path = kb_path or str(KB_PATH)
+        self.min_similarity = min_similarity
+        self.df_kb = pd.read_csv(self.kb_path).fillna('')
         
-        # Tạo chuỗi văn bản tổng hợp để tìm kiếm (câu hỏi mẫu + nội dung trích lục + chủ đề)
-        corpus = (
-            self.df_kb["topic"].fillna("") + " " +
-            self.df_kb["question_standard"].fillna("") + " " +
-            self.df_kb["content_extract"].fillna("")
-        ).tolist()
-
-        self.vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2),
-            min_df=1,
-            sublinear_tf=True
-        )
+        corpus = self.df_kb['question_standard'] + ' ' + self.df_kb['content_extract']
+        self.vectorizer = TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True)
         self.kb_vectors = self.vectorizer.fit_transform(corpus)
-        print(f"[*] FAQ Engine đã lập chỉ mục {len(self.df_kb)} điều khoản quy chế EAUT.")
 
     def search_regulations(self, query_text: str, filter_topic: str = None, top_k: int = 2) -> list[dict]:
-        """
-        Tra cứu điều khoản quy chế dựa trên độ tương đồng Cosine Similarity.
-        Có thể lọc ưu tiên theo topic đã được phân loại bởi Model.
-        """
-        if self.vectorizer is None or self.kb_vectors is None:
-            return []
-
-        query_vec = self.vectorizer.transform([query_text])
-        similarities = cosine_similarity(query_vec, self.kb_vectors)[0]
-
+        """Tra cứu điều khoản quy chế dựa trên độ tương đồng Cosine Similarity."""
+        sims = cosine_similarity(self.vectorizer.transform([query_text]), self.kb_vectors)[0]
         results = []
-        for idx, score in enumerate(similarities):
+        for idx, score in enumerate(sims):
+            if float(score) < self.min_similarity:
+                continue
             row = self.df_kb.iloc[idx]
-            final_score = float(score)
-
-            # Tăng điểm thưởng nếu trùng khớp topic do mô hình dự đoán
-            if filter_topic and row["topic"] == filter_topic:
-                final_score += 0.25
-
+            source = str(row.get('source_url', '')).strip()
+            verified = str(row.get('verified', '')).lower() in ('true', '1', 'yes') and bool(source)
             results.append({
-                "kb_id": row["kb_id"],
-                "topic": row["topic"],
-                "question_standard": row["question_standard"],
-                "content_extract": row["content_extract"],
-                "department": row["department"],
-                "effective_date": row.get("effective_date", "2025-08-15"),
-                "similarity_score": float(np.round(final_score, 4))
+                'kb_id': row['kb_id'],
+                'topic': row['topic'],
+                'question_standard': row['question_standard'],
+                'content_extract': row['content_extract'],
+                'department': row['department'],
+                'source_url': source,
+                'verified': bool(verified),
+                'similarity_score': round(float(score), 4),
+                'rank_score': float(score) + (0.10 if row['topic'] == filter_topic else 0.0)
             })
-
-        # Sắp xếp giảm dần theo điểm tương đồng
-        results.sort(key=lambda x: x["similarity_score"], reverse=True)
-        return results[:top_k]
+        return sorted(results, key=lambda r: r['rank_score'], reverse=True)[:top_k]
 
     def generate_draft_response(self, query_text: str, predicted_topic: str = None) -> dict:
-        """
-        Tự động tạo bản nháp câu trả lời có cấu trúc dẫn nguồn quy chế cho Cán bộ rà soát.
-        """
-        matched = self.search_regulations(query_text, filter_topic=predicted_topic, top_k=1)
-        
-        if not matched or matched[0]["similarity_score"] < 0.15:
-            # Trường hợp không tìm thấy quy chế khớp
-            draft = (
-                "Chào bạn,\n\n"
-                "Bộ phận hỗ trợ sinh viên đã tiếp nhận thông tin phản ánh của bạn. "
-                "Yêu cầu của bạn đang được chuyển đến ban chuyên môn có thẩm quyền để xác minh và phản hồi trực tiếp qua Cổng thông tin sinh viên hoặc Email trong vòng 24h làm việc.\n\n"
-                "Trân trọng cảm ơn bạn."
-            )
+        """Tự động tạo bản nháp câu trả lời có cấu trúc và dẫn nguồn quy chế cho Cán bộ rà soát."""
+        articles = self.search_regulations(query_text, filter_topic=predicted_topic, top_k=2)
+        if not articles:
             return {
-                "matched_kb_id": None,
-                "matched_regulation": None,
-                "draft_text": draft,
-                "department": "Ban Tiếp nhận & Xử lý phản hồi",
-                "similarity_score": 0.0
+                'matched_kb_id': None,
+                'matched_regulation': None,
+                'department': 'Bộ phận tiếp nhận',
+                'similarity_score': 0.0,
+                'articles': [],
+                'draft_text': 'Chào bạn, bộ phận hỗ trợ đã tiếp nhận nội dung. Hiện chưa có tài liệu đủ phù hợp để trả lời cụ thể. Bạn vui lòng bổ sung thông tin để cán bộ xác minh và hướng dẫn. Trân trọng.'
             }
-
-        top_match = matched[0]
-        kb_id = top_match["kb_id"]
-        reg_title = top_match["question_standard"]
-        content = top_match["content_extract"]
-        dept = top_match["department"]
-
-        draft = (
-            f"Chào bạn,\n\n"
-            f"Bộ phận hỗ trợ sinh viên Trường ĐH Công nghệ Đông Á xin phản hồi thắc mắc của bạn như sau:\n\n"
-            f"[CĂN CỨ QUY CHẾ ({kb_id} - {reg_title})]:\n"
-            f"\"{content}\"\n\n"
-            f"[HƯỚNG DẪN XỬ LÝ]:\n"
-            f"Bạn vui lòng thực hiện theo đúng hướng dẫn trên. Nếu cần nộp hồ sơ hoặc xác minh thêm thông tin, bạn hãy liên hệ trực tiếp tại {dept}.\n\n"
-            f"Chúc bạn học tập và rèn luyện tốt!"
-        )
+        
+        item = articles[0]
+        if item['verified']:
+            draft = (
+                f"Chào bạn,\n\n"
+                f"Theo tài liệu {item['kb_id']} ({item['question_standard']}):\n"
+                f"{item['content_extract']}\n\n"
+                f"Đơn vị gợi ý liên hệ: {item['department']}.\n\n"
+                f"Trân trọng."
+            )
+        else:
+            draft = (
+                f"BẢN NHÁP DEMO — CHƯA XÁC MINH QUY ĐỊNH\n\n"
+                f"Chào bạn,\n"
+                f"Bộ phận hỗ trợ đã tiếp nhận yêu cầu về {item['question_standard'].lower()}. "
+                f"Đơn vị được gợi ý để cán bộ xác minh là {item['department']}. "
+                f"Cán bộ cần đối chiếu tài liệu hiện hành và bổ sung hướng dẫn cụ thể trước khi sử dụng.\n\n"
+                f"Trân trọng."
+            )
 
         return {
-            "matched_kb_id": kb_id,
-            "matched_regulation": reg_title,
-            "draft_text": draft,
-            "department": dept,
-            "similarity_score": top_match["similarity_score"]
+            'matched_kb_id': item['kb_id'],
+            'matched_regulation': item['question_standard'],
+            'department': item['department'],
+            'similarity_score': item['similarity_score'],
+            'articles': articles,
+            'draft_text': draft
         }
 
 if __name__ == "__main__":
-    engine = FAQEngine()
-    test_query = "Em nộp tiền học qua ngân hàng rồi mà cổng vẫn báo nợ thì làm sao?"
-    res = engine.generate_draft_response(test_query, predicted_topic="Hoc_phi")
-    print("\n--- TEST DRAFT RESPONSE ---")
-    print(res["draft_text"])
+    faq = FAQEngine()
+    test_res = faq.generate_draft_response("Em nộp học phí qua ngân hàng rồi mà cổng vẫn báo nợ", "Hoc_phi")
+    print(test_res["draft_text"])
