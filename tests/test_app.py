@@ -25,14 +25,14 @@ class AppFlowTests(unittest.TestCase):
 
     def submit(self,text):
         self.app.text_area(key='request_text').input(text)
-        self.button('Phân tích và lưu').click().run()
+        self.button('Gửi').click().run()
         self.assertFalse(self.app.exception)
 
     def test_intake_draft_review_reload_and_idempotency(self):
         self.submit('Em đã chuyển học phí hôm qua nhưng cổng vẫn báo còn nợ, mã sinh viên 20991234.')
         self.assertEqual(len(list_requests()),1)
         rid=list_requests()[0]['record_id']
-        self.button('Phân tích và lưu').click().run()
+        self.button('Gửi').click().run()
         self.assertEqual(len(list_requests()),1)
         self.app.text_area(key='intake_draft_'+rid).input('Chào bạn,\n\nCán bộ đã kiểm tra giao dịch.')
         self.button('Lưu bản nháp').click().run()

@@ -229,20 +229,7 @@ samples = {
 tabs = st.tabs(['Tiếp nhận yêu cầu', 'Bàn duyệt cán bộ', 'Dữ liệu và lịch sử'])
 
 with tabs[0]:
-    st.subheader('1. Tiếp nhận phản ánh sinh viên')
-
-    # Giải thích rõ quy trình và vai trò lọc phân loại của AI
-    st.markdown("""
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-        <div style="font-weight: 600; color: #0f172a; font-size: 0.92rem; margin-bottom: 4px;">
-            Quy trình tiếp nhận & Phân luồng tự động
-        </div>
-        <div style="font-size: 0.85rem; color: #475569; line-height: 1.5;">
-            <strong>Hệ thống AI:</strong> Tự động bảo mật thông tin cá nhân (PII), phân tích nội dung, lọc vấn đề theo đúng chuyên môn và trích xuất quy chế nhà trường.<br>
-            <strong>Cán bộ chuyên trách:</strong> Tiếp nhận ticket đã phân loại tại <em>Bàn duyệt cán bộ</em> để xác minh và phê duyệt câu trả lời chính thức cho sinh viên.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.subheader('Tiếp nhận phản ánh sinh viên')
 
     # Danh mục chủ đề vấn đề và các tick box chi tiết
     topic_catalog = {
@@ -284,24 +271,8 @@ with tabs[0]:
         ]
     }
 
-    # Hàng nút kịch bản mẫu kiểm thử nhanh
-    with st.expander('Kịch bản mẫu kiểm thử nhanh', expanded=False):
-        columns = st.columns(len(samples) + 1)
-        def choose_sample(text):
-            st.session_state['request_text'] = text
-
-        for i, (name, text) in enumerate(samples.items()):
-            columns[i].button(name, on_click=choose_sample, args=(text,), key='sample_' + str(i), width='stretch')
-
-        def new_request():
-            for key in ('analysis_result', 'last_record_id', 'submission_fingerprint', 'focus_review_id'):
-                st.session_state.pop(key, None)
-            st.session_state['request_text'] = ''
-
-        columns[-1].button('Làm mới form', on_click=new_request, width='stretch')
-
-    # Bước 1: Chọn chủ đề vấn đề mắc phải
-    st.markdown('##### Bước 1: Chọn chủ đề vấn đề đang gặp phải')
+    # Chọn chủ đề vấn đề đang gặp phải
+    st.markdown('##### Chủ đề phản ánh:')
     selected_topic = st.radio(
         'Chủ đề vấn đề:',
         options=list(topic_catalog.keys()),
@@ -312,7 +283,7 @@ with tabs[0]:
 
     # Form tiếp nhận chính
     with st.form('intake_form', clear_on_submit=False):
-        st.markdown(f"##### Bước 2: Chọn cụ thể vấn đề thuộc [{selected_topic}]")
+        st.markdown(f"##### Chọn vấn đề cụ thể thuộc [{selected_topic}]:")
         sub_issues = topic_catalog[selected_topic]
         chk_cols = st.columns(2)
         checked_issues = []
@@ -321,7 +292,7 @@ with tabs[0]:
                 if st.checkbox(issue, key=f"chk_{selected_topic}_{idx}"):
                     checked_issues.append(issue)
 
-        st.markdown("##### Bước 3: Mô tả chi tiết ý kiến cá nhân (hoặc tự điền nội dung riêng)")
+        st.markdown("##### Nội dung phản ánh chi tiết (hoặc tự điền ý kiến cá nhân):")
         user_text = st.text_area(
             'Nội dung yêu cầu',
             key='request_text',
@@ -331,7 +302,7 @@ with tabs[0]:
             label_visibility='collapsed'
         )
 
-        st.markdown("##### Bước 4: Thông tin sinh viên nhận phản hồi")
+        st.markdown("##### Thông tin sinh viên nhận phản hồi:")
         c_mssv, c_phone, c_mail = st.columns(3)
         with c_mssv:
             in_mssv = st.text_input('Mã sinh viên (MSSV):', key='in_mssv', placeholder='Ví dụ: 2022601234')
@@ -340,8 +311,8 @@ with tabs[0]:
         with c_mail:
             in_email = st.text_input('Gmail / Email sinh viên:', key='in_email', placeholder='Ví dụ: sinhvien@eaut.edu.vn')
 
-        st.caption('Thông tin cá nhân (MSSV, SĐT, Email) sẽ được hệ thống AI tự động bảo mật và che dấu (PII masking) ngay khi tiếp nhận.')
-        submitted = st.form_submit_button('Phân tích và lưu', type='primary', width='stretch')
+        st.caption('Thông tin cá nhân (MSSV, SĐT, Email) sẽ được hệ thống tự động bảo mật và che dấu (PII masking) ngay khi tiếp nhận.')
+        submitted = st.form_submit_button('Gửi', type='primary', width='stretch')
 
     if submitted:
         # Tổng hợp toàn bộ dữ liệu gồm: Tick box đã chọn + Ý kiến chi tiết + Thông tin liên hệ
