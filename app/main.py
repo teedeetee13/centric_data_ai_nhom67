@@ -14,12 +14,35 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import pandas as pd
 import streamlit as st
 from src.config import KB_PATH, MODEL_PATH, TOPICS, describe_flags
 from src.database import init_db, sync_kb_from_csv, save_request, get_request, save_draft, list_requests
 from src.service import RequestService
 from app.components.workbench import render_workbench
 from app.components.dashboard import render_dashboard
+
+def extract_text_from_upload(uploaded_file):
+    """Trích xuất nội dung văn bản từ tệp đơn từ tải lên (.txt, .docx, .pdf)."""
+    if uploaded_file is None:
+        return ""
+    uploaded_file.seek(0)
+    name = uploaded_file.name.lower()
+    try:
+        if name.endswith('.txt'):
+            return uploaded_file.read().decode('utf-8', errors='ignore').strip()
+        elif name.endswith('.docx'):
+            import docx
+            doc = docx.Document(uploaded_file)
+            return '\n'.join(p.text.strip() for p in doc.paragraphs if p.text.strip())
+        elif name.endswith('.pdf'):
+            from pypdf import PdfReader
+            reader = PdfReader(uploaded_file)
+            texts = [page.extract_text() or '' for page in reader.pages]
+            return '\n'.join(t.strip() for t in texts if t.strip())
+    except Exception as e:
+        return f"Lỗi trích xuất tệp: {e}"
+    return ""
 
 st.set_page_config(
     page_title='EduSupportAI - Cổng xử lý phản ánh sinh viên',
@@ -207,11 +230,13 @@ tabs = st.tabs(['Tiếp nhận yêu cầu', 'Bàn duyệt cán bộ', 'Dữ li�
 
 with tabs[0]:
     st.subheader('1. Nhập yêu cầu phản ánh')
-    st.caption('Chọn kịch bản mẫu thử nghiệm hoặc nhập trực tiếp. Thông tin cá nhân (PII) được tự động bảo mật trước khi lưu.')
+    st.caption('Hỗ trợ đa dạng kịch bản ticket, trích xuất tệp đơn từ hoặc nạp danh sách hàng loạt. Thông tin cá nhân (PII) được tự động bảo mật.')
 
+    # Hàng nút kịch bản nhanh
     columns = st.columns(len(samples) + 1)
     def choose_sample(text):
         st.session_state['request_text'] = text
+        st.session_state['scenario_selector'] = 0
 
     for i, (name, text) in enumerate(samples.items()):
         columns[i].button(name, on_click=choose_sample, args=(text,), key='sample_' + str(i), width='stretch')
@@ -220,8 +245,77 @@ with tabs[0]:
         for key in ('analysis_result', 'last_record_id', 'submission_fingerprint', 'focus_review_id'):
             st.session_state.pop(key, None)
         st.session_state['request_text'] = ''
+        st.session_state['scenario_selector'] = 0
 
     columns[-1].button('Yêu cầu mới', on_click=new_request, width='stretch')
+
+    # Kịch bản nghiệp vụ mở rộng (7 nhóm chuyên môn)
+    extended_scenarios = [
+        ("-- Hoặc chọn kịch bản mẫu mở rộng (7 nhóm chuyên môn) --", ""),
+        ("1. [Học phí + PII] Đóng tiền qua ngân hàng nhưng cổng chưa gạch nợ (SĐT, MSSV)", 
+         "Em đã đóng học phí 8.500.000đ qua ngân hàng từ hôm qua nhưng cổng vẫn báo chưa nộp, số điện thoại em 0987654321, mssv 2022601234, mong phòng tài chính kiểm tra giúp em."),
+        ("2. [Lịch thi] Trùng ca thi kết thúc học phần 2 môn cùng thời điểm", 
+         "Dạ em chào thầy cô, lịch thi kết thúc học phần môn Mạng máy tính và Hệ điều hành của em bị trùng ca thi lúc 7h30 sáng ngày 20/10 tại nhà B, mong thầy cô xem xét đổi ca thi giúp em ạ."),
+        ("3. [Khảo thí] Đơn đề nghị phúc khảo bài thi kết thúc học phần", 
+         "Điểm thi môn Trí tuệ nhân tạo của em trên cổng bị sai lệch 2.0 so với bài làm, em muốn nộp đơn phúc khảo bài thi thì cần nộp tại phòng nào và lệ phí ra sao ạ?"),
+        ("4. [Hành chính] Xin cấp giấy xác nhận sinh viên tạm hoãn nghĩa vụ quân sự", 
+         "Em cần xin giấy xác nhận sinh viên đang theo học tại trường để làm thủ tục tạm hoãn nghĩa vụ quân sự ở địa phương thì làm đơn online hay đến trực tiếp phòng Một cửa ạ?"),
+        ("5. [Cơ sở vật chất] Hỏng điều hòa và máy chiếu phòng học giảng đường", 
+         "Điều hòa phòng 305 nhà C bị hỏng chảy nước lênh láng, máy chiếu cũng không bật lên được, cả lớp không học được mong nhà trường cử cán bộ khắc phục."),
+        ("6. [Hệ thống CNTT] Quên mật khẩu đăng nhập cổng đào tạo", 
+         "Em quên mật khẩu đăng nhập cổng daotao.eaut.edu.vn, ấn quên mật khẩu nhưng không thấy gửi mã xác thực về email sinh viên sv.eaut@student.edu.vn."),
+        ("7. [Lọc dữ liệu rác] Phản ánh quá ngắn / không rõ nội dung", 
+         "Học phí")
+    ]
+
+    def on_select_scenario():
+        idx = st.session_state.get('scenario_selector', 0)
+        if idx > 0 and idx < len(extended_scenarios):
+            st.session_state['request_text'] = extended_scenarios[idx][1]
+
+    st.selectbox(
+        'Kịch bản nghiệp vụ mở rộng:',
+        options=list(range(len(extended_scenarios))),
+        format_func=lambda i: extended_scenarios[i][0],
+        key='scenario_selector',
+        on_change=on_select_scenario,
+        label_visibility='collapsed'
+    )
+
+    # Khu vực Đính kèm tệp & Kênh tiếp nhận
+    c_doc, c_chan = st.columns([3, 2], gap="medium")
+    with c_doc:
+        uploaded_doc = st.file_uploader(
+            'Đính kèm tệp văn bản (.txt, .docx, .pdf) hoặc ảnh minh chứng (.png, .jpg):',
+            type=['txt', 'docx', 'pdf', 'png', 'jpg', 'jpeg'],
+            key='ticket_doc_upload',
+            help='Hỗ trợ tự động trích xuất nội dung văn bản từ tệp đơn từ hoặc lưu ảnh minh chứng giao dịch.'
+        )
+        if uploaded_doc is not None:
+            doc_name = uploaded_doc.name.lower()
+            if doc_name.endswith(('.png', '.jpg', '.jpeg')):
+                st.caption(f'Đã ghi nhận ảnh minh chứng đính kèm: **{uploaded_doc.name}**')
+                st.image(uploaded_doc, width=200)
+            elif doc_name.endswith(('.txt', '.docx', '.pdf')):
+                content = extract_text_from_upload(uploaded_doc)
+                if content and not content.startswith("Lỗi"):
+                    st.caption(f'Đã đọc nội dung từ **{uploaded_doc.name}** ({len(content)} ký tự).')
+                    if st.button('Điền nội dung trích xuất vào ô yêu cầu', key='btn_fill_doc'):
+                        st.session_state['request_text'] = content
+                        st.rerun()
+
+    with c_chan:
+        st.caption('Thông tin phân luồng tiếp nhận:')
+        intake_channel = st.selectbox(
+            'Kênh tiếp nhận:',
+            options=['Cổng thông tin sinh viên', 'Email hỗ trợ', 'Bộ phận Một cửa', 'Đường dây nóng / Khác'],
+            key='ticket_channel'
+        )
+        student_group = st.selectbox(
+            'Đối tượng phản ánh:',
+            options=['Đại học chính quy', 'Liên thông / Văn bằng 2', 'Sau đại học / Học viên'],
+            key='ticket_group'
+        )
 
     with st.form('intake_form', clear_on_submit=False):
         user_text = st.text_area(
@@ -244,7 +338,8 @@ with tabs[0]:
             else:
                 try:
                     result = service.process(user_text)
-                    rid = save_request(result, source_type='manual_demo')
+                    src_type = f"manual_{intake_channel}"
+                    rid = save_request(result, source_type=src_type)
                     st.session_state.update(
                         analysis_result=result,
                         last_record_id=rid,
@@ -254,6 +349,44 @@ with tabs[0]:
                     st.success(f'Đã lưu thành công {rid}. Chuyển sang tab Bàn duyệt cán bộ để xử lý.')
                 except ValueError as exc:
                     st.error(str(exc))
+
+    # Phân hệ nạp danh sách Ticket hàng loạt từ tệp bảng tính
+    with st.expander('Nạp danh sách Ticket hàng loạt từ tệp bảng tính (Excel / CSV)', expanded=False):
+        st.caption('Tải lên tệp danh sách nhiều phản ánh từ cổng khảo sát, Google Forms hoặc hệ thống email. Hệ thống sẽ quét PII, phân loại tự động và đẩy vào hàng đợi Bàn duyệt cán bộ.')
+        batch_file = st.file_uploader(
+            'Chọn tệp danh sách phản ánh (.xlsx hoặc .csv):',
+            type=['csv', 'xlsx'],
+            key='batch_file_intake'
+        )
+        if batch_file is not None:
+            try:
+                df_b = pd.read_csv(batch_file) if batch_file.name.lower().endswith('.csv') else pd.read_excel(batch_file)
+                if df_b.empty:
+                    st.warning('Tệp không có dòng dữ liệu nào.')
+                else:
+                    potential = [c for c in df_b.columns if any(k in str(c).lower() for k in ['noi_dung', 'text', 'cau_hoi', 'phan_anh', 'content', 'tin_nhan'])]
+                    picked_col = potential[0] if potential else df_b.columns[0]
+                    col_target = st.selectbox(
+                        'Chọn cột chứa nội dung phản ánh:',
+                        options=list(df_b.columns),
+                        index=list(df_b.columns).index(picked_col),
+                        key='batch_col_target'
+                    )
+                    st.write(f'Tệp có **{len(df_b)}** dòng dữ liệu. Xem trước nội dung mẫu:')
+                    st.dataframe(df_b[[col_target]].head(3), width='stretch')
+
+                    if st.button(f'Xử lý và nạp {min(len(df_b), 50)} Ticket vào Bàn duyệt', type='primary', key='btn_do_batch_import'):
+                        added = 0
+                        for _, r in df_b.head(50).iterrows():
+                            val = str(r[col_target]).strip()
+                            if val and val != 'nan' and val != 'None':
+                                b_res = service.process(val)
+                                save_request(b_res, source_type='file_batch')
+                                added += 1
+                        st.success(f'Đã tiếp nhận và phân luồng thành công {added} Ticket vào Bàn duyệt cán bộ!')
+                        st.rerun()
+            except Exception as err:
+                st.error(f'Lỗi khi đọc tệp bảng tính: {err}')
 
     result = st.session_state.get('analysis_result')
     rid = st.session_state.get('last_record_id')
