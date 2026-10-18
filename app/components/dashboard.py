@@ -159,6 +159,30 @@ def render_dashboard(service=None, clf_model=None):
             mime='text/csv'
         )
 
+    # Nhật ký gửi email thông báo giải quyết
+    from src.email_service import list_email_dispatches
+    email_logs = list_email_dispatches()
+    if email_logs:
+        st.subheader('Nhật ký gửi email thông báo giải quyết')
+        df_emails = pd.DataFrame(email_logs)[['sent_at', 'record_id', 'recipient_email', 'dispatch_mode', 'status', 'subject']]
+        df_emails['dispatch_mode'] = df_emails['dispatch_mode'].map({
+            'smtp_real': 'Máy chủ SMTP',
+            'simulated': 'Mô phỏng (Mock)'
+        }).fillna(df_emails['dispatch_mode'])
+        df_emails['status'] = df_emails['status'].map({
+            'success': 'Thành công',
+            'failed': 'Thất bại'
+        }).fillna(df_emails['status'])
+        df_emails = df_emails.rename(columns={
+            'sent_at': 'Thời điểm gửi (UTC)',
+            'record_id': 'Mã yêu cầu',
+            'recipient_email': 'Email người nhận',
+            'dispatch_mode': 'Kênh gửi',
+            'status': 'Trạng thái',
+            'subject': 'Tiêu đề thông báo'
+        })
+        st.dataframe(df_emails, width='stretch', hide_index=True)
+
     # Phân hệ Kiểm tra chất lượng dữ liệu
     st.subheader('Kiểm tra chất lượng dữ liệu')
     source = st.radio('Nguồn kiểm tra', ['Bộ mô phỏng 424 dòng', 'Tải CSV hoặc XLSX'], horizontal=True)

@@ -7,6 +7,7 @@ from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
 from src.config import ROOT
 from src.database import list_requests,get_request,review_history
+from src.email_service import list_email_dispatches
 
 class AppFlowTests(unittest.TestCase):
     def setUp(self):
@@ -68,6 +69,21 @@ class AppFlowTests(unittest.TestCase):
         self.assertIsNotNone(self.app.session_state['profile_result'])
         self.assertEqual(self.app.session_state['profile_result']['total'],424)
         self.assertTrue(any(b.label=='Tải dữ liệu đã che' for b in self.app.get('download_button')))
+
+    def test_high_confidence_auto_approval_and_sample_email(self):
+        btn_label = 'Gửi email giải quyết mẫu tới kennysk114239@gmail.com'
+        self.button(btn_label).click().run()
+        self.assertFalse(self.app.exception)
+        dispatches = list_email_dispatches()
+        self.assertTrue(any(d['recipient_email'] == 'kennysk114239@gmail.com' for d in dispatches))
+
+        high_conf_text = 'Cổng thông tin báo thiếu điểm môn Giáo dục quốc phòng nên em chưa đủ điều kiện xét tốt nghiệp đợt này. Email của em: kennysk114239@gmail.com'
+        self.submit(high_conf_text)
+        reqs = list_requests()
+        high_req = next(r for r in reqs if 'thiếu điểm môn Giáo dục quốc phòng' in r['clean_text'])
+        self.assertEqual(high_req['status'], 'reviewed_approve')
+        self.assertGreaterEqual(high_req['confidence_score'], 0.70)
+        self.assertEqual(len(list_requests(pending_only=True)), 0)
 
 if __name__=='__main__':
     unittest.main()

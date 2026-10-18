@@ -15,8 +15,9 @@ import json
 import re
 import pandas as pd
 import streamlit as st
-from src.config import TOPICS, describe_flags
+from src.config import TOPICS, DEFAULT_TEST_EMAIL, describe_flags
 from src.database import list_requests, log_review_action, save_draft
+from src.email_service import build_resolution_email, send_resolution_email
 
 ALL_TOPICS = list(TOPICS.keys())
 TOPIC_VIETNAMESE = TOPICS
@@ -213,15 +214,63 @@ def render_workbench(faq_engine=None):
                 final_resp = 'Yêu cầu bị từ chối.' if reject else response
                 log_review_action(rid, action, item['predicted_topic'], final_topic, final_resp, notes)
                 if reject:
+                    send_resolution_email(
+                        recipient_email=recipient_email,
+                        subject=f"[EduSupportAI] Thông báo kết quả rà soát yêu cầu - {rid}",
+                        body_text=f"Kính gửi Sinh viên,\n\nYêu cầu {rid} của bạn đã bị từ chối với lý do: {notes or 'Không phù hợp quy định đào tạo'}.\n\nTrân trọng,\n{item_dept}",
+                        record_id=rid
+                    )
                     message = f'Đã từ chối yêu cầu {rid}. Thông báo từ chối đã gửi về email: {recipient_email}.'
                 else:
+                    subj, body = build_resolution_email(
+                        record_id=rid,
+                        topic=final_topic,
+                        department=item_dept,
+                        resolution_text=final_resp,
+                        confidence_score=conf,
+                        is_auto_approved=False
+                    )
+                    send_resolution_email(
+                        recipient_email=recipient_email,
+                        subject=subj,
+                        body_text=body,
+                        record_id=rid
+                    )
                     message = f'Đã phê duyệt và gửi giải pháp thành công về email: {recipient_email}. Bản ghi đã rời khỏi hàng đợi.'
             st.session_state['notice'] = message
             st.rerun()
         except ValueError as exc:
             st.error(str(exc))
 
-    # 6. Phân hệ Huấn luyện AI từ dữ liệu cán bộ đã duyệt (Active Learning & Automation)
+    # Tùy chọn gửi bản sao kiểm thử tới kennysk114239@gmail.com
+    with st.expander('Thử nghiệm: Gửi bản sao hướng giải quyết tới kennysk114239@gmail.com', expanded=False):
+        st.caption('Gửi bản sao nội dung giải quyết của yêu cầu này tới email thử nghiệm.')
+        c_wb_m1, c_wb_m2 = st.columns([3, 1])
+        with c_wb_m1:
+            wb_test_mail = st.text_input('Email nhận bản sao kiểm thử:', value=DEFAULT_TEST_EMAIL, key='wb_test_mail_input')
+        with c_wb_m2:
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+            if st.button('Gửi email test', type='secondary', key='btn_wb_send_test', width='stretch'):
+                t_subj, t_body = build_resolution_email(
+                    record_id=rid,
+                    topic=item['predicted_topic'],
+                    department=item_dept,
+                    resolution_text=st.session_state.get(response_key, item['draft_response']),
+                    confidence_score=conf,
+                    is_auto_approved=False
+                )
+                t_ok, t_msg = send_resolution_email(
+                    recipient_email=wb_test_mail,
+                    subject=t_subj,
+                    body_text=t_body,
+                    record_id=rid
+                )
+                if t_ok:
+                    st.success(t_msg)
+                else:
+                    st.error(t_msg)
+
+    # Phân hệ Huấn luyện AI từ dữ liệu cán bộ đã duyệt (Active Learning & Automation)
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     with st.expander('Huấn luyện AI để tự động hóa giải quyết yêu cầu (Active Learning)', expanded=False):
         st.caption(

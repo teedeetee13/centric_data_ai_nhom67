@@ -22,6 +22,9 @@ TOPICS = {
     "Khac": "Ý kiến khác"
 }
 
+AUTO_APPROVE_CONFIDENCE_THRESHOLD = float(os.environ.get("AUTO_APPROVE_CONFIDENCE_THRESHOLD", "0.70"))
+DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
+
 def database_path():
     """Lấy đường dẫn CSDL SQLite từ biến môi trường hoặc mặc định data/edusupport.db."""
     return Path(os.environ.get("EDUSUPPORT_DB_PATH", ROOT / "data" / "edusupport.db"))

@@ -94,6 +94,17 @@ def init_db(db_path=None):
             source_url TEXT NOT NULL,
             verified INTEGER NOT NULL DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS email_dispatches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            record_id TEXT,
+            recipient_email TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            body_text TEXT NOT NULL,
+            dispatch_mode TEXT NOT NULL,
+            status TEXT NOT NULL,
+            error_message TEXT,
+            sent_at TEXT NOT NULL
+        );
         ''')
 
         # Tự động di chuyển (migration) cấu trúc bảng nếu dùng tệp CSDL cũ

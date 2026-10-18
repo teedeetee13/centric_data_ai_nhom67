@@ -14,10 +14,12 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import re
 import pandas as pd
 import streamlit as st
-from src.config import KB_PATH, MODEL_PATH, TOPICS, describe_flags
-from src.database import init_db, sync_kb_from_csv, save_request, get_request, save_draft, list_requests
+from src.config import KB_PATH, MODEL_PATH, TOPICS, AUTO_APPROVE_CONFIDENCE_THRESHOLD, DEFAULT_TEST_EMAIL, describe_flags
+from src.database import init_db, sync_kb_from_csv, save_request, get_request, save_draft, list_requests, log_review_action
+from src.email_service import build_resolution_email, send_resolution_email
 from src.service import RequestService
 from app.components.workbench import render_workbench
 from app.components.dashboard import render_dashboard
@@ -353,7 +355,68 @@ with tabs[0]:
                         submission_fingerprint=fingerprint,
                         focus_review_id=rid
                     )
-                    st.success(f'Đã lưu thành công yêu cầu {rid}. Hệ thống AI đã tự động lọc vấn đề và chuyển đến Bàn duyệt cán bộ.')
+
+                    # Trích xuất địa chỉ email sinh viên để gửi kết quả giải quyết
+                    target_email = in_email.strip()
+                    if not target_email:
+                        match_mail = re.search(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', combined_input)
+                        target_email = match_mail.group(1) if match_mail else DEFAULT_TEST_EMAIL
+
+                    # Kiểm tra điều kiện tự động phê duyệt và lưu trữ:
+                    # 1. Mức độ chắc chắn của AI đạt hoặc vượt ngưỡng (>= 70%)
+                    # 2. Dữ liệu chất lượng hợp lệ (is_usable == True)
+                    # 3. Đã tìm thấy căn cứ giải pháp quy chế (matched_kb_id)
+                    # 4. Không thuộc diện ưu tiên Khẩn cấp (Khẩn cấp bắt buộc cán bộ xem xét)
+                    is_auto_approved = (
+                        result['confidence_score'] >= AUTO_APPROVE_CONFIDENCE_THRESHOLD
+                        and bool(result.get('is_usable'))
+                        and bool(result.get('matched_kb_id'))
+                        and result.get('priority_level') != 'Khẩn cấp'
+                    )
+
+                    if is_auto_approved:
+                        log_review_action(
+                            record_id=rid,
+                            officer_action='approve',
+                            original_topic=result['predicted_topic'],
+                            final_topic=result['predicted_topic'],
+                            final_response=result['draft_response'],
+                            notes=f"AI tự động phê duyệt và lưu trữ (Độ tự tin: {result['confidence_score']:.1%})"
+                        )
+                        subj, body = build_resolution_email(
+                            record_id=rid,
+                            topic=result['predicted_topic'],
+                            department=result['department'],
+                            resolution_text=result['draft_response'],
+                            confidence_score=result['confidence_score'],
+                            is_auto_approved=True
+                        )
+                        mail_ok, mail_msg = send_resolution_email(
+                            recipient_email=target_email,
+                            subject=subj,
+                            body_text=body,
+                            record_id=rid
+                        )
+                        st.success(
+                            f"ĐÃ TỰ ĐỘNG PHÊ DUYỆT & LƯU TRỮ THÀNH CÔNG: Mức độ chắc chắn của AI đạt {result['confidence_score']:.1%}, "
+                            f"thuộc thẩm quyền {result['department']} và đã có căn cứ quy chế giải pháp. "
+                            f"Hướng giải quyết đã được gửi tự động về email: {target_email}!"
+                        )
+                    elif result['confidence_score'] < 0.50:
+                        st.warning(
+                            f"CẢNH BÁO QUẢN TRỊ: Mức độ chắc chắn của mô hình AI dưới 50% ({result['confidence_score']:.1%}) hoặc phản ánh vượt quá khả năng tự động hóa. "
+                            f"Yêu cầu {rid} đã được lưu và chuyển tiếp tới Bàn duyệt cán bộ ({result['department']}) / Quản trị viên để xem xét thủ công."
+                        )
+                    elif result.get('priority_level') == 'Khẩn cấp':
+                        st.warning(
+                            f"ƯU TIÊN KHẨN CẤP: Yêu cầu {rid} thuộc diện khẩn cấp. "
+                            f"Đã lưu và chuyển trực tiếp tới Bàn duyệt cán bộ ({result['department']}) để ưu tiên xử lý trực tiếp."
+                        )
+                    else:
+                        st.info(
+                            f"Đã lưu thành công yêu cầu {rid} (Độ tự tin: {result['confidence_score']:.1%}). "
+                            f"Hệ thống đã tự động lọc vấn đề và chuyển đến Bàn duyệt cán bộ ({result['department']}) để kiểm tra và phê duyệt."
+                        )
                 except ValueError as exc:
                     st.error(str(exc))
 
@@ -406,13 +469,73 @@ with tabs[0]:
                 except Exception as err:
                     st.error(f'Lỗi đọc tệp: {err}')
 
+    # Thử nghiệm gửi email giải quyết mẫu tới kennysk114239@gmail.com
+    with st.expander('Thử nghiệm gửi email giải quyết mẫu tới kennysk114239@gmail.com', expanded=False):
+        st.caption('Kiểm tra trực tiếp tính năng tự động gửi email thông báo giải quyết phản ánh học vụ sinh viên.')
+        c_tm1, c_tm2 = st.columns([2, 1])
+        with c_tm1:
+            t_email_dest = st.text_input(
+                'Địa chỉ email người nhận thử nghiệm:',
+                value=DEFAULT_TEST_EMAIL,
+                key='intake_test_email_dest'
+            )
+        with c_tm2:
+            t_topic_sample = st.selectbox(
+                'Chủ đề giải pháp mẫu:',
+                options=list(TOPICS.keys()),
+                format_func=lambda k: TOPICS.get(k, k),
+                key='intake_test_topic_select'
+            )
+
+        sample_solutions = {
+            'Hoc_phi': 'Phòng Tài chính - Kế toán đã đối soát giao dịch nộp học phí qua ngân hàng. Hệ thống cổng đào tạo đã hoàn tất gạch nợ học kỳ cho sinh viên.',
+            'Lich_hoc_lich_thi': 'Phòng Đào tạo đã ghi nhận và xử lý đơn trùng ca thi. Lịch thi bổ sung của sinh viên đã được bố trí vào phòng B302 tuần tới.',
+            'Diem_khao_thi': 'Ban Khảo thí & Đảm bảo chất lượng đã hoàn tất chấm phúc khảo bài thi kết thúc học phần. Điểm số chính thức đã được cập nhật trên cổng.',
+            'Thu_tuc_hanh_chinh': 'Bộ phận Một cửa đã xác nhận và cấp Giấy xác nhận sinh viên tạm hoãn nghĩa vụ quân sự. Sinh viên có thể đến bàn tiếp nhận nhận bản cứng.',
+            'Co_so_vat_chat': 'Phòng Quản trị Cơ sở vật chất đã cử nhân viên kỹ thuật kiểm tra và khắc phục sự cố điều hòa phòng học trong sáng nay.',
+            'He_thong_CNTT': 'Trung tâm CNTT đã cấp lại mật khẩu tài khoản cổng đào tạo sinh viên daotao.eaut.edu.vn và hướng dẫn đổi mật khẩu an toàn.',
+            'Khac': 'Bộ phận Tiếp nhận chung đã ghi nhận đóng góp ý kiến nâng cao chất lượng dịch vụ của bạn và chuyển đến Ban Giám hiệu xem xét.'
+        }
+        chosen_sample_sol = sample_solutions.get(t_topic_sample, 'Đã ghi nhận và xử lý phản ánh.')
+        st.text_area('Nội dung giải pháp gửi thử nghiệm:', value=chosen_sample_sol, height=85, disabled=True, key='intake_sample_sol_area')
+
+        if st.button('Gửi email giải quyết mẫu tới ' + t_email_dest, type='primary', key='btn_send_sample_email_intake'):
+            with st.spinner('Đang tiến hành gửi email thử nghiệm...'):
+                from app.components.workbench import DEPT_MAPPING
+                t_dept = DEPT_MAPPING.get(t_topic_sample, 'Bộ phận Tiếp nhận')
+                subj, body = build_resolution_email(
+                    record_id='DEMO_TEST_EMAIL',
+                    topic=t_topic_sample,
+                    department=t_dept,
+                    resolution_text=chosen_sample_sol,
+                    confidence_score=0.92,
+                    is_auto_approved=True
+                )
+                ok, send_info = send_resolution_email(
+                    recipient_email=t_email_dest,
+                    subject=subj,
+                    body_text=body,
+                    record_id='DEMO_TEST_EMAIL'
+                )
+                if ok:
+                    st.success(send_info)
+                    st.markdown(f"""
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-top: 8px;">
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 600;">TIÊU ĐỀ: {subj}</div>
+                        <div style="font-size: 0.82rem; color: #475569; margin-top: 4px;">NGƯỜI NHẬN: <strong>{t_email_dest}</strong> | PHƯƠNG THỨC: Tự động phê duyệt bởi AI</div>
+                        <pre style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin-top: 8px; font-size: 0.8rem; white-space: pre-wrap;">{body}</pre>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.error(send_info)
+
     result = st.session_state.get('analysis_result')
     rid = st.session_state.get('last_record_id')
     row = get_request(rid) if rid else None
 
     if result and row:
         st.markdown("<div style='margin-top: 1.2rem;'></div>", unsafe_allow_html=True)
-        st.subheader('2. Kết quả phân tích & Phân luồng')
+        st.subheader('Kết quả phân tích & Phân luồng')
 
         # Thẻ thông số kết quả nghiệp vụ
         c1, c2, c3 = st.columns(3)
@@ -474,7 +597,7 @@ with tabs[0]:
                 st.write('Chưa tìm thấy điều khoản quy chế đủ liên quan. Cần cán bộ tra cứu trực tiếp.')
 
         if row['status'] == 'pending_review':
-            st.subheader('3. Soạn thảo bản nháp hoặc chuyển sang bàn duyệt')
+            st.subheader('Soạn thảo bản nháp hoặc chuyển sang bàn duyệt')
             draft_key = 'intake_draft_' + rid
             if draft_key not in st.session_state:
                 st.session_state[draft_key] = row['draft_response']
@@ -492,7 +615,11 @@ with tabs[0]:
                 except ValueError as exc:
                     st.error(str(exc))
         else:
-            st.success('Yêu cầu đã được cán bộ xử lý và phê duyệt.')
+            is_auto = 'tự động' in (str(row.get('final_response', '')) + str(row.get('reviewed_at', ''))).lower()
+            if is_auto or row.get('status') == 'reviewed_approve':
+                st.success(f"Yêu cầu đã được phê duyệt và lưu trữ thành công (Độ chắc chắn: {row['confidence_score']:.1%}). Hướng giải quyết đã được gửi về email.")
+            else:
+                st.success('Yêu cầu đã được cán bộ xử lý và phê duyệt.')
             st.write(row['final_response'])
 
 with tabs[1]:
