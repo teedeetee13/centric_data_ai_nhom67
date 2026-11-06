@@ -1,0 +1,20 @@
+{
+  "n_in_scope": 30,
+  "routing_accuracy_in_scope": 0.9333,
+  "n_out_of_scope": 10,
+  "rejection_accuracy_out_of_scope": 1.0,
+  "errors": [
+    {
+      "text": "Sinh viên được mượn mấy cuốn sách về nhà",
+      "expected": "QT30",
+      "got": "",
+      "score": 0.0
+    },
+    {
+      "text": "Ngày sinh trên hệ thống của em bị sai",
+      "expected": "QT13",
+      "got": "",
+      "score": 0.0
+    }
+  ]
+}

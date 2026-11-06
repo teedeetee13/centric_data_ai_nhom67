@@ -1,0 +1,72 @@
+{
+  "total_test_samples": 70,
+  "correct_predictions": 70,
+  "misclassified_count": 0,
+  "accuracy": 1.0,
+  "confusion_matrix": {
+    "Co_so_vat_chat": {
+      "Co_so_vat_chat": 10,
+      "Diem_khao_thi": 0,
+      "He_thong_CNTT": 0,
+      "Hoc_phi": 0,
+      "Khac": 0,
+      "Lich_hoc_lich_thi": 0,
+      "Thu_tuc_hanh_chinh": 0
+    },
+    "Diem_khao_thi": {
+      "Co_so_vat_chat": 0,
+      "Diem_khao_thi": 10,
+      "He_thong_CNTT": 0,
+      "Hoc_phi": 0,
+      "Khac": 0,
+      "Lich_hoc_lich_thi": 0,
+      "Thu_tuc_hanh_chinh": 0
+    },
+    "He_thong_CNTT": {
+      "Co_so_vat_chat": 0,
+      "Diem_khao_thi": 0,
+      "He_thong_CNTT": 10,
+      "Hoc_phi": 0,
+      "Khac": 0,
+      "Lich_hoc_lich_thi": 0,
+      "Thu_tuc_hanh_chinh": 0
+    },
+    "Hoc_phi": {
+      "Co_so_vat_chat": 0,
+      "Diem_khao_thi": 0,
+      "He_thong_CNTT": 0,
+      "Hoc_phi": 10,
+      "Khac": 0,
+      "Lich_hoc_lich_thi": 0,
+      "Thu_tuc_hanh_chinh": 0
+    },
+    "Khac": {
+      "Co_so_vat_chat": 0,
+      "Diem_khao_thi": 0,
+      "He_thong_CNTT": 0,
+      "Hoc_phi": 0,
+      "Khac": 10,
+      "Lich_hoc_lich_thi": 0,
+      "Thu_tuc_hanh_chinh": 0
+    },
+    "Lich_hoc_lich_thi": {
+      "Co_so_vat_chat": 0,
+      "Diem_khao_thi": 0,
+      "He_thong_CNTT": 0,
+      "Hoc_phi": 0,
+      "Khac": 0,
+      "Lich_hoc_lich_thi": 10,
+      "Thu_tuc_hanh_chinh": 0
+    },
+    "Thu_tuc_hanh_chinh": {
+      "Co_so_vat_chat": 0,
+      "Diem_khao_thi": 0,
+      "He_thong_CNTT": 0,
+      "Hoc_phi": 0,
+      "Khac": 0,
+      "Lich_hoc_lich_thi": 0,
+      "Thu_tuc_hanh_chinh": 10
+    }
+  },
+  "error_details": []
+}
