@@ -8,7 +8,6 @@ Tích hợp cơ chế phòng thủ:
 - Lưu vết kiểm toán toàn diện (audit trail) phục vụ Human-in-the-Loop & Active Learning
 """
 
-import os
 import csv
 import json
 import sqlite3

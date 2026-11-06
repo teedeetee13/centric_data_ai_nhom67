@@ -8,7 +8,6 @@ Tích hợp cơ chế kiểm soát chất lượng:
 - Định dạng bản nháp chuẩn mực hành chính, không emoji
 """
 
-import os
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity

@@ -16,16 +16,15 @@ from datetime import datetime, timezone
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from src.config import TOPICS, database_path
+from src.config import TOPICS
 try:
     from src.config import DEFAULT_TEST_EMAIL
 except ImportError:
     import os
     DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
-from src.database import ClosingConnection, get_connection
+from src.database import get_connection
 
 def get_smtp_config() -> Dict[str, str]:
     """

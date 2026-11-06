@@ -1,0 +1,14 @@
+# EduSupportAI - Requirements (Python 3.12)
+# Cuộc thi Centric Data AI 2026 (Khoa CNTT - Trường ĐH Công nghệ Đông Á)
+# scikit-learn được cố định vì models/best_classifier.joblib lưu bằng phiên bản này.
+# Mô hình ngôn ngữ cục bộ (tùy chọn) chạy qua Ollama, không cần thư viện Python thêm.
+
+scikit-learn==1.9.1
+pandas>=2.2,<3
+numpy>=2.0,<3
+joblib>=1.4
+streamlit>=1.40,<2
+plotly>=5.15
+openpyxl>=3.1
+python-docx>=1.0.0
+pypdf>=4.0.0

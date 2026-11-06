@@ -1,0 +1,27 @@
+# Tự chạy kiểm tra lỗi tĩnh và toàn bộ kiểm thử mỗi khi push hoặc mở Pull Request
+name: Kiem thu EduSupportAI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: EduSupportAI
+    env:
+      EDUSUPPORT_LLM: "off"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: EduSupportAI/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Kiem tra loi tinh (ruff)
+        run: ruff check .
+      - name: Chay kiem thu
+        run: python -m unittest discover -s tests -t . -v

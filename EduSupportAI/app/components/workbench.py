@@ -295,5 +295,5 @@ def render_workbench(faq_engine=None):
             if st.button('Huấn luyện lại AI ngay', type='primary', key='btn_retrain_ai_workbench', width='stretch'):
                 with st.spinner('Đang huấn luyện lại mô hình AI...'):
                     from src.model import train_and_save_production_model
-                    clf = train_and_save_production_model()
+                    train_and_save_production_model()
                     st.success('Đã huấn luyện lại mô hình thành công! Khả năng tự động hóa đã được nâng cấp.')

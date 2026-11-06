@@ -1,0 +1,8 @@
+# Môi trường cục bộ
+.venv/
+venv/
+.claude/
+__pycache__/
+*.pyc
+# Tệp khóa tạm của Word/Excel khi đang mở
+~$*

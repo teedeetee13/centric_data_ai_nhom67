@@ -61,13 +61,13 @@ def run_live_demo():
     print(f"   Co phat hien: {clean_res_1['quality_flags']}")
 
     pred_res_1 = clf.predict_single(clean_res_1['clean_text'])
-    print(f"\n2. Ket qua Phan loai AI:")
+    print("\n2. Ket qua Phan loai AI:")
     print(f"   - Chuyen mon du doan: {pred_res_1['predicted_topic']}")
     print(f"   - Do tu tin (Confidence): {pred_res_1['confidence_score'] * 100:.2f}%")
     print(f"   - Muc do uu tien: {pred_res_1['priority_level']}")
 
     draft_res_1 = faq_engine.generate_draft_response(clean_res_1['clean_text'], predicted_topic=pred_res_1['predicted_topic'])
-    print(f"\n3. Tra cuu Quy che EAUT & Sinh Ban nhap:")
+    print("\n3. Tra cuu Quy che EAUT & Sinh Ban nhap:")
     print(f"   - Dieu khoan quy che khop: {draft_res_1['matched_kb_id']}")
     print(f"   - Don vi tiep nhan: {draft_res_1['department']}")
     print(f"   - Ban nhap tu dong:\n---\n{draft_res_1['draft_text']}\n---")
@@ -108,7 +108,7 @@ def run_live_demo():
         final_response=draft_res_1['draft_text'],
         notes="Da kiem tra bien lai thanh toan, xac nhan hop le."
     )
-    print(f"[OK] Da ghi nhan hanh dong phe duyet vao bang 'review_logs' cua SQLite.")
+    print("[OK] Da ghi nhan hanh dong phe duyet vao bang 'review_logs' cua SQLite.")
     
     conn = get_connection()
     df_logs = pd.read_sql_query(

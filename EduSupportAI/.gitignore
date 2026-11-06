@@ -13,3 +13,10 @@ docs_tools/
 .gemini/
 EduSupportAI_MVP/
 EduSupportAI_MVP.zip
+
+# Môi trường và dữ liệu sinh ra khi chạy (mỗi máy tự tạo; app tự khởi tạo CSDL rỗng)
+.venv/
+data/edusupport.db
+data/runtime/
+experiments/*_split_manifest.csv
+~$*

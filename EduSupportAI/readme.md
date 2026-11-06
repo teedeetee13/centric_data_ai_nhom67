@@ -74,15 +74,19 @@ flowchart LR
 ## 3. CẤU TRÚC THƯ MỤC DỰ ÁN
 
 ```text
-centric-ai/
-├── app/
-│   ├── main.py                     # Giao diện chính Streamlit (3 phân hệ làm việc tối giản)
+EduSupportAI/
+├── app/                            # Giao diện Streamlit (chỉ hiển thị, gọi src/service.py)
+│   ├── main.py                     # Ghép 3 tab, nạp CSS và dịch vụ (khoảng 80 dòng)
+│   ├── styles.css                  # Toàn bộ kiểu dáng giao diện
 │   └── components/
-│       ├── __init__.py
-│       ├── workbench.py            # Giao diện Bàn làm việc cán bộ & Review Queue
-│       └── dashboard.py            # Phân tích thống kê chất lượng dữ liệu thực tế
-├── src/
-│   ├── __init__.py
+│       ├── demo_guide.py           # Hướng dẫn nhanh và câu hỏi mẫu
+│       ├── intake.py               # Form tiếp nhận, tự động duyệt, nạp tệp, email thử
+│       ├── result_view.py          # Kết quả phân tích, phiếu ticket, tài liệu tham chiếu, bản nháp
+│       ├── workbench.py            # Bàn duyệt cán bộ & Review Queue
+│       └── dashboard.py            # Thống kê dữ liệu, kết quả thực nghiệm
+├── src/                            # Lõi xử lý, không phụ thuộc giao diện
+│   ├── config.py                   # Đường dẫn, ngưỡng, biến môi trường dùng chung
+│   ├── service.py                  # Luồng xử lý một yêu cầu từ đầu đến cuối
 │   ├── data_generator.py           # Module sinh dữ liệu kịch bản kiểm thử nội bộ
 │   ├── cleaner.py                  # Pipeline làm sạch: Unicode NFC, Regex PII, Khử trùng lặp
 │   ├── quality_profiler.py         # Quét chất lượng dữ liệu: rỗng, trùng lặp, cờ PII thực tế
@@ -102,18 +106,23 @@ centric-ai/
 ├── models/
 │   └── best_classifier.joblib      # Trọng số mô hình phân loại đã huấn luyện
 ├── experiments/
-│   ├── __init__.py
-│   ├── run_experiments.py          # Script chạy chuỗi thực nghiệm E0 -> E3
-│   └── error_analysis.py           # Script phân tích các ca phân loại sai (Confusion Matrix)
+│   ├── run_experiments.py          # Chuỗi thực nghiệm E0 -> E3 (cũ, xem ghi chú trong SO_DO)
+│   ├── run_group_holdout.py        # Đánh giá theo nhóm câu gốc (tránh rò rỉ mẫu câu)
+│   ├── eval_procedure_routing.py   # Đánh giá định tuyến ticket theo quy trình
+│   ├── eval_procedure_augmentation.py # Thực nghiệm bổ sung dữ liệu từ kho quy trình
+│   └── error_analysis.py           # Phân tích các ca phân loại sai
+├── tests/                          # Kiểm thử unittest (python -m unittest discover -s tests -t .)
 ├── images/                         # 6 sơ đồ kiến trúc hệ thống chuẩn 200 DPI
-├── docs_tools/                     # Thư mục chứa các script hỗ trợ tài liệu (đã cho vào .gitignore)
-├── KCNTT_Mau thuyet minh vong 1.docx # Bản thuyết minh Word chính thức nộp cuộc thi
-├── SO_DO_HE_THONG_EDUSUPPORT_AI.md   # Tài liệu đặc tả hệ thống sơ đồ kỹ thuật & Mermaid
-├── KE_HOACH_PHAT_TRIEN.md          # Kế hoạch phát triển tiếp theo 4 Sprint
-├── TODO.md                         # Bảng theo dõi tiến độ công việc (Checklist tương tác)
-├── requirements.txt                # Danh sách thư viện Python phụ thuộc
-├── .gitignore                      # Cấu hình bỏ qua môi trường ảo và thư mục phụ trợ
-└── readme.md                       # Tài liệu hướng dẫn phát triển hệ thống
+├── SO_DO_HE_THONG_EDUSUPPORT_AI.md # Sơ đồ kỹ thuật, Mermaid và số liệu thực nghiệm
+├── DEMO_5_PHUT.md                  # Kịch bản demo và câu trả lời hội đồng
+├── KE_HOACH_PHAT_TRIEN.md          # Kế hoạch phát triển tiếp theo
+├── TODO.md                         # Bảng theo dõi tiến độ công việc
+├── CHAY_DEMO_WINDOWS.bat           # Nhấp đúp để cài và chạy trên Windows
+├── run_mvp.py                      # Chạy app (tự bật Ollama nếu có)
+├── requirements.txt                # Thư viện cần để chạy
+├── requirements-dev.txt            # Thêm công cụ kiểm tra lỗi (ruff) cho người phát triển
+├── pyproject.toml                  # Cấu hình ruff
+└── readme.md                       # Tài liệu này
 ```
 
 ---
@@ -207,36 +216,34 @@ flowchart TD
 
 ## 6. HƯỚNG DẪN CÀI ĐẶT & KHỞI CHẠY
 
-### Bước 1: Khởi tạo môi trường ảo & Cài đặt thư viện
-```bash
-# Tạo môi trường ảo Python 3.10+
-python3 -m venv venv
-source venv/bin/activate
+**Cách nhanh nhất (Windows):** nhấp đúp `CHAY_DEMO_WINDOWS.bat`. Lần đầu tự tạo `.venv` và cài thư viện (cần Internet), sau đó mở `http://127.0.0.1:8501`.
 
-# Cài đặt các thư viện cần thiết
+### Bước 1: Khởi tạo môi trường ảo & Cài đặt thư viện (Python 3.12)
+```bash
+# Windows
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+# macOS / Linux
+python3.12 -m venv .venv
+source .venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-### Bước 2: Huấn luyện mô hình phân loại & Kiểm chuẩn
+### Bước 2: Khởi chạy ứng dụng
 ```bash
-# Huấn luyện mô hình và lưu trọng số vào models/best_classifier.joblib
-python3 -m src.model
-
-# Chạy kiểm chuẩn thực nghiệm trên tập kiểm thử niêm phong
-python3 -m experiments.run_experiments
+python run_mvp.py
 ```
+Truy cập `http://127.0.0.1:8501`. `run_mvp.py` tự bật Ollama nếu đã cài (xem mục 8.3); không có Ollama thì bản nháp dùng mẫu câu.
+CSDL `data/edusupport.db` được tạo rỗng ở lần chạy đầu; nạp dữ liệu mẫu ở tab **Dữ liệu và lịch sử**.
 
-### Bước 3: Khởi chạy ứng dụng Streamlit Bàn làm việc cán bộ
+### Bước 3: Kiểm thử và thực nghiệm (tùy chọn)
 ```bash
-# Khởi chạy giao diện web nội bộ
-streamlit run app/main.py
-```
-Truy cập ứng dụng tại: `http://localhost:8501` (hoặc `http://127.0.0.1:8501`).
-
-### Bước 4: Chạy kịch bản Demo thực tế qua dòng lệnh (CLI Live Demo)
-```bash
-# Chạy toàn bộ 5 tình huống nghiệp vụ thực tế trong 5 giây
-python3 demo_live.py
+python -m unittest discover -s tests -t .          # toàn bộ kiểm thử
+python -m src.model                                 # huấn luyện lại mô hình phân loại
+python -m experiments.eval_procedure_routing        # đánh giá định tuyến quy trình
+python -m experiments.eval_procedure_augmentation   # thực nghiệm bổ sung dữ liệu
+python demo_live.py                                 # demo dòng lệnh 5 tình huống
 ```
 
 ---
@@ -244,11 +251,10 @@ python3 demo_live.py
 ## 7. QUY CHUẨN ĐÓNG GÓI & TÀI LIỆU NỘP BÀI DỰ THI
 * **Tệp dữ liệu kiểm thử thực tế EAUT:** [`data/mau_phan_anh_thuc_te_eaut.csv`](data/mau_phan_anh_thuc_te_eaut.csv) (50 phản ánh thực tế đa dạng chủ đề, nhiễu PII, trùng lặp, tin rác và cấp độ ưu tiên).
 * **Kịch bản chạy Demo tự động:** [`demo_live.py`](demo_live.py) (kiểm thử 5 tình huống thực tế đầu cuối: che PII, phân loại, tra cứu quy chế, duyệt cán bộ và quét hồ sơ dữ liệu).
-* **Văn bản thuyết minh Word chính thức:** [`KCNTT_Mau thuyet minh vong 1.docx`](KCNTT_Mau%20thuyet%20minh%20vong%201.docx) (đã tích hợp đầy đủ 14 bảng biểu, 6 sơ đồ kiến trúc chuẩn in 200 DPI và đúng mẫu Ban Tổ chức).
+* **Thuyết minh và kế hoạch ban đầu:** thư mục [`../docs`](../docs) (thuyết minh bước đầu, phân tích và kế hoạch, phân công nhóm).
 * **Tài liệu hệ thống sơ đồ kỹ thuật & Mermaid:** [`SO_DO_HE_THONG_EDUSUPPORT_AI.md`](SO_DO_HE_THONG_EDUSUPPORT_AI.md).
 * **Kế hoạch phát triển tiếp theo:** [`KE_HOACH_PHAT_TRIEN.md`](KE_HOACH_PHAT_TRIEN.md) (lộ trình chi tiết 4 Sprint nâng cấp hệ thống).
 * **Bảng theo dõi tiến độ công việc:** [`TODO.md`](TODO.md) (checklist tương tác phân vai chi tiết cho 2 thành viên).
-* **Thư mục công cụ phụ trợ tài liệu:** [`docs_tools/`](docs_tools/) (chứa các script tạo sơ đồ và tài liệu bản thảo, đã được đưa vào `.gitignore`).
 * **Mã nguồn dự án:** Sẵn sàng đẩy lên GitHub theo cấu trúc quy chuẩn mô-đun hóa độc lập.
 
 ---

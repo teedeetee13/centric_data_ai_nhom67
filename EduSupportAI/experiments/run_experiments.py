@@ -15,7 +15,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, f1_score, accuracy_score
+from sklearn.metrics import f1_score, accuracy_score
 
 def run_all_experiments(
     raw_path="data/raw/synthetic_demo_424.csv",

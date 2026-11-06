@@ -37,10 +37,8 @@ def main():
     parser.add_argument('--port',type=int,default=8501)
     args=parser.parse_args()
     root=Path(__file__).resolve().parent
-    try:
-        import streamlit
-        import sklearn
-    except ImportError:
+    import importlib.util
+    if not all(importlib.util.find_spec(m) for m in ('streamlit','sklearn')):
         print('Chưa cài thư viện. Chạy: python -m pip install -r requirements.txt')
         return 1
     ensure_ollama()

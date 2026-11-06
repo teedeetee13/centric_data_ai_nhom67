@@ -9,7 +9,6 @@ Sử dụng chung một định nghĩa chất lượng duy nhất từ src.clean
 
 from pathlib import Path
 import pandas as pd
-import numpy as np
 from src.cleaner import clean_dataframe
 
 def profile_dataset(df_or_path, text_col=None) -> dict:

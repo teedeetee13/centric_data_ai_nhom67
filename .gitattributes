@@ -1,0 +1,9 @@
+# Thống nhất ký tự xuống dòng trong repo (LF), tránh diff rác giữa Windows và macOS/Linux
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.joblib binary
+*.docx binary
+*.pdf binary
+*.db binary
