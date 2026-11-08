@@ -24,7 +24,8 @@ def ensure_ollama():
         print('Chưa cài Ollama: bản nháp sẽ dùng mẫu câu. Xem readme mục 8.3 để bật mô hình ngôn ngữ cục bộ.')
         return
     flags=getattr(subprocess,'CREATE_NO_WINDOW',0)
-    subprocess.Popen([exe,'serve'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=flags)
+    # Chạy ở thư mục người dùng để tiến trình nền không khóa thư mục dự án
+    subprocess.Popen([exe,'serve'],cwd=Path.home(),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=flags)
     for _ in range(15):
         if running():
             print('Đã bật Ollama cho mô hình ngôn ngữ cục bộ.')
@@ -35,17 +36,25 @@ def ensure_ollama():
 def main():
     parser=argparse.ArgumentParser(description='Chạy EduSupportAI trên máy cá nhân')
     parser.add_argument('--port',type=int,default=8501)
+    parser.add_argument('--lan',action='store_true',help='Mở cho máy khác trong mạng nội bộ (bắt buộc đặt mật khẩu cán bộ)')
     args=parser.parse_args()
     root=Path(__file__).resolve().parent
     import importlib.util
     if not all(importlib.util.find_spec(m) for m in ('streamlit','sklearn')):
         print('Chưa cài thư viện. Chạy: python -m pip install -r requirements.txt')
         return 1
-    ensure_ollama()
     env=os.environ.copy()
     env['STREAMLIT_BROWSER_GATHER_USAGE_STATS']='false'
+    address='127.0.0.1'
+    if args.lan:
+        if not env.get('EDUSUPPORT_OFFICER_PASSWORD'):
+            print('Chế độ --lan cần mật khẩu cán bộ: đặt biến môi trường EDUSUPPORT_OFFICER_PASSWORD rồi chạy lại.')
+            return 1
+        env['EDUSUPPORT_ENV']='production'
+        address='0.0.0.0'  # nosec B104: chỉ khi người vận hành chủ động dùng --lan
+    ensure_ollama()
     command=[sys.executable,'-m','streamlit','run',str(root/'app'/'main.py'),
-             '--server.address=127.0.0.1','--server.port='+str(args.port),
+             '--server.address='+address,'--server.port='+str(args.port),
              '--browser.gatherUsageStats=false']
     return subprocess.call(command,cwd=root,env=env)
 

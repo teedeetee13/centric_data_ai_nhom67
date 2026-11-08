@@ -11,28 +11,26 @@ Hỗ trợ:
 Không emoji - Thiết kế chuẩn Sapphire Academic & Slate.
 """
 
+import html
 import json
-import re
 import pandas as pd
 import streamlit as st
-from src.config import TOPICS, describe_flags
-try:
-    from src.config import DEFAULT_TEST_EMAIL
-except ImportError:
-    import os
-    DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
-from src.database import list_requests, log_review_action, save_draft
+from src.config import DEFAULT_TEST_EMAIL, TOPICS, describe_flags, is_production
+from src.database import count_pending, delete_contact, get_contact, list_requests, log_review_action, save_draft
 from src.email_service import build_resolution_email, send_resolution_email
 
 ALL_TOPICS = list(TOPICS.keys())
 TOPIC_VIETNAMESE = TOPICS
 
+# Hàng chờ dài làm chậm trình duyệt; xử lý theo thứ tự ưu tiên nên chỉ cần phần đầu
+QUEUE_DISPLAY_LIMIT = 200
+
 DEPT_MAPPING = {
     "Hoc_phi": "Phòng Tài chính - Kế toán",
     "Lich_hoc_lich_thi": "Phòng Đào tạo",
-    "Diem_khao_thi": "Ban Khảo thí & Đảm bảo chất lượng",
-    "Thu_tuc_hanh_chinh": "Bộ phận Tiếp nhận & Trả kết quả (Một cửa)",
-    "Co_so_vat_chat": "Phòng Quản trị Cơ sở vật chất",
+    "Diem_khao_thi": "Phòng Khảo thí & Đảm bảo chất lượng",
+    "Thu_tuc_hanh_chinh": "Phòng Công tác sinh viên (Bộ phận Một cửa)",
+    "Co_so_vat_chat": "Phòng Hành chính - Nhân sự",
     "He_thong_CNTT": "Trung tâm Công nghệ thông tin",
     "Khac": "Bộ phận Tiếp nhận chung"
 }
@@ -41,7 +39,7 @@ def load_review_queue():
     return pd.DataFrame(list_requests(pending_only=True))
 
 def render_workbench(faq_engine=None):
-    queue = list_requests(pending_only=True)
+    queue = list_requests(pending_only=True, limit=QUEUE_DISPLAY_LIMIT)
     st.subheader('Bàn duyệt cán bộ & Quản lý phân luồng')
     st.caption('Phân quyền duyệt theo đơn vị chuyên môn. Tự động hóa gửi email giải quyết và cảnh báo khi độ tự tin dưới 50%.')
     st.caption(
@@ -54,10 +52,16 @@ def render_workbench(faq_engine=None):
         st.success('Hàng đợi hoàn tất — Không có yêu cầu nào đang chờ duyệt.')
         return
 
+    total_pending = count_pending()
+    if total_pending > len(queue):
+        st.info(f'Đang hiển thị {len(queue)} yêu cầu ưu tiên cao nhất trong tổng số {total_pending} yêu cầu chờ duyệt.')
+
     # 1. Bộ lọc thẩm quyền duyệt theo Đơn vị, Mức độ ưu tiên và Ngưỡng tự tin AI
     c_f1, c_f2, c_f3 = st.columns([2, 1, 1], gap="medium")
     with c_f1:
-        dept_options = ["Tất cả đơn vị / phòng ban"] + list(dict.fromkeys(DEPT_MAPPING.values()))
+        # Lấy từ chính hàng chờ vì ticket theo quy trình có tên đơn vị riêng, không nằm trong DEPT_MAPPING
+        queue_depts = {r.get('department') or DEPT_MAPPING.get(r['predicted_topic'], 'Bộ phận Tiếp nhận chung') for r in queue}
+        dept_options = ["Tất cả đơn vị / phòng ban"] + sorted(queue_depts)
         selected_dept = st.selectbox(
             "Đơn vị chuyên môn phụ trách duyệt:",
             options=dept_options,
@@ -157,11 +161,11 @@ def render_workbench(faq_engine=None):
     st.markdown(f"""
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 14px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 0.74rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">MÃ YÊU CẦU: <strong style="color: #0f172a;">{rid}</strong></span>
+            <span style="font-size: 0.74rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">MÃ YÊU CẦU: <strong style="color: #0f172a;">{html.escape(rid)}</strong></span>
             <span style="font-size: 0.78rem; font-weight: 600; color: #1d4ed8; background: #eff6ff; padding: 2px 8px; border-radius: 4px;">Độ tự tin: {conf:.1%}</span>
         </div>
         <div style="font-size: 0.88rem; color: #334155;">
-            Đơn vị giải quyết: <strong>{item_dept}</strong> | Nhóm chuyên môn: <strong>{TOPICS.get(item['predicted_topic'], item['predicted_topic'])}</strong> | Mức độ ưu tiên: <strong>{item['priority_level']}</strong>
+            Đơn vị giải quyết: <strong>{html.escape(item_dept)}</strong> | Nhóm chuyên môn: <strong>{html.escape(TOPICS.get(item['predicted_topic'], item['predicted_topic']))}</strong> | Mức độ ưu tiên: <strong>{html.escape(item['priority_level'])}</strong>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -191,9 +195,8 @@ def render_workbench(faq_engine=None):
     if response_key not in st.session_state:
         st.session_state[response_key] = item['draft_response']
 
-    # Trích xuất hoặc định danh email người gửi để phản hồi
-    email_match = re.search(r'email[:\s]*([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', item['clean_text'], re.IGNORECASE)
-    recipient_email = email_match.group(1) if email_match else ("sinhvien.eaut@student.edu.vn" if "[EMAIL]" in item['clean_text'] else "sinhvien@eaut.edu.vn")
+    # Nội dung đã che nên email thật nằm ở bảng liên hệ riêng; không có thì không gửi cho ai cả
+    recipient_email = get_contact(rid)
 
     with st.form('review_form_' + rid):
         curr_topic = item['predicted_topic'] if item['predicted_topic'] in topics else 'Khac'
@@ -207,7 +210,8 @@ def render_workbench(faq_engine=None):
         response = st.text_area('Nội dung giải quyết gửi về email người gửi:', key=response_key, height=170)
         notes = st.text_input('Ghi chú xử lý nội bộ:', key='notes_' + rid, placeholder='Nhập ghi chú xử lý hoặc căn cứ giải quyết...')
 
-        st.caption(f"Khi bấm duyệt, kết quả giải quyết sẽ tự động gửi thông báo về email: **{recipient_email}**.")
+        st.caption(f"Khi bấm duyệt, kết quả sẽ gửi về email: **{recipient_email}**." if recipient_email
+                   else 'Sinh viên không để lại email: kết quả chỉ lưu trên hệ thống, không gửi thư.')
         c1, c2, c3 = st.columns(3)
         draft_button = c1.form_submit_button('Lưu nháp', width='stretch')
         approve = c2.form_submit_button('Duyệt và lưu', type='primary', width='stretch')
@@ -223,7 +227,9 @@ def render_workbench(faq_engine=None):
                 action = 'reject' if reject else ('edit_label' if final_topic != item['predicted_topic'] else 'approve')
                 final_resp = 'Yêu cầu bị từ chối.' if reject else response
                 log_review_action(rid, action, item['predicted_topic'], final_topic, final_resp, notes)
-                if reject:
+                if not recipient_email:
+                    message = f'Đã xử lý yêu cầu {rid}. Không có email liên hệ nên kết quả chỉ lưu trên hệ thống.'
+                elif reject:
                     send_resolution_email(
                         recipient_email=recipient_email,
                         subject=f"[EduSupportAI] Thông báo kết quả rà soát yêu cầu - {rid}",
@@ -247,13 +253,18 @@ def render_workbench(faq_engine=None):
                         record_id=rid
                     )
                     message = f'Đã phê duyệt và gửi giải pháp thành công về email: {recipient_email}. Bản ghi đã rời khỏi hàng đợi.'
+            if not draft_button:
+                delete_contact(rid)
             st.session_state['notice'] = message
             st.rerun()
         except ValueError as exc:
             st.error(str(exc))
 
-    # Tùy chọn gửi bản sao kiểm thử tới kennysk114239@gmail.com
-    with st.expander('Thử nghiệm: Gửi bản sao hướng giải quyết tới kennysk114239@gmail.com', expanded=False):
+    if is_production():
+        return
+
+    # Công cụ thử nghiệm và huấn luyện lại chỉ có ở chế độ demo
+    with st.expander('Thử nghiệm: Gửi bản sao hướng giải quyết', expanded=False):
         st.caption('Gửi bản sao nội dung giải quyết của yêu cầu này tới email thử nghiệm.')
         c_wb_m1, c_wb_m2 = st.columns([3, 1])
         with c_wb_m1:
@@ -282,10 +293,10 @@ def render_workbench(faq_engine=None):
 
     # Phân hệ Huấn luyện AI từ dữ liệu cán bộ đã duyệt (Active Learning & Automation)
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-    with st.expander('Huấn luyện AI để tự động hóa giải quyết yêu cầu (Active Learning)', expanded=False):
+    with st.expander('Huấn luyện lại mô hình phân loại', expanded=False):
         st.caption(
-            'Hệ thống tự động lưu các phản hồi và nhãn chuẩn mà cán bộ đã duyệt vào nhật ký kiểm toán. '
-            'Bấm nút bên dưới để huấn luyện lại mô hình AI, giúp tăng tỷ lệ tự động hóa và nâng độ chắc chắn cho các yêu cầu tiếp theo.'
+            'Huấn luyện lại từ tập train và câu mẫu của kho quy trình. Nhật ký duyệt hiện mới được lưu lại, '
+            'chưa được đưa vào dữ liệu huấn luyện; đây là việc của giai đoạn sau.'
         )
         c_tr1, c_tr2 = st.columns([3, 1], gap="medium")
         with c_tr1:
@@ -296,4 +307,4 @@ def render_workbench(faq_engine=None):
                 with st.spinner('Đang huấn luyện lại mô hình AI...'):
                     from src.model import train_and_save_production_model
                     train_and_save_production_model()
-                    st.success('Đã huấn luyện lại mô hình thành công! Khả năng tự động hóa đã được nâng cấp.')
+                    st.success('Đã huấn luyện lại mô hình phân loại.')

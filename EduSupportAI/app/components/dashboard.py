@@ -299,6 +299,6 @@ def render_dashboard(service=None, clf_model=None):
         ], start=1):
             rid = 'DEMO_' + str(index).zfill(3)
             if not get_request(rid):
-                save_request(service.process(text), record_id=rid, source_type='controlled_demo')
+                save_request(service.process(text, use_llm=False), record_id=rid, source_type='controlled_demo')
         st.session_state['notice'] = 'Đã nạp các mẫu còn thiếu. Kết quả duyệt trước đó được giữ nguyên.'
         st.rerun()

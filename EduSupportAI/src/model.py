@@ -140,7 +140,10 @@ class EduSupportClassifier:
 
     def save(self, filepath="models/best_classifier.joblib"):
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        joblib.dump(self.model, filepath)
+        # Ghi tệp tạm rồi thay thế nguyên tử: app đang chạy không bao giờ đọc phải tệp ghi dở
+        temp_path = f"{filepath}.tmp"
+        joblib.dump(self.model, temp_path)
+        os.replace(temp_path, filepath)
         print(f"[*] Đã lưu mô hình tốt nhất tại: {filepath}")
 
     def load(self, filepath="models/best_classifier.joblib"):

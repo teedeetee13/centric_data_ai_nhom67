@@ -8,7 +8,7 @@ Tầng Service điều phối toàn bộ chuỗi xử lý đầu - cuối:
 
 import warnings
 from src.cleaner import clean_text_single
-from src.config import MODEL_PATH
+from src.config import AUTO_APPROVE_CONFIDENCE_THRESHOLD, MODEL_PATH, auto_approve_enabled
 from src.faq_engine import FAQEngine
 from src.local_llm import LocalLLM
 from src.model import EduSupportClassifier, KEYWORDS_URGENT, KEYWORDS_HIGH, KEYWORDS_LOW
@@ -29,6 +29,19 @@ def priority_reason(text: str) -> str:
                 return f"Quy tắc mức {label}: phát hiện từ khóa '{word}'."
     return "Không có từ khóa ưu tiên đặc biệt; phân luồng mức Bình thường."
 
+def can_auto_approve(result: dict) -> bool:
+    """Chỉ tự duyệt ca an toàn: quy trình đã xác minh, bản nháp ghép đúng từ quy trình, không thiếu thông tin."""
+    plan = result.get('ticket_plan')
+    return bool(
+        auto_approve_enabled()
+        and plan and not plan['missing_info']
+        and result.get('is_usable')
+        and result.get('draft_source') == 'template'
+        and result.get('priority_level') != 'Khẩn cấp'
+        and result.get('confidence_score', 0) >= AUTO_APPROVE_CONFIDENCE_THRESHOLD
+    )
+
+
 class RequestService:
     def __init__(self, classifier=None, faq=None, procedures=None, llm=None):
         self.classifier = classifier if classifier is not None else load_classifier()
@@ -36,10 +49,10 @@ class RequestService:
         self.procedures = procedures if procedures is not None else ProcedureEngine()
         self.llm = llm if llm is not None else LocalLLM()
 
-    def _draft_from_procedure(self, clean_text: str, plan: dict) -> dict:
+    def _draft_from_procedure(self, clean_text: str, plan: dict, use_llm: bool = True) -> dict:
         """Soạn bản nháp từ quy trình: ưu tiên LLM cục bộ, loại bản nháp không bám nguồn."""
         template = render_template_reply(plan)
-        generated = self.llm.generate_reply(clean_text, context_for_llm(plan))
+        generated = self.llm.generate_reply(clean_text, context_for_llm(plan)) if use_llm else None
         if generated and generated['grounded']:
             return {'text': generated['text'], 'source': 'llm', 'model': generated['model'],
                     'rejected_facts': []}
@@ -48,8 +61,8 @@ class RequestService:
                     'rejected_facts': generated['ungrounded_facts']}
         return {'text': template, 'source': 'template', 'model': None, 'rejected_facts': []}
 
-    def process(self, raw_text: str) -> dict:
-        """Thực thi toàn bộ luồng xử lý phản ánh sinh viên."""
+    def process(self, raw_text: str, use_llm: bool = True) -> dict:
+        """Thực thi toàn bộ luồng xử lý phản ánh sinh viên. use_llm=False khi nạp hàng loạt."""
         if isinstance(raw_text, str) and len(raw_text) > 8000:
             raise ValueError("Hệ thống tiếp nhận tối đa 8.000 ký tự cho mỗi yêu cầu phản ánh.")
         
@@ -69,7 +82,7 @@ class RequestService:
             if matches:
                 # Có quy trình nghiệp vụ: định tuyến và soạn bản nháp theo quy trình; FAQ chỉ làm tham chiếu phụ
                 plan = self.procedures.build_ticket_plan(result['clean_text'], matches[0]['procedure'], matches[0]['score'])
-                composed = self._draft_from_procedure(result['clean_text'], plan)
+                composed = self._draft_from_procedure(result['clean_text'], plan, use_llm)
                 result.update({
                     'ticket_plan': plan,
                     'department': plan['receiving_unit'],

@@ -4,6 +4,8 @@ Module: app.components.result_view
 Hiển thị kết quả phân tích một yêu cầu: thẻ chỉ số, phiếu ticket theo quy trình, tài liệu tham chiếu, bản nháp.
 """
 
+import html
+
 import streamlit as st
 
 from src.config import TOPICS, describe_flags
@@ -28,11 +30,11 @@ def render_metrics(row, result):
     badge = PRIORITY_BADGES.get(row['priority_level'], 'badge-normal')
     c1, c2, c3 = st.columns(3)
     with c1:
-        _metric_card('Đơn vị chuyên môn phụ trách', f"{row['department']} <span class=\"metric-sub\">({topic})</span>")
+        _metric_card('Đơn vị chuyên môn phụ trách', f"{html.escape(row['department'])} <span class=\"metric-sub\">({html.escape(topic)})</span>")
     with c2:
         _metric_card('Độ tự tin phân loại', f"{row['confidence_score']:.1%}")
     with c3:
-        _metric_card('Mức độ ưu tiên', f"<span class=\"{badge}\">{row['priority_level']}</span>")
+        _metric_card('Mức độ ưu tiên', f"<span class=\"{badge}\">{html.escape(row['priority_level'])}</span>")
 
     st.caption(f"Căn cứ phân cấp ưu tiên: {row['priority_reason']}")
     st.caption(METRIC_NOTE)
@@ -107,11 +109,24 @@ def render_draft(row, rid):
             st.error(str(exc))
 
 
-def render_result(service):
+def render_student_receipt(result, row, rid):
+    """Sinh viên chỉ thấy biên nhận và hướng dẫn đã xác minh, không thấy bản nháp hay nhãn nội bộ."""
+    st.subheader('Đã tiếp nhận yêu cầu')
+    st.success(f"Mã yêu cầu của bạn: {rid}. Đơn vị tiếp nhận: {row['department']}. Cán bộ sẽ phản hồi sau khi xem xét.")
+    st.caption('Thông tin cá nhân trong nội dung đã được che trước khi lưu.')
+    if result.get('ticket_plan'):
+        render_ticket_plan(result['ticket_plan'], rid)
+
+
+def render_result(service, officer=True):
     result = st.session_state.get('analysis_result')
     rid = st.session_state.get('last_record_id')
     row = get_request(rid) if rid else None
     if not (result and row):
+        return
+
+    if not officer:
+        render_student_receipt(result, row, rid)
         return
 
     st.subheader('Kết quả phân tích & Phân luồng')

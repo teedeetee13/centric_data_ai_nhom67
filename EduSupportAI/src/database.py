@@ -38,6 +38,7 @@ def get_connection(db_path=None):
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, timeout=10, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA synchronous=NORMAL')
     return conn
 
 def safe_text(value):
@@ -104,7 +105,14 @@ def init_db(db_path=None):
             error_message TEXT,
             sent_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS request_contacts (
+            record_id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
         ''')
+        # WAL cho phép đọc trong lúc ghi khi nhiều cán bộ dùng cùng lúc
+        conn.execute('PRAGMA journal_mode=WAL')
 
         # Tự động di chuyển (migration) cấu trúc bảng nếu dùng tệp CSDL cũ
         cursor = conn.execute("PRAGMA table_info(knowledge_base)")
@@ -158,6 +166,26 @@ def init_db(db_path=None):
                 if col_name not in req_cols:
                     conn.execute(f"ALTER TABLE processed_requests ADD COLUMN {col_name} {col_def}")
 
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_requests_status ON processed_requests(status)')
+
+
+def save_contact(record_id, email, db_path=None):
+    """Lưu email liên hệ tách khỏi nội dung đã che; chỉ dùng để gửi kết quả rồi xóa."""
+    with get_connection(db_path) as conn:
+        conn.execute('INSERT OR REPLACE INTO request_contacts (record_id, email, created_at) VALUES (?,?,?)',
+                     (record_id, email.strip(), now()))
+
+
+def get_contact(record_id, db_path=None):
+    with get_connection(db_path) as conn:
+        row = conn.execute('SELECT email FROM request_contacts WHERE record_id=?', (record_id,)).fetchone()
+    return row[0] if row else None
+
+
+def delete_contact(record_id, db_path=None):
+    with get_connection(db_path) as conn:
+        conn.execute('DELETE FROM request_contacts WHERE record_id=?', (record_id,))
+
 def sync_kb_from_csv(csv_path=None, db_path=None):
     """Đồng bộ kho tri thức quy chế từ CSV vào SQLite."""
     path = Path(csv_path) if csv_path else KB_PATH
@@ -204,14 +232,24 @@ def get_request(record_id, db_path=None):
         row = conn.execute('SELECT * FROM processed_requests WHERE record_id=?', (record_id,)).fetchone()
     return dict(row) if row else None
 
-def list_requests(pending_only=False, db_path=None):
+def list_requests(pending_only=False, db_path=None, limit=None):
     """Lấy danh sách các yêu cầu trong CSDL, sắp xếp theo mức ưu tiên nghiệp vụ."""
     where = "WHERE status='pending_review'" if pending_only else ''
-    with get_connection(db_path) as conn:
-        rows = conn.execute(f'''SELECT * FROM processed_requests {where}
+    query = f'''SELECT * FROM processed_requests {where}
           ORDER BY CASE priority_level WHEN 'Khẩn cấp' THEN 1 WHEN 'Cao' THEN 2
-          WHEN 'Bình thường' THEN 3 ELSE 4 END, processed_at DESC, id DESC''').fetchall()
+          WHEN 'Bình thường' THEN 3 ELSE 4 END, processed_at DESC, id DESC'''  # nosec B608: where là hằng cố định
+    params = ()
+    if limit is not None:
+        query += ' LIMIT ?'
+        params = (int(limit),)
+    with get_connection(db_path) as conn:
+        rows = conn.execute(query, params).fetchall()
     return [dict(row) for row in rows]
+
+
+def count_pending(db_path=None):
+    with get_connection(db_path) as conn:
+        return conn.execute("SELECT COUNT(*) FROM processed_requests WHERE status='pending_review'").fetchone()[0]
 
 def save_draft(record_id, draft_text, db_path=None):
     """Lưu bản nháp phản hồi đã được chỉnh sửa cho một yêu cầu đang chờ duyệt."""

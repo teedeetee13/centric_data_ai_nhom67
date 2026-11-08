@@ -1,4 +1,4 @@
-# Tự chạy kiểm tra lỗi tĩnh và toàn bộ kiểm thử mỗi khi push hoặc mở Pull Request
+# Tự chạy kiểm tra lỗi tĩnh, kiểm thử và thử đóng gói Docker mỗi khi push hoặc mở Pull Request
 name: Kiem thu EduSupportAI
 
 on:
@@ -25,3 +25,23 @@ jobs:
         run: ruff check .
       - name: Chay kiem thu
         run: python -m unittest discover -s tests -t . -v
+
+  docker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: EduSupportAI
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dong goi image
+        run: docker build -t edusupportai .
+      - name: Khoi dong va kiem tra suc khoe
+        run: |
+          docker run -d --name app --read-only --tmpfs /tmp -v app-data:/data -p 8501:8501 \
+            -e EDUSUPPORT_OFFICER_PASSWORD=ci-test -e EDUSUPPORT_LLM=off edusupportai
+          for i in $(seq 1 30); do
+            if curl -fs http://127.0.0.1:8501/_stcore/health; then exit 0; fi
+            sleep 2
+          done
+          docker logs app
+          exit 1

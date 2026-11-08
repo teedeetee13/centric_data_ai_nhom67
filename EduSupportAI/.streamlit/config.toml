@@ -7,3 +7,12 @@ font = "sans serif"
 
 [browser]
 gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = false
+
+[server]
+maxUploadSize = 10
+enableXsrfProtection = true
+enableCORS = true

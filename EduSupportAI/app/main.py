@@ -14,12 +14,13 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st
 
+from app.components.auth import is_officer, render_officer_gate
 from app.components.dashboard import render_dashboard
 from app.components.demo_guide import render_demo_guide
 from app.components.intake import render_intake_form, render_test_email, render_upload_tools
 from app.components.result_view import render_result
 from app.components.workbench import render_workbench
-from src.config import KB_PATH, MODEL_PATH, PROCEDURE_KB_PATH
+from src.config import KB_PATH, MODEL_PATH, PROCEDURE_KB_PATH, database_path, is_production
 from src.database import init_db, sync_kb_from_csv
 from src.service import RequestService
 
@@ -28,7 +29,14 @@ st.set_page_config(page_title='EduSupportAI - Cổng xử lý phản ánh sinh v
 st.markdown(f"<style>{(Path(__file__).parent / 'styles.css').read_text(encoding='utf-8')}</style>",
             unsafe_allow_html=True)
 
-init_db()
+
+
+@st.cache_resource
+def prepare_database(db_path, kb_stamp):
+    """Khởi tạo CSDL và đồng bộ FAQ một lần cho mỗi CSDL / phiên bản FAQ, không lặp lại ở mỗi lần vẽ lại."""
+    init_db()
+    sync_kb_from_csv()
+    return True
 
 
 @st.cache_resource
@@ -43,10 +51,11 @@ def load_service(model_stamp, kb_stamp, procedure_stamp):
 try:
     service = load_service(MODEL_PATH.stat().st_mtime_ns, KB_PATH.stat().st_mtime_ns,
                            PROCEDURE_KB_PATH.stat().st_mtime_ns)
-    sync_kb_from_csv()
+    prepare_database(str(database_path()), KB_PATH.stat().st_mtime_ns)
 except Exception as exc:
     st.error('Không nạp được mô hình phân loại hoặc kho tài liệu quy chế.')
-    st.code(str(exc))
+    if not is_production():
+        st.code(str(exc))
     st.stop()
 
 llm_badge = 'Mô hình ngôn ngữ cục bộ: bật' if service.llm.is_available(refresh=True) else 'Bản nháp theo mẫu'
@@ -65,16 +74,24 @@ if st.session_state.get('notice'):
 
 tab_intake, tab_review, tab_data = st.tabs(['Tiếp nhận yêu cầu', 'Bàn duyệt cán bộ', 'Dữ liệu và lịch sử'])
 
+officer = is_officer()
+
 with tab_intake:
     st.subheader('Tiếp nhận phản ánh sinh viên')
-    render_demo_guide(service)
+    if not is_production():
+        render_demo_guide(service)
     render_intake_form(service)
-    render_upload_tools(service)
-    render_test_email()
-    render_result(service)
+    render_upload_tools(service, officer=officer)
+    if officer and not is_production():
+        render_test_email()
+    render_result(service, officer=officer)
 
 with tab_review:
-    render_workbench()
+    if render_officer_gate():
+        render_workbench()
 
 with tab_data:
-    render_dashboard(service=service)
+    if officer:
+        render_dashboard(service=service)
+    else:
+        st.info('Khu vực này dành cho cán bộ. Đăng nhập ở tab Bàn duyệt cán bộ.')

@@ -5,14 +5,20 @@ Tab Tiếp nhận yêu cầu: form gửi phản ánh, tự động phê duyệt 
 """
 
 import hashlib
-import re
+import html
+import time
 
 import pandas as pd
 import streamlit as st
 
-from src.config import AUTO_APPROVE_CONFIDENCE_THRESHOLD, DEFAULT_TEST_EMAIL, TOPICS
-from src.database import get_request, log_review_action, save_request
-from src.email_service import build_resolution_email, send_resolution_email
+from src.config import DEFAULT_TEST_EMAIL, TOPICS, is_production
+from src.database import delete_contact, get_request, log_review_action, save_contact, save_request
+from src.email_service import VALID_EMAIL, build_resolution_email, send_resolution_email
+from src.service import can_auto_approve
+
+# Khoảng cách tối thiểu giữa hai lần gửi của một phiên khi vận hành thật
+MIN_SUBMIT_INTERVAL_S = 5
+MAX_PDF_PAGES = 20
 
 # Danh mục chủ đề và vấn đề cụ thể hiển thị dạng ô tích trong form
 TOPIC_CATALOG = {
@@ -71,7 +77,7 @@ def extract_text_from_upload(uploaded_file):
         elif name.endswith('.pdf'):
             from pypdf import PdfReader
             reader = PdfReader(uploaded_file)
-            texts = [page.extract_text() or '' for page in reader.pages]
+            texts = [page.extract_text() or '' for page in reader.pages[:MAX_PDF_PAGES]]
             return '\n'.join(t.strip() for t in texts if t.strip())
     except Exception as e:
         return f"Lỗi trích xuất tệp: {e}"
@@ -144,9 +150,13 @@ def render_intake_form(service):
 
         combined_input = "\n".join(parts) if parts else user_text
 
+        waited = time.monotonic() - st.session_state.get('last_submit_at', 0.0)
         if not combined_input.strip():
             st.warning('Bạn cần chọn vấn đề hoặc nhập nội dung phản ánh trước khi gửi.')
+        elif is_production() and waited < MIN_SUBMIT_INTERVAL_S:
+            st.warning('Bạn vừa gửi một yêu cầu. Vui lòng đợi vài giây rồi gửi lại.')
         else:
+            st.session_state['last_submit_at'] = time.monotonic()
             fingerprint = hashlib.sha256(combined_input.strip().encode()).hexdigest()
             old_id = st.session_state.get('last_record_id')
             if fingerprint == st.session_state.get('submission_fingerprint') and old_id and get_request(old_id):
@@ -162,27 +172,13 @@ def render_intake_form(service):
                         focus_review_id=rid
                     )
 
-                    # Trích xuất địa chỉ email sinh viên để gửi kết quả giải quyết
-                    target_email = in_email.strip()
-                    if not target_email:
-                        match_mail = re.search(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', combined_input)
-                        target_email = match_mail.group(1) if match_mail else DEFAULT_TEST_EMAIL
+                    # Email chỉ đến đúng địa chỉ sinh viên cung cấp, lưu tách khỏi nội dung đã che
+                    match_mail = VALID_EMAIL.search(in_email.strip() or combined_input)
+                    target_email = match_mail.group(0) if match_mail else None
+                    if target_email:
+                        save_contact(rid, target_email)
 
-                    # Kiểm tra điều kiện tự động phê duyệt và lưu trữ:
-                    # 1. Mức độ chắc chắn của AI đạt hoặc vượt ngưỡng (>= 70%)
-                    # 2. Dữ liệu chất lượng hợp lệ (is_usable == True)
-                    # 3. Đã tìm thấy căn cứ giải pháp quy chế (matched_kb_id)
-                    # 4. Không thuộc diện ưu tiên Khẩn cấp (Khẩn cấp bắt buộc cán bộ xem xét)
-                    # 5. Bản nháp không do mô hình ngôn ngữ sinh ra (nội dung sinh luôn qua cán bộ duyệt)
-                    is_auto_approved = (
-                        result['confidence_score'] >= AUTO_APPROVE_CONFIDENCE_THRESHOLD
-                        and bool(result.get('is_usable'))
-                        and bool(result.get('matched_kb_id'))
-                        and result.get('priority_level') != 'Khẩn cấp'
-                        and result.get('draft_source') != 'llm'
-                    )
-
-                    if is_auto_approved:
+                    if can_auto_approve(result) and target_email:
                         log_review_action(
                             record_id=rid,
                             officer_action='approve',
@@ -205,6 +201,7 @@ def render_intake_form(service):
                             body_text=body,
                             record_id=rid
                         )
+                        delete_contact(rid)
                         st.success(
                             f"ĐÃ TỰ ĐỘNG PHÊ DUYỆT & LƯU TRỮ THÀNH CÔNG: Mức độ chắc chắn của AI đạt {result['confidence_score']:.1%}, "
                             f"thuộc thẩm quyền {result['department']} và đã có căn cứ quy chế giải pháp. "
@@ -229,11 +226,12 @@ def render_intake_form(service):
                     st.error(str(exc))
 
 
-def render_upload_tools(service):
-    # Tùy chọn gửi file đính kèm đơn lẻ & nạp hàng loạt
+def render_upload_tools(service, officer=True):
+    # Sinh viên chỉ đính kèm tệp của mình; nạp hàng loạt dành cho cán bộ
     with st.expander('Tùy chọn: Đính kèm tệp văn bản hoặc nạp danh sách từ Excel / CSV', expanded=False):
-        t1, t2 = st.tabs(['Đính kèm tệp đơn từ / Ảnh minh chứng', 'Nạp danh sách nhiều Ticket từ tệp'])
-        with t1:
+        labels = ['Đính kèm tệp đơn từ / Ảnh minh chứng'] + (['Nạp danh sách nhiều Ticket từ tệp'] if officer else [])
+        upload_tabs = st.tabs(labels)
+        with upload_tabs[0]:
             uploaded_doc = st.file_uploader(
                 'Tải tệp đơn từ (.txt, .docx, .pdf) hoặc ảnh biên lai (.png, .jpg):',
                 type=['txt', 'docx', 'pdf', 'png', 'jpg', 'jpeg'],
@@ -252,7 +250,9 @@ def render_upload_tools(service):
                             st.session_state['request_text'] = content
                             st.rerun()
 
-        with t2:
+        if not officer:
+            return
+        with upload_tabs[1]:
             batch_file = st.file_uploader(
                 'Chọn tệp bảng tính (.xlsx hoặc .csv):',
                 type=['csv', 'xlsx'],
@@ -271,7 +271,8 @@ def render_upload_tools(service):
                             for _, r in df_b.head(50).iterrows():
                                 val = str(r[col_target]).strip()
                                 if val and val != 'nan' and val != 'None':
-                                    b_res = service.process(val)
+                                    # Không gọi LLM cho từng dòng: 50 dòng sẽ khóa giao diện vài phút
+                                    b_res = service.process(val, use_llm=False)
                                     save_request(b_res, source_type='file_batch')
                                     added += 1
                             st.success(f'Đã nạp thành công {added} Ticket vào Bàn duyệt cán bộ!')
@@ -281,8 +282,8 @@ def render_upload_tools(service):
 
 
 def render_test_email():
-    # Địa chỉ nhận thử nghiệm lấy từ biến môi trường DEFAULT_TEST_EMAIL (src/config.py)
-    with st.expander(f'Thử nghiệm gửi email giải quyết mẫu tới {DEFAULT_TEST_EMAIL}', expanded=False):
+    # Địa chỉ gợi ý lấy từ biến môi trường DEFAULT_TEST_EMAIL (src/config.py)
+    with st.expander('Thử nghiệm gửi email giải quyết mẫu', expanded=False):
         st.caption('Kiểm tra trực tiếp tính năng tự động gửi email thông báo giải quyết phản ánh học vụ sinh viên.')
         c_tm1, c_tm2 = st.columns([2, 1])
         with c_tm1:
@@ -311,7 +312,7 @@ def render_test_email():
         chosen_sample_sol = sample_solutions.get(t_topic_sample, 'Đã ghi nhận và xử lý phản ánh.')
         st.text_area('Nội dung giải pháp gửi thử nghiệm:', value=chosen_sample_sol, height=85, disabled=True, key='intake_sample_sol_area')
 
-        if st.button('Gửi email giải quyết mẫu tới ' + t_email_dest, type='primary', key='btn_send_sample_email_intake'):
+        if st.button('Gửi email giải quyết mẫu', type='primary', key='btn_send_sample_email_intake'):
             with st.spinner('Đang tiến hành gửi email thử nghiệm...'):
                 from app.components.workbench import DEPT_MAPPING
                 t_dept = DEPT_MAPPING.get(t_topic_sample, 'Bộ phận Tiếp nhận')
@@ -333,9 +334,9 @@ def render_test_email():
                     st.success(send_info)
                     st.markdown(f"""
                     <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-top: 8px;">
-                        <div style="font-size: 0.82rem; color: #475569; font-weight: 600;">TIÊU ĐỀ: {subj}</div>
-                        <div style="font-size: 0.82rem; color: #475569; margin-top: 4px;">NGƯỜI NHẬN: <strong>{t_email_dest}</strong> | PHƯƠNG THỨC: Tự động phê duyệt bởi AI</div>
-                        <pre style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin-top: 8px; font-size: 0.8rem; white-space: pre-wrap;">{body}</pre>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 600;">TIÊU ĐỀ: {html.escape(subj)}</div>
+                        <div style="font-size: 0.82rem; color: #475569; margin-top: 4px;">NGƯỜI NHẬN: <strong>{html.escape(t_email_dest)}</strong> | PHƯƠNG THỨC: Tự động phê duyệt bởi AI</div>
+                        <pre style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin-top: 8px; font-size: 0.8rem; white-space: pre-wrap;">{html.escape(body)}</pre>
                     </div>
                     """, unsafe_allow_html=True)
                 else:

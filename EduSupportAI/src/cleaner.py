@@ -22,18 +22,40 @@ REGEX_EMAIL = re.compile(r'[a-zA-Z0-9_.+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}')
 REGEX_STUDENT_ID = re.compile(r'(?<!\w)20\d{6,8}(?!\w)')
 REGEX_CONTEXT_ID = re.compile(r'((?:mssv|mã\s*(?:sinh\s*viên|sv))\s*[:\-]?\s*)([a-zA-Z0-9]{6,15})\b', re.I)
 REGEX_URL = re.compile(r'(?:https?://|www\.)[^\s<>]+', re.I)
+REGEX_NATIONAL_ID = re.compile(r'(?<!\w)0\d{11}(?!\w)')
+REGEX_CONTEXT_NATIONAL_ID = re.compile(r'((?:cccd|cmnd|căn\s*cước(?:\s*công\s*dân)?|chứng\s*minh(?:\s*nhân\s*dân)?)\s*(?:số|là)?\s*[:\-]?\s*)(\d{9,12})(?!\w)', re.I)
+REGEX_BANK_ACCOUNT = re.compile(r'((?:stk|số\s*tài\s*khoản|so\s*tai\s*khoan)\s*(?:ngân\s*hàng\s*)?(?:số|là)?\s*[:\-]?\s*)(\d[\d .\-]{5,20}\d)(?!\w)', re.I)
+REGEX_NAME_CONTEXT = re.compile(r'((?i:(?:em|mình|tôi)\s+tên\s+(?:là\s+)?|tên\s+(?:của\s+)?(?:em|mình|tôi)\s+là\s+|họ\s+(?:và\s+)?tên\s*(?:là\s*)?[:\-]?\s*))((?:\w+\s*){2,5})')
+# Ký tự vô hình và điều khiển: có thể chèn vào giữa số để né bộ lọc PII
+REGEX_INVISIBLE = re.compile('[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f­​-‏‪-‮⁠-⁤﻿]')
 
 def normalize_unicode_and_whitespace(text: str) -> str:
     """Chuẩn hóa Unicode NFC và dọn dẹp khoảng trắng thừa."""
     if not isinstance(text, str):
         return ""
-    text = unicodedata.normalize('NFC', text)
+    text = unicodedata.normalize('NFC', REGEX_INVISIBLE.sub('', text))
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+def _mask_name(match):
+    """Chỉ che khi sau cụm "em tên là" có ít nhất hai từ viết hoa liên tiếp (dạng họ tên)."""
+    words = match.group(2).split()
+    count = 0
+    for word in words:
+        if not word[0].isupper():
+            break
+        count += 1
+    if count < 2:
+        return match.group(0)
+    tail = ' '.join(words[count:])
+    trailing = ' ' if match.group(2)[-1].isspace() else ''
+    return f"{match.group(1)}[NAME]{' ' + tail if tail else ''}{trailing}"
+
+
 def mask_pii(text: str) -> tuple[str, list[str]]:
     """
-    Che giấu PII thành các token chuẩn hóa: [PHONE], [EMAIL], [STUDENT_ID], [URL].
+    Che giấu PII thành các token chuẩn hóa: [PHONE], [EMAIL], [STUDENT_ID], [URL],
+    [NATIONAL_ID], [BANK_ACCOUNT], [NAME].
     Trả về (text_đã_che, danh_sách_cờ_pii).
     """
     pii_flags = []
@@ -50,6 +72,20 @@ def mask_pii(text: str) -> tuple[str, list[str]]:
         pii_flags.append("has_email")
         text = REGEX_EMAIL.sub('[EMAIL]', text)
 
+    if REGEX_CONTEXT_NATIONAL_ID.search(text) or REGEX_NATIONAL_ID.search(text):
+        pii_flags.append('has_national_id')
+        text = REGEX_CONTEXT_NATIONAL_ID.sub(lambda m: m.group(1) + '[NATIONAL_ID]', text)
+        text = REGEX_NATIONAL_ID.sub('[NATIONAL_ID]', text)
+
+    if REGEX_BANK_ACCOUNT.search(text):
+        pii_flags.append('has_bank_account')
+        text = REGEX_BANK_ACCOUNT.sub(lambda m: m.group(1) + '[BANK_ACCOUNT]', text)
+
+    named = REGEX_NAME_CONTEXT.sub(_mask_name, text)
+    if named != text:
+        pii_flags.append('has_name')
+        text = named
+
     if REGEX_STUDENT_ID.search(text):
         pii_flags.append("has_student_id")
         text = REGEX_STUDENT_ID.sub('[STUDENT_ID]', text)
@@ -65,7 +101,7 @@ def get_canonical_hash(text: str) -> str:
     """Tạo mã băm MD5 chuẩn tắc để phát hiện trùng lặp tuyệt đối (bỏ qua dấu câu, viết hoa)."""
     canonical = re.sub(r'[^\w\s]', '', text.lower())
     canonical = re.sub(r'\s+', ' ', canonical).strip()
-    return hashlib.md5(canonical.encode('utf-8')).hexdigest()
+    return hashlib.md5(canonical.encode('utf-8'), usedforsecurity=False).hexdigest()
 
 def clean_text_single(raw_text: str) -> dict:
     """
@@ -114,15 +150,18 @@ def clean_dataframe(df, text_col='raw_text'):
         else:
             seen.add(digest)
             if usable and len(text) > 20:
-                for previous in corpus:
-                    if min(len(text), len(previous)) / max(len(text), len(previous)) < 0.85:
+                lowered = text.lower()
+                for previous_len, matcher in corpus:
+                    if min(len(text), previous_len) / max(len(text), previous_len) < 0.85:
                         continue
-                    if difflib.SequenceMatcher(None, text.lower(), previous.lower()).ratio() >= 0.93:
+                    # quick_ratio là cận trên rẻ của ratio: loại phần lớn cặp mà không đổi kết quả
+                    matcher.set_seq1(lowered)
+                    if matcher.quick_ratio() >= 0.93 and matcher.ratio() >= 0.93:
                         flags.append('near_duplicate')
                         usable = False
                         break
                 if usable:
-                    corpus.append(text)
+                    corpus.append((len(text), difflib.SequenceMatcher(None, '', lowered)))
 
         rows.append({
             'row_number': position,

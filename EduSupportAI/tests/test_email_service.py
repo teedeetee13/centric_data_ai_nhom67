@@ -15,7 +15,6 @@ from unittest.mock import MagicMock, patch
 
 from src.database import init_db
 from src.email_service import (
-    DEFAULT_TEST_EMAIL,
     build_resolution_email,
     init_email_table,
     list_email_dispatches,
@@ -52,7 +51,7 @@ class EmailServiceTests(unittest.TestCase):
 
     def test_send_simulated_dispatch(self):
         ok, msg = send_resolution_email(
-            recipient_email=DEFAULT_TEST_EMAIL,
+            recipient_email="demo@example.org",
             subject="Test Tiêu đề",
             body_text="Nội dung kiểm thử gửi mail",
             record_id="REQ_MOCK",
@@ -62,7 +61,7 @@ class EmailServiceTests(unittest.TestCase):
         self.assertIn("mô phỏng", msg)
         dispatches = list_email_dispatches(db_path=self.db_path)
         self.assertEqual(len(dispatches), 1)
-        self.assertEqual(dispatches[0]["recipient_email"], DEFAULT_TEST_EMAIL)
+        self.assertEqual(dispatches[0]["recipient_email"], "demo@example.org")
         self.assertEqual(dispatches[0]["dispatch_mode"], "simulated")
         self.assertEqual(dispatches[0]["status"], "success")
 
@@ -89,7 +88,7 @@ class EmailServiceTests(unittest.TestCase):
         }
 
         ok, msg = send_resolution_email(
-            recipient_email="kennysk114239@gmail.com",
+            recipient_email="demo@example.org",
             subject="Tiêu đề SMTP thực",
             body_text="Nội dung giải quyết",
             record_id="REQ_REAL",

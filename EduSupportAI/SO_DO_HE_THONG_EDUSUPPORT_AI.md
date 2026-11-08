@@ -13,7 +13,7 @@
 | **Sơ đồ 2** | **Sơ đồ Use Case tổng thể (UML Use Case Diagram)** | Ranh giới hệ thống, 4 nhóm tác nhân (Actors) và 11 ca sử dụng nghiệp vụ (Use Cases). | **Phụ lục D** - Sơ đồ quy trình (Hình D.2) | `images/so_do_5_use_case.png` |
 | **Sơ đồ 3** | **Pipeline tiền xử lý dữ liệu (Data Cleaning & Quality Pipeline)** | 8 bước kiểm soát: chuẩn hóa NFC, che Regex PII, khử trùng Canonical MD5 & SequenceMatcher 0.93. | **Phụ lục D** - Sơ đồ quy trình (Hình D.3) | `images/so_do_2_pipeline_du_lieu.png` |
 | **Sơ đồ 4** | **Sơ đồ Tuần tự chi tiết (UML Sequence Diagram)** | Vòng đời 17 thông điệp tương tác thời gian thực giữa UI Streamlit, Controller, Data Engine, ML, FAQ và SQLite. | **Phụ lục D** - Sơ đồ quy trình (Hình D.4) | `images/so_do_6_sequence_diagram.png` |
-| **Sơ đồ 5** | **Chuỗi thực nghiệm khoa học Data-Centric (E0 → E3)** | Minh chứng giả thuyết DCAI: Cố định thuật toán & Fixed Test Set, Macro F1 tăng từ 0.612 lên 0.8215. | **Phụ lục D** - Sơ đồ quy trình (Hình D.5) | `images/so_do_3_thuc_nghiem_data_centric.png` |
+| **Sơ đồ 5** | **Chuỗi thực nghiệm khoa học Data-Centric (E0 → E3)** | Số liệu trong hình là bản cũ, không tái lập được; xem bảng cập nhật ở Hình 5. | **Phụ lục D** - Sơ đồ quy trình (Hình D.5) | `images/so_do_3_thuc_nghiem_data_centric.png` |
 | **Sơ đồ 6** | **Bàn làm việc cán bộ & Vòng lặp gia cường (Human-in-the-Loop)** | Phân luồng Review Queue, cơ chế duyệt 1 chạm và ghi vết SQLite phục vụ Active Learning. | **Phụ lục D** - Sơ đồ quy trình (Hình D.6) | `images/so_do_4_human_in_the_loop.png` |
 | **Sơ đồ 7** | **Bố cục điều hướng 4 phân hệ giao diện Streamlit** | Cấu trúc luồng trải nghiệm người dùng trên ứng dụng web Streamlit. | Phụ lục D & Mã nguồn ứng dụng | Mã nguồn Mermaid |
 
@@ -236,6 +236,8 @@ sequenceDiagram
 ## HÌNH 5: CHUỖI THỰC NGHIỆM DATA-CENTRIC (E0 → E3)
 
 ### 5.1. Hình ảnh trực quan (Rendered Diagram)
+> **Lưu ý:** hình dưới giữ số liệu cũ (0.612 → 0.8215), không tái lập được. Dùng bảng ở mục 5.2, không dùng hình này khi báo cáo.
+
 ![Hình 5: Chuỗi thực nghiệm Data-Centric và tăng trưởng hiệu năng](images/so_do_3_thuc_nghiem_data_centric.png)
 
 ### 5.2. Bảng đối sánh các mốc thực nghiệm kỹ thuật (PoC Benchmark)
@@ -251,6 +253,16 @@ sequenceDiagram
 | B. A + 183 câu mẫu từ 33 quy trình (đang dùng) | Acc 100% | Acc 84.4% · F1 0.844 | Acc 96.7% · F1 0.943 |
 
 **Định tuyến ticket theo quy trình** (`python -m experiments.eval_procedure_routing`): ghép đúng 28/30 câu trong phạm vi (93.3%), từ chối đúng 10/10 câu ngoài phạm vi.
+
+**Đánh giá theo nhóm mẫu câu gốc** (train và test không chung mẫu câu, `python -m experiments.run_group_holdout`, 28 câu test):
+
+| Mốc | Can thiệp | Số câu train | Macro F1 | Accuracy |
+| :---: | :--- | :---: | :---: | :---: |
+| E0 | Dữ liệu thô | 270 | 0.5873 | 71.43% |
+| E1 | Chuẩn hóa, che PII, loại trùng hoàn toàn | 174 | 0.4411 | 57.14% |
+| E2 | Thêm lọc câu ngắn và gần trùng | 136 | 0.2863 | 35.71% |
+
+Trên dữ liệu mô phỏng này, lọc bớt làm **giảm** điểm vì mất mẫu huấn luyện; làm sạch ở đây có giá trị về bảo mật và chất lượng lưu trữ, chưa chứng minh được tăng độ chính xác.
 
 Giới hạn: các tập đánh giá do nhóm tự viết, còn nhỏ, chưa phải dữ liệu thật của trường.
 

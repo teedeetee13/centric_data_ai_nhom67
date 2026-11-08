@@ -6,7 +6,7 @@
 
 ## 1. GIỚI THIỆU & ĐỊNH HƯỚNG PHÁT TRIỂN
 
-**EduSupportAI** là giải pháp phần mềm chuyên sâu giải quyết bài toán tiếp nhận, chuẩn hóa, nâng cao chất lượng dữ liệu và tự động phân luồng phản ánh, thắc mắc của sinh viên trong môi trường đại học. Thay vì áp dụng các mô hình ngôn ngữ lớn (LLM) đắt đỏ, tiêu tốn phần cứng và tiềm ẩn rủi ro ảo giác thông tin (hallucination), hệ thống tập trung triệt để vào triết lý **Data-Centric AI**: *Tối ưu hóa chất lượng dữ liệu đầu vào để mang lại hiệu năng cao nhất trên một mô hình học máy nhẹ tải, minh bạch và an toàn.*
+**EduSupportAI** là giải pháp phần mềm chuyên sâu giải quyết bài toán tiếp nhận, chuẩn hóa, nâng cao chất lượng dữ liệu và tự động phân luồng phản ánh, thắc mắc của sinh viên trong môi trường đại học. Hệ thống không dùng dịch vụ LLM đám mây: phân loại bằng mô hình nhẹ, bản nháp do mô hình ngôn ngữ nhỏ chạy cục bộ soạn từ đúng quy trình đã truy xuất và được kiểm tra bám nguồn, dữ liệu sinh viên không rời máy chủ. Hệ thống tập trung vào triết lý **Data-Centric AI**: *Tối ưu hóa chất lượng dữ liệu đầu vào để mang lại hiệu năng cao nhất trên một mô hình học máy nhẹ tải, minh bạch và an toàn.*
 
 ### QUYẾT ĐỊNH CHIẾN LƯỢC:
 * **Không sử dụng số liệu khảo sát thủ công:** Dự án không sử dụng thời gian đi phát biểu mẫu Google Forms hay chờ đợi thu thập ý kiến bên ngoài.
@@ -306,3 +306,18 @@ câu hỏi thực tế; không chỉnh từ khóa theo tập này để tránh r
 (kết quả trong `experiments/procedure_augmentation_report.json` và trong app, tab Dữ liệu và lịch sử).
 Khi độ tự tin dưới 60% mà đã khớp quy trình qua từ khóa neo, hệ thống dùng nhóm chủ đề của quy trình và ghi lại nhóm mô hình gợi ý.
 `run_mvp.py` tự bật Ollama nếu đã cài.
+
+---
+
+## 9. TRIỂN KHAI VÀ BẢO MẬT
+
+Hướng dẫn triển khai (máy cá nhân, mạng nội bộ, Docker): [`../docs/TRIEN_KHAI.md`](../docs/TRIEN_KHAI.md).
+
+| Biện pháp | Vị trí |
+| :--- | :--- |
+| Đăng nhập khu vực cán bộ, giới hạn số lần nhập sai; sinh viên chỉ thấy biên nhận | `app/components/auth.py`, `result_view.py` |
+| Che SĐT, email, MSSV, URL, CCCD/CMND, số tài khoản, họ tên; loại ký tự vô hình | `src/cleaner.py` |
+| Email liên hệ lưu tách khỏi nội dung, xóa sau khi xử lý | bảng `request_contacts` |
+| Tự động duyệt chỉ với quy trình đã xác minh, đủ thông tin; vận hành thật mặc định tắt | `src/service.py` (`can_auto_approve`) |
+| LLM: dữ liệu câu hỏi tách khỏi chỉ dẫn; loại bản nháp có số, biểu mẫu, đường dẫn, tên đơn vị lạ | `src/local_llm.py` |
+| Docker chạy không root, hệ tệp chỉ đọc; CI thử đóng gói mỗi lần push | `Dockerfile`, `.github/workflows/ci.yml` |

@@ -30,7 +30,23 @@ TOPICS = {
 }
 
 AUTO_APPROVE_CONFIDENCE_THRESHOLD = float(os.environ.get("AUTO_APPROVE_CONFIDENCE_THRESHOLD", "0.70"))
-DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
+DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "").strip()
+
+
+def is_production():
+    """Chế độ vận hành thật: khóa khu vực cán bộ và các công cụ demo."""
+    return os.environ.get("EDUSUPPORT_ENV", "demo").strip().lower() == "production"
+
+
+def officer_password():
+    return os.environ.get("EDUSUPPORT_OFFICER_PASSWORD", "")
+
+
+def auto_approve_enabled():
+    """Tự động duyệt mặc định chỉ bật ở chế độ demo; vận hành thật phải chủ động bật."""
+    default = "off" if is_production() else "on"
+    return os.environ.get("EDUSUPPORT_AUTO_APPROVE", default).strip().lower() == "on"
+
 
 def database_path():
     """Lấy đường dẫn CSDL SQLite từ biến môi trường hoặc mặc định data/edusupport.db."""
@@ -47,6 +63,9 @@ def describe_flags(flags):
         "has_email": "Đã bảo mật Email",
         "has_student_id": "Đã bảo mật Mã SV",
         "has_url": "Đã bảo mật Đường dẫn",
+        "has_national_id": "Đã bảo mật số CCCD/CMND",
+        "has_bank_account": "Đã bảo mật số tài khoản",
+        "has_name": "Đã bảo mật họ tên",
         "exact_duplicate": "Trùng lặp 100%",
         "near_duplicate": "Gần trùng lặp"
     }

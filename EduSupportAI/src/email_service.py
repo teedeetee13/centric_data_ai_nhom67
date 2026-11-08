@@ -11,6 +11,7 @@ Tuyệt đối không sử dụng emoji, tuân thủ chuẩn phong cách Sapphir
 """
 
 import os
+import re
 import smtplib
 from datetime import datetime, timezone
 from email.header import Header
@@ -19,12 +20,10 @@ from email.mime.text import MIMEText
 from typing import Dict, List, Optional, Tuple
 
 from src.config import TOPICS
-try:
-    from src.config import DEFAULT_TEST_EMAIL
-except ImportError:
-    import os
-    DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
 from src.database import get_connection
+
+# Chặt hơn kiểm tra "@": ký tự xuống dòng trong địa chỉ có thể chèn thêm header email
+VALID_EMAIL = re.compile(r'[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}')
 
 def get_smtp_config() -> Dict[str, str]:
     """
@@ -148,7 +147,7 @@ def send_resolution_email(
     - Nếu chưa cấu hình mật khẩu ứng dụng Gmail: Ghi nhật ký mô phỏng (Mock Dispatch) để thử nghiệm.
     """
     recipient = recipient_email.strip()
-    if not recipient or "@" not in recipient:
+    if not VALID_EMAIL.fullmatch(recipient):
         return False, f"Địa chỉ email không hợp lệ: '{recipient}'"
 
     cfg = get_smtp_config()

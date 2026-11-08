@@ -1,31 +1,30 @@
-# Kết quả kiểm thử bản MVP
+# Kết quả kiểm thử
 
-Ngày kiểm tra 16/10/2026. Môi trường chạy kiểm tra: Linux, Python 3.12.14; phiên bản thư viện trong requirements.txt. File BAT dành cho Windows được cung cấp để chạy trên máy nhóm; chưa chạy trực tiếp file BAT trên Windows trong môi trường kiểm tra này.
+Ngày kiểm tra 08/11/2026. Môi trường: Windows 11, Python 3.12, thư viện cài mới từ `requirements-dev.txt`.
 
 ## Kết quả
 
-- 16/16 kiểm thử tự động qua: 13 ca dịch vụ/dữ liệu/SQLite và ba ca thao tác giao diện Streamlit bằng AppTest.
-- Launcher khởi động máy chủ local, endpoint health trả HTTP 200 và nội dung ok; trang chính trả HTTP 200 cùng HTML.
-- Tập dữ liệu xuất mới có 424 dòng; 202 dòng được bộ làm sạch hiện tại đánh dấu dùng được. Khác số 240 của pipeline cũ vì bộ mới kiểm tra gần trùng trên toàn bộ các câu trước đó, thay vì chỉ 50 câu gần nhất, và bổ sung các mẫu che thông tin.
-- Evaluator mới: train/test không giao nhóm mẫu, không có cặp gần trùng train/test ở ngưỡng 0,93. Tập test dùng được có 28 dòng mô phỏng; kết quả chưa chứng minh hiệu quả trên dữ liệu thật.
+- 55/55 kiểm thử tự động qua (`python -m unittest discover -s tests -t .`): dữ liệu, SQLite, mô hình thật, giao diện bằng AppTest, ticket theo quy trình, phân quyền và bảo mật.
+- `ruff check .` không báo lỗi. `pip-audit` không phát hiện lỗ hổng đã biết trong các thư viện.
+- `bandit`: còn 2 cảnh báo mức trung bình về `urlopen` (địa chỉ Ollama do người vận hành cấu hình) và 1 cảnh báo về chuỗi lọc ký tự vô hình; đã xem xét, không phải lỗi.
+- Chế độ mạng nội bộ `run_mvp.py --lan`: từ chối chạy khi thiếu mật khẩu; có mật khẩu thì trả lời endpoint health.
+- Mô hình ngôn ngữ thật (qwen2.5:3b, GPU 4GB): 10 câu thử, 9 bản nháp qua kiểm tra bám nguồn, 1 bản bị loại; khoảng 2,5 giây mỗi bản nháp khi model đã nạp.
 
-## Các ca đã chạy
+## Hiệu năng đo được (không gọi mô hình ngôn ngữ)
 
-| Nhóm kiểm tra | Kết quả cần đạt |
-| --- | --- |
-| Nhập và lưu | Mô hình thật phân loại câu học phí; có mã và một bản ghi chờ duyệt |
-| Nhấn lại | Không thêm dòng trùng trong cùng phiên |
-| Sửa nháp | Lưu được nội dung, giữ xuống dòng, bàn duyệt đọc được bản mới |
-| Duyệt | Câu rời hàng đợi, lưu nhãn ban đầu và nhãn cuối riêng |
-| Duyệt lặp | Không tạo thêm log và không thay kết quả đã lưu |
-| Nạp mẫu | Ba mã cố định không bị tạo lại hoặc đặt lại trạng thái |
-| Che thông tin | Các ca điện thoại liền/cách/+84, email, mã SV và URL đã thử |
-| Thiếu thông tin | Câu ngắn không nhận tài liệu, đề nghị bổ sung |
-| Không có căn cứ | Điểm thưởng nhãn không ép câu vô nghĩa khớp KB |
-| NaN | Một dòng thiếu chỉ tính một lần là rỗng |
-| CSV | Không xuất cột gốc; nội dung thử nghiệm được che; cột dùng chung định nghĩa chất lượng |
-| Nguồn tài liệu | Tài liệu chưa xác minh được gắn nhãn minh họa, không tự hẹn trả lời trong 24h |
+| Chỉ số | Kết quả |
+| :--- | :--- |
+| Xử lý một câu | trung vị 3,8 ms, p95 5,1 ms |
+| Xử lý 500 câu | khoảng 3,1 giây |
+| Làm sạch và khử trùng 424 dòng | 0,28 giây (trước tối ưu 8,91 giây) |
+| Làm sạch và khử trùng 1.500 dòng | 1,72 giây (trước tối ưu 51,64 giây) |
+| Bộ nhớ tiến trình sau khi nạp mô hình | khoảng 175 MB |
 
-Chạy lại: python -m unittest discover -s tests -v
+## Chưa kiểm tra
 
-Các kiểm thử dùng DB tạm riêng, không xóa dữ liệu người dùng. AppTest kiểm tra thao tác và trạng thái phía Streamlit; không thay thế việc nhóm tự thử bố cục, trình duyệt và máy chiếu trước buổi demo.
+- Chạy trực tiếp `CHAY_DEMO_WINDOWS.bat` bằng cách nhấp đúp.
+- Truy cập từ một máy khác thật trong mạng (tường lửa Windows có thể chặn cổng).
+- Gửi email thật qua SMTP.
+- Thử với dữ liệu thật của sinh viên.
+
+Các kiểm thử dùng CSDL tạm riêng, không chạm dữ liệu người dùng.

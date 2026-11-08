@@ -3,7 +3,7 @@
 Hệ thống hỗ trợ **cố vấn học tập và Phòng Công tác sinh viên** trả lời thắc mắc của sinh viên
 (Trường Đại học Công nghệ Đông Á). Mỗi câu hỏi được che thông tin cá nhân, phân loại, **ghép với quy trình
 nghiệp vụ của trường** để lập phiếu xử lý (đơn vị đầu mối, hồ sơ, các bước, hạn xử lý), rồi soạn bản nháp trả lời
-bằng mô hình ngôn ngữ chạy ngay trên máy. **Cán bộ luôn là người duyệt cuối cùng.**
+bằng mô hình ngôn ngữ chạy ngay trên máy. **Khi vận hành thật, cán bộ là người duyệt cuối cùng.**
 
 Hướng tiếp cận: **Data-Centric AI**, tức giữ mô hình nhỏ, minh bạch và tập trung nâng chất lượng dữ liệu, tri thức.
 
@@ -29,6 +29,7 @@ macOS / Linux và cách chạy thủ công: xem [EduSupportAI/readme.md](EduSupp
 | Kho 33 quy trình nghiệp vụ | [EduSupportAI/data/kb/eaut_quy_trinh.json](EduSupportAI/data/kb/eaut_quy_trinh.json) |
 | Kết quả thực nghiệm ngay trong app | tab *Dữ liệu và lịch sử* → "Kết quả thực nghiệm của mô hình" |
 | Thuyết minh, kế hoạch, phân công nhóm | [docs/](docs/) |
+| Triển khai và danh sách kiểm tra bảo mật | [docs/TRIEN_KHAI.md](docs/TRIEN_KHAI.md) |
 | Quy ước đóng góp code | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ## Cấu trúc repo
