@@ -1,6 +1,7 @@
 # HỆ THỐNG SƠ ĐỒ KIẾN TRÚC, USE CASE & TUẦN TỰ HỆ THỐNG EDUSUPPORTAI
 ## Đề tài: Hệ thống nâng cao chất lượng dữ liệu và tự động phân loại phản hồi sinh viên
 **Cuộc thi:** Data Centric AI 2026 (Khoa CNTT - Trường Đại học Công nghệ Đông Á)  
+**Lưu ý:** các sơ đồ vẽ theo thiết kế vòng 1, chưa có tầng quy trình nghiệp vụ và mô hình ngôn ngữ cục bộ; luồng hiện tại xem `EduSupportAI/readme.md`.  
 **Định vị tiếp cận:** Data-Centric AI (DCAI) kết hợp Human-in-the-Loop  
 
 ---
@@ -31,7 +32,6 @@
 flowchart LR
     subgraph Layer1["1. LỚP TIẾP NHẬN DỮ LIỆU"]
         direction TB
-        L1_A["Google Forms (Khảo sát SV)"]
         L1_B["Tệp bảng tính (CSV / Excel .xlsx)"]
         L1_C["Nhập câu hỏi trực tiếp trên Web"]
         L1_D["Kịch bản kiểm thử (Controlled demo)"]
@@ -327,7 +327,7 @@ flowchart TD
 ---
 
 ## TỔNG KẾT & QUY CÁCH TỆP ĐÍNH KÈM
-* **Văn bản Word chính thức:** [`KCNTT_Mau thuyet minh vong 1.docx`](KCNTT_Mau%20thuyet%20minh%20vong%201.docx)  
+* **Văn bản Word chính thức:** `KCNTT_Mau thuyet minh vong 1.docx`  
   - Tích hợp toàn diện 6 hình ảnh sơ đồ (`Hình 1` đến `Hình 6`) căn chỉnh chuẩn khổ in 5.85 inches.
   - Phụ lục D tuân thủ chuẩn 4 đề mục của Ban Tổ chức: Sơ đồ quy trình xử lý dữ liệu, Mẫu trực quan hóa dữ liệu, Code demo (link GitHub/Google Colab), Tài liệu tham khảo.
 * **Thư mục ảnh sơ đồ chất lượng cao (200 DPI PNG):**  

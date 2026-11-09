@@ -14,7 +14,7 @@ Mục tiêu: dự án lớn dần mà vẫn dễ đọc, dễ tìm, người m�
 | Tri thức: quy trình, FAQ | `data/kb/` | Xem mục 3 |
 | Thực nghiệm, đánh giá | `experiments/` | Mỗi thực nghiệm ghi kết quả ra `experiments/*_report.json` |
 | Kiểm thử | `tests/test_<chu_de>.py` | Dùng `unittest`; không gọi Ollama hay mạng thật (dùng mô hình giả) |
-| Tài liệu thuyết minh, kế hoạch | `docs/` | Tài liệu kỹ thuật của app để trong `EduSupportAI/` |
+| Tài liệu | `docs/` | Mỗi chủ đề một tệp, sửa tệp có sẵn thay vì tạo bản mới; tài liệu hết dùng chuyển vào `docs/luu_tru/` |
 
 Gợi ý kích thước: một tệp vượt khoảng **350 dòng** thì tách theo chức năng (như đã tách `app/main.py`).
 
@@ -40,7 +40,7 @@ python -m unittest discover -s tests -t .
    `keywords` (từ khóa neo, viết có dấu), `conditions`, `documents`, `submit_window`, `steps`, `max_days`,
    `result_time`, `requires_student_id`.
 2. Chỉ ghi nội dung có trong tài liệu gốc; không tự thêm số ngày, mức tiền hay mã biểu mẫu.
-3. Chạy `python -m experiments.eval_procedure_routing` và kiểm thử. Không sửa `keywords` chỉ để làm đẹp
+3. Chạy `python -m src.maintenance check-kb`, `python -m experiments.eval_procedure_routing` và kiểm thử. Không sửa `keywords` chỉ để làm đẹp
    số liệu trên `procedure_eval.csv`; muốn đo lại thì viết thêm câu đánh giá mới.
 4. Huấn luyện lại mô hình phân loại (`python -m src.model`) vì câu mẫu quy trình là dữ liệu huấn luyện.
 

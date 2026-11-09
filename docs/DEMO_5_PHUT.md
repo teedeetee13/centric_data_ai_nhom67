@@ -2,7 +2,7 @@
 
 ## Trước khi bắt đầu
 
-Chạy app, mở trình duyệt tại localhost:8501, chọn tab Tiếp nhận yêu cầu. Chuẩn bị video dự phòng từ bản này. Không dùng thông tin sinh viên thật.
+Chạy app, mở trình duyệt tại 127.0.0.1:8501, chọn tab Tiếp nhận yêu cầu. Chuẩn bị video dự phòng từ bản này. Không dùng thông tin sinh viên thật.
 
 ## Phút 0 đến 1
 

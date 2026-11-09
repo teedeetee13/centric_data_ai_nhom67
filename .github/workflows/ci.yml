@@ -1,9 +1,12 @@
-# Tự chạy kiểm tra lỗi tĩnh, kiểm thử và thử đóng gói Docker mỗi khi push hoặc mở Pull Request
+# Tự chạy kiểm tra lỗi tĩnh, kiểm thử và thử đóng gói Docker mỗi khi push hoặc mở Pull Request.
+# Chạy thêm hằng tuần để phát hiện lỗ hổng mới trong thư viện dù không có thay đổi code.
 name: Kiem thu EduSupportAI
 
 on:
   push:
   pull_request:
+  schedule:
+    - cron: "0 1 * * 1"
 
 jobs:
   test:
@@ -23,6 +26,10 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - name: Kiem tra loi tinh (ruff)
         run: ruff check .
+      - name: Kiem tra kho tri thuc
+        run: python -m src.maintenance check-kb
+      - name: Quet lo hong thu vien
+        run: pip-audit -r requirements.txt
       - name: Chay kiem thu
         run: python -m unittest discover -s tests -t . -v
 

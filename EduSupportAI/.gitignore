@@ -19,5 +19,6 @@ EduSupportAI_MVP.zip
 data/edusupport.db*
 .env
 data/runtime/
+data/backups/
 experiments/*_split_manifest.csv
 ~$*

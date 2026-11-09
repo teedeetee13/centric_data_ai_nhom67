@@ -10,35 +10,37 @@ Hướng tiếp cận: **Data-Centric AI**, tức giữ mô hình nhỏ, minh b�
 ## Chạy thử trong 3 bước (Windows)
 
 1. Cài **Python 3.12** ([python.org](https://www.python.org/downloads/release/python-3120/)), nhớ tích *Add Python to PATH*.
-2. Mở thư mục `EduSupportAI`, nhấp đúp **`CHAY_DEMO_WINDOWS.bat`** (lần đầu tự cài thư viện, cần Internet).
-3. Trình duyệt mở `http://127.0.0.1:8501`. Ở tab *Tiếp nhận yêu cầu*, mở **"Hướng dẫn nhanh và câu hỏi mẫu để demo"**
+2. Mở thư mục `EduSupportAI`, nhấp đúp **`CHAY_DEMO_WINDOWS.bat`**. Lần đầu tự cài thư viện, cần Internet và mất khoảng 3–5 phút; **không đóng cửa sổ đen**, chờ trình duyệt tự mở.
+3. Trình duyệt tự mở `http://127.0.0.1:8501` (mở sớm hơn sẽ báo *refused to connect*). Ở tab *Tiếp nhận yêu cầu*, mở **"Hướng dẫn nhanh và câu hỏi mẫu để demo"**
    và bấm một câu mẫu.
 
 Tùy chọn: cài [Ollama](https://ollama.com) và chạy `ollama pull qwen2.5:3b` để bản nháp do mô hình ngôn ngữ cục bộ soạn.
 Không có Ollama thì hệ thống vẫn chạy đầy đủ với bản nháp theo mẫu.
 
-macOS / Linux và cách chạy thủ công: xem [EduSupportAI/readme.md](EduSupportAI/readme.md) mục 6.
+macOS / Linux và cách chạy thủ công: xem [EduSupportAI/readme.md](EduSupportAI/readme.md).
 
 ## Nên xem gì
 
 | Muốn biết | Xem ở đâu |
 | :--- | :--- |
-| Hệ thống làm gì, kiến trúc, module | [EduSupportAI/readme.md](EduSupportAI/readme.md) |
-| Kịch bản demo 5 phút và câu hỏi thường gặp của hội đồng | [EduSupportAI/DEMO_5_PHUT.md](EduSupportAI/DEMO_5_PHUT.md) |
-| Sơ đồ hệ thống và số liệu thực nghiệm | [EduSupportAI/SO_DO_HE_THONG_EDUSUPPORT_AI.md](EduSupportAI/SO_DO_HE_THONG_EDUSUPPORT_AI.md) |
+| Luồng xử lý, cấu trúc code, lệnh thường dùng | [EduSupportAI/readme.md](EduSupportAI/readme.md) |
+| Kịch bản demo 5 phút và câu hỏi thường gặp của hội đồng | [docs/DEMO_5_PHUT.md](docs/DEMO_5_PHUT.md) |
+| Sơ đồ hệ thống và số liệu thực nghiệm | [docs/SO_DO_HE_THONG_EDUSUPPORT_AI.md](docs/SO_DO_HE_THONG_EDUSUPPORT_AI.md) |
 | Kho 33 quy trình nghiệp vụ | [EduSupportAI/data/kb/eaut_quy_trinh.json](EduSupportAI/data/kb/eaut_quy_trinh.json) |
 | Kết quả thực nghiệm ngay trong app | tab *Dữ liệu và lịch sử* → "Kết quả thực nghiệm của mô hình" |
-| Thuyết minh, kế hoạch, phân công nhóm | [docs/](docs/) |
-| Triển khai và danh sách kiểm tra bảo mật | [docs/TRIEN_KHAI.md](docs/TRIEN_KHAI.md) |
+| Kết quả kiểm thử và hiệu năng | [docs/KIEM_THU.md](docs/KIEM_THU.md) |
+| Hướng dẫn cho sinh viên và cán bộ | [docs/HUONG_DAN_SU_DUNG.md](docs/HUONG_DAN_SU_DUNG.md) |
+| Triển khai, vận hành, bảo trì | [docs/VAN_HANH.md](docs/VAN_HANH.md) |
 | Quy ước đóng góp code | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Kế hoạch, phân công giai đoạn trước | [docs/luu_tru/](docs/luu_tru/) |
 
 ## Cấu trúc repo
 
 ```text
 .
 ├── EduSupportAI/      Mã nguồn ứng dụng (Python 3.12, Streamlit)
-├── docs/              Thuyết minh, phân tích kế hoạch, phân công nhóm
-├── .github/workflows  CI: tự chạy kiểm tra lỗi và kiểm thử khi push / mở Pull Request
+├── docs/              Sổ tay vận hành, demo, kiểm thử, sơ đồ; luu_tru/ chứa kế hoạch cũ
+├── .github/           CI, Dependabot, mẫu Pull Request
 ├── README.md          Tệp này
 └── CONTRIBUTING.md    Quy ước làm việc chung
 ```
