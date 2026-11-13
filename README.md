@@ -29,6 +29,7 @@ macOS / Linux và cách chạy thủ công: xem [EduSupportAI/readme.md](EduSupp
 | Kho 33 quy trình nghiệp vụ | [EduSupportAI/data/kb/eaut_quy_trinh.json](EduSupportAI/data/kb/eaut_quy_trinh.json) |
 | Kết quả thực nghiệm ngay trong app | tab *Dữ liệu và lịch sử* → "Kết quả thực nghiệm của mô hình" |
 | Kết quả kiểm thử và hiệu năng | [docs/KIEM_THU.md](docs/KIEM_THU.md) |
+| Kịch bản video demo vòng 2 | [docs/KICH_BAN_VIDEO.md](docs/KICH_BAN_VIDEO.md) |
 | Hướng dẫn cho sinh viên và cán bộ | [docs/HUONG_DAN_SU_DUNG.md](docs/HUONG_DAN_SU_DUNG.md) |
 | Triển khai, vận hành, bảo trì | [docs/VAN_HANH.md](docs/VAN_HANH.md) |
 | Quy ước đóng góp code | [CONTRIBUTING.md](CONTRIBUTING.md) |

@@ -125,8 +125,10 @@ def render_dashboard(service=None, clf_model=None):
         })
         display['source_type'] = display['source_type'].map({
             'manual_demo': 'Nhập thủ công',
-            'controlled_demo': 'Mẫu kiểm thử'
-        })
+            'controlled_demo': 'Mẫu kiểm thử',
+            'portal_student': 'Cổng sinh viên',
+            'file_batch': 'Nạp từ tệp'
+        }).fillna(display['source_type'])
         display = display.rename(columns={
             'record_id': 'Mã yêu cầu',
             'clean_text': 'Nội dung đã che',
