@@ -25,6 +25,14 @@ TOPICS = {
 AUTO_APPROVE_CONFIDENCE_THRESHOLD = float(os.environ.get("AUTO_APPROVE_CONFIDENCE_THRESHOLD", "0.70"))
 DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
 
+# Cấu hình CSDL Docker MySQL & DBeaver
+DB_BACKEND = os.environ.get("DB_BACKEND", "sqlite")  # 'mysql' hoặc 'sqlite'
+MYSQL_HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
+MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
+MYSQL_USER = os.environ.get("MYSQL_USER", "root")
+MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "Skipper11423")
+MYSQL_DB = os.environ.get("MYSQL_DB", "edusupport_db")
+
 def database_path():
     """Lấy đường dẫn CSDL SQLite từ biến môi trường hoặc mặc định data/edusupport.db."""
     return Path(os.environ.get("EDUSUPPORT_DB_PATH", ROOT / "data" / "edusupport.db"))

@@ -1,72 +1,70 @@
 # EDUSUPPORTAI — HỆ THỐNG NÂNG CAO CHẤT LƯỢNG DỮ LIỆU & TỰ ĐỘNG PHÂN LOẠI PHẢN HỒI SINH VIÊN
-## Đề tài Cuộc thi: Centric Data AI 2026 (Khoa CNTT — Trường Đại học Công nghệ Đông Á)
-**Định vị phương pháp tiếp cận:** Data-Centric AI (DCAI) kết hợp Bàn làm việc kiểm duyệt con người (Human-in-the-Loop)
+## Đề tài Cuộc thi: Centric Data AI 2026 (Khoa CNTT — Trường Đại học Công nghệ Đông Á - EAUT)
+**Định vị phương pháp tiếp cận:** Data-Centric AI (DCAI) kết hợp Bàn làm việc kiểm duyệt con người (Human-in-the-Loop) & Máy học Cục bộ (Local Learning Machine)
 
 ---
 
 ## 1. GIỚI THIỆU & ĐỊNH HƯỚNG PHÁT TRIỂN
 
-**EduSupportAI** là giải pháp phần mềm chuyên sâu giải quyết bài toán tiếp nhận, chuẩn hóa, nâng cao chất lượng dữ liệu và tự động phân luồng phản ánh, thắc mắc của sinh viên trong môi trường đại học. Thay vì áp dụng các mô hình ngôn ngữ lớn (LLM) đắt đỏ, tiêu tốn phần cứng và tiềm ẩn rủi ro ảo giác thông tin (hallucination), hệ thống tập trung triệt để vào triết lý **Data-Centric AI**: *Tối ưu hóa chất lượng dữ liệu đầu vào để mang lại hiệu năng cao nhất trên một mô hình học máy nhẹ tải, minh bạch và an toàn.*
-
-### QUYẾT ĐỊNH CHIẾN LƯỢC:
-* **Không sử dụng số liệu khảo sát thủ công:** Dự án không sử dụng thời gian đi phát biểu mẫu Google Forms hay chờ đợi thu thập ý kiến bên ngoài.
-* **Xây dựng hệ thống phân tích động trực tiếp:** Toàn bộ thống kê chất lượng dữ liệu (tỷ lệ rỗng, trùng lặp, thông tin định danh cá nhân PII) được tính toán theo thời gian thực trên dữ liệu nạp vào, không sử dụng số liệu giả định.
-* **Tập trung 100% nguồn lực vào kỹ thuật AI & Phần mềm:** Triển khai ngay pipeline tiền xử lý, huấn luyện mô hình phân loại, engine tra cứu quy chế học vụ và ứng dụng Streamlit tối giản.
+**EduSupportAI** là giải pháp phần mềm chuyên sâu giải quyết bài toán tiếp nhận, chuẩn hóa, làm sạch dữ liệu, tự động phân luồng và lập luận giải quyết phản ánh của sinh viên trong môi trường đại học. Thay vì phụ thuộc vào các API mô hình ngôn ngữ lớn (LLM) bên ngoài đắt đỏ, tiềm ẩn rủi ro lộ lọt thông tin cá nhân (PII) và ảo giác thông tin (*hallucination*), hệ thống ứng dụng triệt để triết lý **Data-Centric AI (DCAI)** kết hợp **Local Learning Machine**:
+* **Chuẩn hóa & Bảo mật PII:** Tự động lọc sạch ký tự rác, chuẩn hóa Unicode NFC, khử trùng lặp và che giấu thông tin cá nhân nhạy cảm (`[PHONE]`, `[EMAIL]`, `[STUDENT_ID]`).
+* **Máy học cục bộ & Tra cứu quy chế chính thức (RAG Cục bộ):** Trích xuất tự động và chuẩn hóa 15 quy trình nghiệp vụ chính thức từ 3 tài liệu Word (*data-doc*) của Nhà trường.
+* **Chuỗi suy luận Chain-of-Thought minh bạch:** Lập luận 4 bước logic theo đúng thể thức hành chính, trích dẫn chuẩn xác căn cứ văn bản, thời hạn giải quyết (SLA) và biểu mẫu.
+* **Cơ chế Phân luồng & Hiệu chuẩn Độ tin cậy:** Tự động phê duyệt ($\ge 70\%$), chuyển bàn duyệt cán bộ ($50\% - 69\%$), và bật cờ cảnh báo quản trị ($< 50\%$).
+* **Minh bạch hóa 100% (Explainable AI & Live Logging):** Ghi nhận chi tiết từng bước thực thi (mili-giây) ra Execution Trace và Live Server Console thời gian thực.
 
 ---
 
-## 2. KIẾN TRÚC PHÂN TẦNG HỆ THỐNG (5 LAYERS)
-
-Hệ thống được thiết kế theo kiến trúc phân tầng độc lập (Loose Coupling):
+## 2. KIẾN TRÚC TỔNG THỂ HỆ THỐNG (5 TẦNG KỸ THUẬT)
 
 ```mermaid
-flowchart LR
-    subgraph Layer1["1. TẦNG TIẾP NHẬN DỮ LIỆU"]
+flowchart TB
+    subgraph L1["1. TẦNG TIẾP NHẬN DỮ LIỆU (INGESTION)"]
         direction TB
-        L1_A["Tệp bảng tính thực tế (CSV / Excel)"]
-        L1_B["Nhập câu hỏi trực tiếp trên Web"]
-        L1_C["Dữ liệu kịch bản kiểm thử nội bộ"]
+        L1_A["Cổng Sinh viên: Nhập văn bản hoặc Đính kèm tệp (.docx, .pdf, .txt)"]
+        L1_B["Chọn nhóm chuyên môn & Vấn đề cụ thể từ 3 tài liệu chuẩn EAUT"]
+        L1_C["Nạp dữ liệu bảng tính kiểm thử (CSV / Excel)"]
     end
 
-    subgraph Layer2["2. ENGINE CHẤT LƯỢNG (DATA-CENTRIC)"]
+    subgraph L2["2. TẦNG LÀM SẠCH & BẢO MẬT DỮ LIỆU (DATA-CENTRIC ENGINE)"]
         direction TB
         L2_A["Lọc câu rỗng & Độ dài < 12 ký tự"]
-        L2_B["Chuẩn hóa Unicode NFC & Khoảng trắng"]
-        L2_C["Che PII Regex: [PHONE], [EMAIL], [STUDENT_ID]"]
-        L2_D["Khử trùng: Canonical Hash & SequenceMatcher"]
-        L2_E["Gắn cờ quality_flags & Lọc is_usable"]
+        L2_B["Chuẩn hóa Unicode dựng sẵn NFC & Khoảng trắng"]
+        L2_C["Bộ lọc PII: Che [PHONE], [EMAIL], [STUDENT_ID] linh hoạt"]
+        L2_D["Khử trùng lặp: Canonical MD5 Hash & SequenceMatcher"]
+        L2_E["Phát hiện cờ chất lượng: quality_flags & is_usable"]
     end
 
-    subgraph Layer3["3. LÕI MÁY HỌC & TRI THỨC"]
+    subgraph L3["3. TẦNG MÁY HỌC CỤC BỘ & TRI THỨC QUY TRÌNH (LOCAL MACHINE & RAG)"]
         direction TB
-        L3_A["TF-IDF n-grams (word 1-2 & char 3-5)"]
-        L3_B["Logistic Regression (L2, Multiclass)"]
-        L3_C["Ước lượng độ tự tin (Confidence Score)"]
-        L3_D["Cây quyết định ưu tiên: Khẩn cấp / Cao / Bình thường / Thấp"]
-        L3_E["Tra cứu FAQ quy chế: Cosine Similarity (Mã KB)"]
+        L3_A["Trích xuất đặc trưng kép: TF-IDF Word (1-2) + Char (3-5)"]
+        L3_B["Phân loại chủ đề học vụ: Logistic Regression đa lớp (Softmax)"]
+        L3_C["Hiệu chuẩn đồng thuận nghiệp vụ (Domain Consensus Calibration)"]
+        L3_D["Kho 15 quy trình DOCX chuẩn hóa (data-doc: CSVC, CTSV, Đào tạo)"]
+        L3_E["Chuỗi suy luận 4 bước Chain-of-Thought & Tổng hợp văn bản giải quyết"]
     end
 
-    subgraph Layer4["4. BÀN LÀM VIỆC CÁN BỘ (STREAMLIT)"]
+    subgraph L4["4. TẦNG RÀO CHẮN & BÀN DUYỆT CÁN BỘ (GUARDRAILS & WORKBENCH)"]
         direction TB
-        L4_A["Phân luồng Confidence (< 0.60 -> Review Queue)"]
-        L4_B["Tự động sinh bản nháp kèm trích dẫn quy chế"]
-        L4_C["Cơ chế duyệt 1 chạm: [Duyệt] [Đổi nhãn] [Từ chối]"]
-        L4_D["Kiểm soát con người 100% (Human-in-the-Loop)"]
+        L4_A["Rào chắn tự động duyệt: Confidence ≥ 70%, khớp DOCX, không khẩn cấp"]
+        L4_B["Hàng đợi cán bộ thẩm định: Confidence 50-69% (Review Queue)"]
+        L4_C["Cảnh báo quản trị: Confidence < 50% hoặc gắn cờ nghi vấn"]
+        L4_D["Tự động gửi email thông báo kết quả giải quyết (SMTP / Mock Dispatch)"]
     end
 
-    subgraph Layer5["5. ĐẦU RA & LƯU VẾT"]
+    subgraph L5["5. TẦNG GIÁM SÁT, LƯU VẾT & TRỰC QUAN HÓA (TRACE & AUDIT)"]
         direction TB
-        L5_A["Điều phối đúng 7 phòng ban chức năng"]
-        L5_B["Dashboard phân tích chất lượng dữ liệu thực tế"]
-        L5_C["Xuất tệp dữ liệu sạch (.csv đã che PII)"]
-        L5_D["Lưu vết kiểm toán vào SQLite (review_logs)"]
+        L5_A["Execution Trace Viewer: Minh bạch chi tiết 5 bước suy luận & độ trễ ms"]
+        L5_B["Live Server Console Logger: Hiển thị nhật ký thời gian thực"]
+        L5_C["CSDL kép: SQLite (mặc định) & MySQL (Docker / DBeaver)"]
+        L5_D["Dashboard phân tích chất lượng dữ liệu thực tế 100%"]
     end
 
-    Layer1 --> Layer2
-    Layer2 --> Layer3
-    Layer3 --> Layer4
-    Layer4 --> Layer5
-    Layer5 -.->|"Vòng lặp tái huấn luyện gia cường (Active Learning)"| Layer2
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+    L4 --> L5
+    L5 -.->|"Vòng lặp tái huấn luyện gia cường (Active Learning)"| L3
 ```
 
 ---
@@ -74,129 +72,130 @@ flowchart LR
 ## 3. CẤU TRÚC THƯ MỤC DỰ ÁN
 
 ```text
-centric-ai/
+centric_data_ai_nhom67/
 ├── app/
-│   ├── main.py                     # Giao diện chính Streamlit (3 phân hệ làm việc tối giản)
+│   ├── main.py                     # Ứng dụng Streamlit chính (Cổng sinh viên, tích hợp 4 phân hệ)
 │   └── components/
 │       ├── __init__.py
-│       ├── workbench.py            # Giao diện Bàn làm việc cán bộ & Review Queue
-│       └── dashboard.py            # Phân tích thống kê chất lượng dữ liệu thực tế
+│       ├── workbench.py            # Bàn làm việc cán bộ duyệt & Quản lý phân luồng chuyên môn
+│       ├── dashboard.py            # Thống kê chất lượng dữ liệu & Lịch sử kiểm toán
+│       ├── knowledge_center.py     # Trung tâm tri thức DOCX & Huấn luyện máy học cục bộ
+│       └── trace_viewer.py         # Trực quan hóa nhật ký thực thi & Suy luận nội tâm của Model
 ├── src/
 │   ├── __init__.py
-│   ├── data_generator.py           # Module sinh dữ liệu kịch bản kiểm thử nội bộ
-│   ├── cleaner.py                  # Pipeline làm sạch: Unicode NFC, Regex PII, Khử trùng lặp
-│   ├── quality_profiler.py         # Quét chất lượng dữ liệu: rỗng, trùng lặp, cờ PII thực tế
-│   ├── model.py                    # Trích xuất TF-IDF & Logistic Regression đa lớp
+│   ├── app_logger.py               # Runtime Logger thời gian thực (Terminal stdout & Live Console)
+│   ├── cleaner.py                  # Pipeline làm sạch Unicode NFC, Regex PII, Khử trùng lặp
+│   ├── config.py                   # Cấu hình hệ thống, ngưỡng phân luồng, đường dẫn CSDL
+│   ├── database.py                 # Quản trị CSDL SQLite (bảng requests, traces, logs, emails, kb)
+│   ├── data_generator.py           # Sinh dữ liệu kịch bản kiểm thử nội bộ
+│   ├── doc_parser.py               # Trích xuất & chuẩn hóa 15 quy trình nghiệp vụ từ file Word (.docx)
+│   ├── email_service.py            # Dịch vụ gửi email thông báo giải quyết (SMTP thực tế & Mock)
 │   ├── faq_engine.py               # Engine tra cứu quy chế học vụ bằng Cosine Similarity
-│   └── database.py                 # Quản trị SQLite: bảng raw, processed, kb, review_logs
+│   ├── local_machine.py            # Lõi Máy học Cục bộ (Local Learning Machine) & Chuỗi suy luận CoT
+│   ├── model.py                    # Pipeline TF-IDF kép + Logistic Regression đa lớp
+│   ├── quality_profiler.py         # Quét hồ sơ chất lượng dữ liệu: rỗng, quá ngắn, trùng lặp, cờ PII
+│   ├── service.py                  # Service điều phối luồng xử lý 5 bước & Rào chắn Guardrails
+│   └── trace_logger.py             # Bộ ghi vết thực thi (Execution Trace) đo đạc mili-giây
+├── doc/                            # Toàn bộ tài liệu đọc & quy trình chuẩn hóa EAUT
+│   ├── baocao-quanly-csvc-eaut.docx              # Tài liệu Quy trình CSVC & Giảng đường
+│   ├── bao_cao_quy_trinh_nghiep_vu_sinh_vien_eaut.docx # Tài liệu Quy trình CTSV & Chế độ chính sách
+│   ├── bao_cao_tong_hop_quy_trinh_dao_tao.docx   # Tài liệu Quy trình Đào tạo & Khảo thí
+│   ├── TOM_TAT_DO_TIN_CAY_AI.md                  # Cơ chế tính toán & xử lý độ tin cậy
+│   ├── HUONG_DAN_KET_NOI_MYSQL_DBEAVER.md        # Hướng dẫn kết nối MySQL qua DBeaver
+│   ├── SO_DO_HE_THONG_EDUSUPPORT_AI.md           # Hệ thống sơ đồ kỹ thuật & Mermaid
+│   ├── DEMO_5_PHUT.md                            # Kịch bản diễn tập thuyết trình 5 phút
+│   ├── KE_HOACH_PHAT_TRIEN.md                    # Lộ trình phát triển hệ thống
+│   ├── KIEM_THU.md                               # Kế hoạch và kịch bản kiểm thử
+│   └── TODO.md                                   # Bảng phân vai & theo dõi tiến độ
 ├── data/
-│   ├── raw/                        # Dữ liệu kịch bản thô ban đầu
-│   ├── processed/                  # Dữ liệu sạch sau tiền xử lý và che PII
-│   ├── splits/                     # Tập Train / Val / Test_sealed
-│   └── kb/
-│       └── eaut_faq_kb.csv         # Kho tri thức quy chế và câu hỏi FAQ mẫu EAUT
+│   ├── edusupport.db               # Cơ sở dữ liệu SQLite hoạt động thực tế
+│   ├── kb/
+│   │   ├── eaut_faq_kb.csv         # Kho tri thức quy chế FAQ 15 điều khoản chuẩn hóa
+│   │   └── eaut_procedures_kb.json # Danh mục 15 quy trình nghiệp vụ trích xuất từ data-doc
+│   ├── mau_phan_anh_thuc_te_eaut.csv # 50 mẫu khảo sát thực tế đa dạng chủ đề và mức ưu tiên
+│   ├── processed/
+│   │   └── dataset_clean.csv       # Tập dữ liệu sạch sau chuẩn hóa
+│   ├── raw/
+│   │   └── synthetic_demo_424.csv  # Tập dữ liệu thô ban đầu
+│   └── splits/
+│       ├── train.csv               # Tập huấn luyện
+│       ├── val.csv                 # Tập kiểm định
+│       └── test_sealed.csv         # Tập kiểm thử niêm phong
 ├── models/
-│   └── best_classifier.joblib      # Trọng số mô hình phân loại đã huấn luyện
+│   └── best_classifier.joblib      # Trọng số mô hình phân loại tốt nhất
+├── scripts/
+│   ├── init_mysql.sql              # Kịch bản DDL khởi tạo schema trên MySQL
+│   └── migrate_to_mysql.py         # Script đồng bộ toàn bộ dữ liệu SQLite sang MySQL
 ├── experiments/
-│   ├── __init__.py
-│   ├── run_experiments.py          # Script chạy chuỗi thực nghiệm E0 -> E3
-│   └── error_analysis.py           # Script phân tích các ca phân loại sai (Confusion Matrix)
-├── images/                         # 6 sơ đồ kiến trúc hệ thống chuẩn 200 DPI
-├── docs_tools/                     # Thư mục chứa các script hỗ trợ tài liệu (đã cho vào .gitignore)
-├── KCNTT_Mau thuyet minh vong 1.docx # Bản thuyết minh Word chính thức nộp cuộc thi
-├── SO_DO_HE_THONG_EDUSUPPORT_AI.md   # Tài liệu đặc tả hệ thống sơ đồ kỹ thuật & Mermaid
-├── KE_HOACH_PHAT_TRIEN.md          # Kế hoạch phát triển tiếp theo 4 Sprint
-├── TODO.md                         # Bảng theo dõi tiến độ công việc (Checklist tương tác)
+│   ├── benchmark_results.json      # Kết quả thực nghiệm kiểm chuẩn DCAI
+│   ├── error_analysis.py           # Phân tích ca phân loại sai (Confusion Matrix)
+│   └── run_experiments.py          # Script chạy chuỗi thực nghiệm E0 -> E3
+├── tests/
+│   ├── test_mvp.py                 # Kiểm thử hồi quy chức năng nền tảng
+│   ├── test_app.py                 # Kiểm thử giao diện Streamlit và các phân hệ
+│   ├── test_email_service.py       # Kiểm thử dịch vụ email và ghi vết CSDL
+│   └── test_local_machine.py       # Kiểm thử Máy học cục bộ, Doc Parser và Trace Logger
+├── images/                         # 6 sơ đồ kiến trúc kỹ thuật hệ thống
+├── demo_live.py                    # Script kiểm thử và diễn tập 6 tình huống thực tế
+├── run_mvp.py                      # Script khởi chạy ứng dụng nhanh
+├── CHAY_DEMO_WINDOWS.bat           # File batch khởi chạy 1-click trên môi trường Windows
 ├── requirements.txt                # Danh sách thư viện Python phụ thuộc
-├── .gitignore                      # Cấu hình bỏ qua môi trường ảo và thư mục phụ trợ
 └── readme.md                       # Tài liệu hướng dẫn phát triển hệ thống
 ```
 
 ---
 
-## 4. PHÂN CÔNG CÔNG VIỆC NHÓM 2 NGƯỜI
+## 4. CÁC PHÂN HỆ CHỨC NĂNG TRÊN GIAO DIỆN STREAMLIT
 
-Mô hình phân vai tối ưu hóa năng suất, tập trung 100% vào việc lập trình và kiểm chuẩn hệ thống AI:
+Hệ thống được thiết kế theo phong cách **Sapphire Academic & Slate**, tối giản, không sử dụng emoji rườm rà, tập trung 100% vào nghiệp vụ:
 
-```mermaid
-flowchart TD
-    subgraph TV1["THÀNH VIÊN 1: Data & Product Lead"]
-        A1["1. Module tiền xử lý & Che PII (src/cleaner.py)"]
-        A2["2. Quét hồ sơ chất lượng dữ liệu (src/quality_profiler.py)"]
-        A3["3. Xây dựng Giao diện Streamlit tối giản (app/main.py)"]
-        A4["4. Quản trị CSDL Lưu vết SQLite (src/database.py)"]
-    end
+### Tab 0: Cổng Tiếp nhận & Phân loại Phản ánh Sinh viên
+* Tiếp nhận ý kiến sinh viên thông qua nhập văn bản trực tiếp hoặc tải tệp đơn từ (`.docx`, `.pdf`, `.txt`).
+* Lựa chọn nhanh tình huống mẫu hoặc phân loại theo 3 nhóm chuyên môn chính thức từ 3 tài liệu quy trình:
+  1. *Cơ sở vật chất & Giảng đường* (Phòng Quản trị CSVC).
+  2. *Công tác sinh viên & Chế độ chính sách* (Phòng Công tác sinh viên).
+  3. *Quản lý Đào tạo & Khảo thí* (Phòng Quản lý Đào tạo & Khảo thí).
+* Tự động làm sạch dữ liệu, che giấu PII bảo mật, phân tích độ tin cậy và tạo bản nháp giải quyết ngay lập tức.
 
-    subgraph TV2["THÀNH VIÊN 2: ML & Architecture Lead"]
-        B1["1. Pipeline TF-IDF & Logistic Regression (src/model.py)"]
-        B2["2. Engine tra cứu quy chế FAQ (src/faq_engine.py)"]
-        B3["3. Chuỗi thực nghiệm kiểm chuẩn DCAI (experiments/)"]
-        B4["4. Đóng gói mô hình & Tối ưu suy luận thời gian thực"]
-    end
+### Tab 1: Bàn duyệt Cán bộ & Quản lý Phân luồng (Workbench)
+* Bảng danh sách yêu cầu thông minh:
+  * Sắp xếp theo ngày đăng (Mới nhất / Cũ nhất) hoặc mức độ ưu tiên.
+  * Bộ lọc đa chiều: Theo Đơn vị chuyên môn, Trạng thái (`Chờ duyệt`, `Tự động duyệt`), Ngưỡng tin cậy AI, Mức ưu tiên.
+  * **Tương tác 1 chạm:** Bấm chọn trực tiếp một dòng bất kỳ trên bảng để mở ngay hồ sơ duyệt chi tiết bên dưới.
+* Đối chiếu căn cứ pháp lý, quy trình DOCX chính thức và các bước giải quyết.
+* Thao tác duyệt: `[Lưu nháp]`, `[Duyệt và lưu]`, `[Từ chối]`. Tự động gửi email thông báo kết quả về hòm thư người gửi.
 
-    subgraph Collab["PHỐI HỢP KỸ THUẬT CHUNG"]
-        C1["Thống nhất schema dữ liệu 7 trường & 7 nhóm chuyên môn"]
-        C2["Kiểm thử tích hợp Model vào App Streamlit (End-to-End)"]
-        C3["Tinh chỉnh ngưỡng Confidence 0.60 cho Review Queue"]
-        C4["Diễn tập thuyết trình bảo vệ đề tài trước Hội đồng"]
-    end
+### Tab 2: Trung tâm Tri thức & Huấn luyện Máy học Cục bộ (Knowledge Center)
+* Quản lý 15 quy trình nghiệp vụ trích xuất từ 3 tài liệu Word (*data-doc*).
+* Cho phép thử nghiệm tra cứu quy trình tương đồng theo thời gian thực bằng Cosine Similarity.
+* Tính năng **Huấn luyện lại Máy học Cục bộ (Retrain Local Machine)**: Tự động tổng hợp dữ liệu huấn luyện mở rộng từ kho quy trình và cập nhật trọng số mô hình ngay trên giao diện.
 
-    TV1 <--> Collab
-    TV2 <--> Collab
-```
-
-| Tiêu chí | Thành viên 1: Data & Product Lead | Thành viên 2: ML & Architecture Lead |
-| :--- | :--- | :--- |
-| **Phạm vi phụ trách** | **Data Ingestion -> Cleaner -> Streamlit App -> SQLite DB** | **Feature Engineering -> ML Model -> FAQ Engine -> DCAI Benchmark** |
-| **Code chính** | • `src/cleaner.py`<br>• `src/quality_profiler.py`<br>• `src/database.py`<br>• `app/main.py`<br>• `app/components/` | • `src/model.py`<br>• `src/faq_engine.py`<br>• `experiments/run_experiments.py`<br>• `experiments/error_analysis.py`<br>• `models/best_classifier.joblib` |
-| **Nhiệm vụ trọng tâm** | • Viết Regex che giấu PII (SĐT, Email, MSSV).<br>• Lập trình giao diện 3 tab tối giản không emoji.<br>• Phân tích thống kê chất lượng dữ liệu thực tế.<br>• Xử lý bảng `review_logs` lưu vết kiểm toán. | • Trích xuất đặc trưng TF-IDF word 1-2 & char 3-5.<br>• Huấn luyện Logistic Regression đa lớp.<br>• Xây dựng module Cosine Similarity tra cứu FAQ.<br>• Chạy kiểm chuẩn trên tập dữ liệu kiểm thử niêm phong. |
+### Tab 3: Thống kê Dữ liệu & Lịch sử Kiểm toán (Dashboard & Trace)
+* Bảng thống kê toàn diện các yêu cầu trong hệ thống kèm tính năng chọn dòng xem vết thực thi.
+* Quét hồ sơ chất lượng dữ liệu động từ tệp CSV/Excel tải lên: Đo lường tỷ lệ câu rỗng, câu ngắn, trùng lặp tuyệt đối, tỷ lệ PII, và điểm sức khỏe dữ liệu (*Data Health Score*).
+* **Live Server Console Widget:** Hiển thị toàn bộ nhật ký ứng dụng thời gian thực với các cấp độ `INFO`, `SUCCESS`, `WARNING`, `ERROR`.
 
 ---
 
-## 5. ĐẶC TẢ CÁC MODULE KỸ THUẬT CỐT LÕI
+## 5. CƠ CHẾ TÍNH TOÁN & HIỆU CHUẨN ĐỘ TIN CẬY (CONFIDENCE SCORE)
 
-### Module 1: Tiền xử lý & Bảo mật PII (`src/cleaner.py`)
-* **Lọc ngắn:** Gắn cờ `too_short`, `is_usable = False` nếu `len(text) < 12`.
-* **Chuẩn hóa Unicode:** Áp dụng `unicodedata.normalize('NFC', text)` đồng nhất font tiếng Việt.
-* **Regex che giấu PII:**
-  - Số điện thoại: `r'(\b0[3|5|7|8|9][0-9]{8}\b)'` -> `[PHONE]`
-  - Email: `r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)'` -> `[EMAIL]`
-  - Mã sinh viên: `r'(\b(20[0-9]{6}|[0-9]{8,10})\b)'` -> `[STUDENT_ID]`
-* **Khử trùng lặp:** Băm MD5 Canonical text để lọc trùng 100%; dùng `difflib.SequenceMatcher(ratio >= 0.93)` gắn cờ `near_duplicate`.
+Chi tiết đặc tả tại tài liệu [TOM_TAT_DO_TIN_CAY_AI.md](doc/TOM_TAT_DO_TIN_CAY_AI.md):
 
-### Module 2: Thống kê & Quét chất lượng dữ liệu (`src/quality_profiler.py`)
-* Phân tích trực tiếp từ dữ liệu thực tế (DataFrame hoặc tệp tải lên):
-  - Số dòng tiếp nhận, số dòng hợp lệ.
-  - Số dòng rỗng, số dòng quá ngắn.
-  - Số dòng trùng lặp thực tế.
-  - Số dòng chứa thông tin định danh cá nhân nhạy cảm (SĐT, Email, MSSV).
-  - Phân bổ độ dài ký tự và phân bổ theo 7 nhóm chuyên môn tiếp nhận.
-
-### Module 3: Lõi Máy học & Phân luồng (`src/model.py`)
-* **Trích xuất đặc trưng:**
-  - `TfidfVectorizer(ngram_range=(1, 2), min_df=1, sublinear_tf=True)` cho cấp độ từ.
-  - `TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5), min_df=1, sublinear_tf=True)` bắt lỗi gõ và teencode.
-* **Thuật toán phân loại:** `LogisticRegression(C=1.5, solver='lbfgs', class_weight='balanced')`.
-* **Ước lượng Confidence:** `confidence_score = max(predict_proba)`.
-* **Cây quyết định ưu tiên nghiệp vụ:**
-  - `Khẩn cấp`: Chứa từ khóa ("đình chỉ", "sai điểm", "tai nạn", "hết hạn hôm nay", "nghẽn mạng", "nhập viện").
-  - `Cao`: Chứa từ khóa ("gia hạn", "phúc khảo", "không thi được", "khóa cửa", "hỏng", "rút hồ sơ").
-  - `Bình thường`: Câu hỏi học vụ tiêu chuẩn.
-  - `Thấp`: Góp ý cơ sở vật chất, câu lạc bộ, xe đưa đón.
-
-### Module 4: Engine Tri thức & Gợi ý bản nháp (`src/faq_engine.py`)
-* Kho tri thức quy chế `data/kb/eaut_faq_kb.csv` chứa 15 điều khoản quy định chính thức (mã `KB001` đến `KB015`).
-* Vector hóa nội dung bằng TF-IDF và tính `cosine_similarity(query_vec, kb_vecs)`.
-* Tự động trích dẫn điều khoản phù hợp và ghép thành bản nháp phản hồi đầy đủ cấu trúc gửi sinh viên.
-
-### Module 5: Ứng dụng Bàn làm việc Streamlit (`app/main.py`)
-* **Giao diện tối giản (Không Emoji):** Thiết kế thanh lịch, chuyên nghiệp, tập trung vào dữ liệu và nghiệp vụ.
-* **Tab 1 (Xử lý phản ánh):** Nhập câu hỏi đơn lẻ hoặc chọn câu mẫu; phân tích tức thì ra bản đã che PII, nhãn chuyên môn, mức ưu tiên và bản nháp phản hồi; có tùy chọn nạp hàng loạt vào CSDL.
-* **Tab 2 (Bàn duyệt cán bộ - Review Queue):** Lọc các ca `confidence < 0.60` hoặc có cờ cảnh báo; hiển thị so sánh trước/sau; 3 nút thao tác 1 chạm (`Duyệt & Gửi`, `Đổi nhãn & Duyệt`, `Từ chối / Spam`).
-* **Tab 3 (Thống kê & Dữ liệu thực tế):**
-  - Tải lên tệp bảng tính thực tế (.xlsx hoặc .csv) để quét phân tích chất lượng động 100%.
-  - Hoặc xem thống kê từ CSDL SQLite tiếp nhận thực tế.
-  - Xuất tệp dữ liệu đã làm sạch và sổ cái nhật ký kiểm toán cán bộ.
+1. **Trích xuất đặc trưng đa tầng (`src/model.py`):**
+   * Word n-gram TF-IDF (1, 2): Bắt từ khóa chuyên môn học vụ.
+   * Char n-gram TF-IDF (3, 5): Bắt biến thể viết tắt, lỗi chính tả, teencode sinh viên.
+2. **Xác suất Softmax nguyên bản (`src/model.py`):**
+   * Dự đoán xác suất $P(C_i \mid X) = \frac{e^{\mathbf{w}_i^T \mathbf{x} + b_i}}{\sum_{k} e^{\mathbf{w}_k^T \mathbf{x} + b_k}}$ trên 7 nhóm chuyên môn.
+   * Biên độ quyết định $\text{Margin} = P_{\text{top1}} - P_{\text{top2}}$.
+3. **Hiệu chuẩn đồng thuận nghiệp vụ (`src/service.py`):**
+   * **Đồng thuận (AI khớp lựa chọn người dùng):** Thưởng độ tin cậy: $Conf = \min\big(0.95, \, \max(0.88, \, Conf_{\text{raw}} + 0.40)\big)$.
+   * **Điều chỉnh (AI lệch nhưng người dùng có chỉ định):** Hiệu chuẩn an toàn: $Conf = \min\big(0.92, \, \max(0.88, \, P_{\text{topic}} + 0.40)\big)$.
+   * **Tự do:** Giữ nguyên xác suất Softmax thô.
+4. **Ngưỡng rào chắn phân luồng:**
+   * $\ge 70\%$: **Tự động phê duyệt (AI)** và gửi email giải quyết (nếu khớp DOCX và không khẩn cấp).
+   * $50\% - 69\%$: **Chờ cán bộ duyệt** tại bàn làm việc chuyên môn.
+   * $< 50\%$: **Cảnh báo quản trị** và gắn cờ yêu cầu rà soát kỹ lưỡng.
+   * $< 12$ ký tự: Gán độ tin cậy $0.0\%$, nhắc bổ sung thông tin.
 
 ---
 
@@ -208,40 +207,55 @@ flowchart TD
 python3 -m venv venv
 source venv/bin/activate
 
-# Cài đặt các thư viện cần thiết
+# Cài đặt toàn bộ thư viện
 pip install -r requirements.txt
 ```
 
-### Bước 2: Huấn luyện mô hình phân loại & Kiểm chuẩn
+### Bước 2: Chạy kiểm thử tự động toàn diện (26 Unit Tests)
 ```bash
-# Huấn luyện mô hình và lưu trọng số vào models/best_classifier.joblib
-python3 -m src.model
-
-# Chạy kiểm chuẩn thực nghiệm trên tập kiểm thử niêm phong
-python3 -m experiments.run_experiments
+python3 -m unittest discover tests
 ```
+*Kết quả chuẩn: `Ran 26 tests in ~9.0s — OK`.*
 
-### Bước 3: Khởi chạy ứng dụng Streamlit Bàn làm việc cán bộ
+### Bước 3: Chạy kịch bản Demo thực tế 6 tình huống (CLI Live Demo)
 ```bash
-# Khởi chạy giao diện web nội bộ
-streamlit run app/main.py
-```
-Truy cập ứng dụng tại: `http://localhost:8501` (hoặc `http://127.0.0.1:8501`).
-
-### Bước 4: Chạy kịch bản Demo thực tế qua dòng lệnh (CLI Live Demo)
-```bash
-# Chạy toàn bộ 5 tình huống nghiệp vụ thực tế trong 5 giây
 python3 demo_live.py
 ```
+*Kịch bản diễn tập: Làm sạch PII -> Lọc rác/câu ngắn -> Khử trùng lặp -> Phê duyệt SQLite -> Quét chất lượng dữ liệu -> Minh bạch Execution Trace Log.*
+
+### Bước 4: Khởi chạy Ứng dụng Web Streamlit
+```bash
+# Cách 1: Khởi chạy bằng script tiện ích
+python3 run_mvp.py
+
+# Cách 2: Khởi chạy trực tiếp qua Streamlit CLI
+streamlit run app/main.py
+```
+*Truy cập ứng dụng tại: `http://localhost:8501`.*
+
+*(Dành cho người dùng Windows: Có thể click đúp chuột vào file `CHAY_DEMO_WINDOWS.bat` để tự động khởi chạy).*
 
 ---
 
-## 7. QUY CHUẨN ĐÓNG GÓI & TÀI LIỆU NỘP BÀI DỰ THI
-* **Tệp dữ liệu kiểm thử thực tế EAUT:** [`data/mau_phan_anh_thuc_te_eaut.csv`](data/mau_phan_anh_thuc_te_eaut.csv) (50 phản ánh thực tế đa dạng chủ đề, nhiễu PII, trùng lặp, tin rác và cấp độ ưu tiên).
-* **Kịch bản chạy Demo tự động:** [`demo_live.py`](demo_live.py) (kiểm thử 5 tình huống thực tế đầu cuối: che PII, phân loại, tra cứu quy chế, duyệt cán bộ và quét hồ sơ dữ liệu).
-* **Văn bản thuyết minh Word chính thức:** [`KCNTT_Mau thuyet minh vong 1.docx`](KCNTT_Mau%20thuyet%20minh%20vong%201.docx) (đã tích hợp đầy đủ 14 bảng biểu, 6 sơ đồ kiến trúc chuẩn in 200 DPI và đúng mẫu Ban Tổ chức).
-* **Tài liệu hệ thống sơ đồ kỹ thuật & Mermaid:** [`SO_DO_HE_THONG_EDUSUPPORT_AI.md`](SO_DO_HE_THONG_EDUSUPPORT_AI.md).
-* **Kế hoạch phát triển tiếp theo:** [`KE_HOACH_PHAT_TRIEN.md`](KE_HOACH_PHAT_TRIEN.md) (lộ trình chi tiết 4 Sprint nâng cấp hệ thống).
-* **Bảng theo dõi tiến độ công việc:** [`TODO.md`](TODO.md) (checklist tương tác phân vai chi tiết cho 2 thành viên).
-* **Thư mục công cụ phụ trợ tài liệu:** [`docs_tools/`](docs_tools/) (chứa các script tạo sơ đồ và tài liệu bản thảo, đã được đưa vào `.gitignore`).
-* **Mã nguồn dự án:** Sẵn sàng đẩy lên GitHub theo cấu trúc quy chuẩn mô-đun hóa độc lập.
+## 7. QUẢN TRỊ CƠ SỞ DỮ LIỆU (SQLITE & MYSQL)
+
+Hệ thống hỗ trợ cơ chế lưu trữ dữ liệu kép linh hoạt:
+1. **SQLite (Mặc định):** Tệp CSDL cục bộ lưu tại `data/edusupport.db`. Không yêu cầu cài đặt máy chủ phụ trợ.
+2. **MySQL (Môi trường Doanh nghiệp / Docker):**
+   * Khởi chạy Docker MySQL container theo hướng dẫn trong [HUONG_DAN_KET_NOI_MYSQL_DBEAVER.md](doc/HUONG_DAN_KET_NOI_MYSQL_DBEAVER.md).
+   * Chạy kịch bản di chuyển toàn bộ dữ liệu từ SQLite sang MySQL:
+     ```bash
+     python3 scripts/migrate_to_mysql.py
+     ```
+   * Hỗ trợ kết nối và truy vấn trực quan qua DBeaver / MySQL Workbench.
+
+---
+
+## 8. DANH MỤC TÀI LIỆU QUAN TRỌNG TRONG DỰ ÁN
+* [doc/TOM_TAT_DO_TIN_CAY_AI.md](doc/TOM_TAT_DO_TIN_CAY_AI.md): Cơ chế tính toán và hiệu chuẩn độ tin cậy AI.
+* [doc/SO_DO_HE_THONG_EDUSUPPORT_AI.md](doc/SO_DO_HE_THONG_EDUSUPPORT_AI.md): Hệ thống sơ đồ kỹ thuật, luồng dữ liệu & Mermaid.
+* [doc/HUONG_DAN_KET_NOI_MYSQL_DBEAVER.md](doc/HUONG_DAN_KET_NOI_MYSQL_DBEAVER.md): Hướng dẫn kết nối và quản trị MySQL với DBeaver.
+* [doc/DEMO_5_PHUT.md](doc/DEMO_5_PHUT.md): Kịch bản thuyết trình và diễn tập bảo vệ đề tài 5 phút.
+* [doc/KE_HOACH_PHAT_TRIEN.md](doc/KE_HOACH_PHAT_TRIEN.md): Kế hoạch và lộ trình phát triển mở rộng.
+* [doc/KIEM_THU.md](doc/KIEM_THU.md): Kế hoạch và kịch bản kiểm thử đảm bảo chất lượng.
+* [doc/TODO.md](doc/TODO.md): Bảng theo dõi tiến độ công việc và checklist nhiệm vụ.

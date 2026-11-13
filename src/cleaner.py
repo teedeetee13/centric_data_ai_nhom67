@@ -15,7 +15,6 @@ import hashlib
 import unicodedata
 import difflib
 import pandas as pd
-from pathlib import Path
 
 # Regex patterns chuẩn hóa cho PII tiếng Việt, sinh viên EAUT và URL
 REGEX_PHONE = re.compile(r'(?<!\w)(?:\+?84|0)[ .()-]?[35789](?:[ .()-]*\d){8}(?!\w)')
@@ -68,13 +67,15 @@ def get_canonical_hash(text: str) -> str:
     canonical = re.sub(r'\s+', ' ', canonical).strip()
     return hashlib.md5(canonical.encode('utf-8')).hexdigest()
 
-def clean_text_single(raw_text: str) -> dict:
+def clean_text_single(raw_text: str, mask_pii_flag: bool = True) -> dict:
     """
     Hàm làm sạch đơn lẻ phục vụ kiểm thử nhanh và tích hợp trực tiếp trên Giao diện Streamlit.
+    Hỗ trợ tùy chọn mask_pii_flag (mặc định True). Khi mask_pii_flag=False, bảo toàn nguyên vẹn nội dung.
     """
     norm = normalize_unicode_and_whitespace(raw_text)
     masked, pii_flags = mask_pii(norm)
     
+    clean_val = masked if mask_pii_flag else norm
     flags = list(pii_flags)
     is_usable = True
 
@@ -87,10 +88,10 @@ def clean_text_single(raw_text: str) -> dict:
 
     return {
         "raw_text": raw_text,
-        "clean_text": masked,
+        "clean_text": clean_val,
         "quality_flags": flags,
         "is_usable": is_usable,
-        "char_len": len(masked)
+        "char_len": len(clean_val)
     }
 
 def clean_dataframe(df, text_col='raw_text'):

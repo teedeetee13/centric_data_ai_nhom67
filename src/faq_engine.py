@@ -8,7 +8,6 @@ Tích hợp cơ chế kiểm soát chất lượng:
 - Định dạng bản nháp chuẩn mực hành chính, không emoji
 """
 
-import os
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -18,7 +17,7 @@ class FAQEngine:
     def __init__(self, kb_path=None, min_similarity=0.15):
         self.kb_path = kb_path or str(KB_PATH)
         self.min_similarity = min_similarity
-        self.df_kb = pd.read_csv(self.kb_path).fillna('')
+        self.df_kb = pd.read_csv(self.kb_path, dtype=str).fillna('')
         
         corpus = self.df_kb['question_standard'] + ' ' + self.df_kb['content_extract']
         self.vectorizer = TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True)

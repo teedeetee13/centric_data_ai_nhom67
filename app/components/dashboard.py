@@ -6,7 +6,6 @@ Thiết kế tối giản, trực quan, tính toán trực tiếp từ dữ li�
 Không emoji - Hỗ trợ xuất dữ liệu an toàn chống Formula Injection và bảo mật PII.
 """
 
-import io
 import json
 import hashlib
 import pandas as pd
@@ -16,6 +15,25 @@ import streamlit as st
 from src.cleaner import clean_dataframe, clean_text_single
 from src.config import RAW_DEMO_PATH, TOPICS, describe_flags
 from src.database import list_requests, review_history, save_request, get_request
+try:
+    from src.database import format_datetime_vn
+except ImportError:
+    def format_datetime_vn(val, fmt='%Y-%m-%d %H:%M:%S'):
+        if not val:
+            return "-"
+        val = str(val).strip()
+        try:
+            from datetime import datetime
+            if 'T' in val or '+' in val or val.endswith('Z'):
+                clean_iso = val.replace('Z', '+00:00')
+                dt = datetime.fromisoformat(clean_iso)
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone()
+                return dt.strftime(fmt)
+            else:
+                return val[:19]
+        except Exception:
+            return val.replace('T', ' ')[:19]
 
 def analyze_dataframe_realtime(df, text_col='raw_text', clf_model=None):
     """
@@ -76,7 +94,21 @@ def render_dashboard(service=None, clf_model=None):
     # Bảng yêu cầu đã lưu
     if rows:
         st.subheader('Danh sách yêu cầu trong hệ thống')
-        view = pd.DataFrame(rows)[['record_id', 'clean_text', 'predicted_topic', 'confidence_score', 'priority_level', 'source_type', 'status', 'processed_at']]
+        c_ds1, c_ds2 = st.columns([3, 1])
+        with c_ds2:
+            dash_sort = st.selectbox(
+                "Sắp xếp ngày đăng:",
+                options=["Mới nhất trước", "Cũ nhất trước"],
+                key="dash_sort_date"
+            )
+
+        sorted_rows = sorted(
+            rows,
+            key=lambda x: (x.get('processed_at') or '', x.get('id', 0)),
+            reverse=(dash_sort == "Mới nhất trước")
+        )
+
+        view = pd.DataFrame(sorted_rows)[['record_id', 'processed_at', 'clean_text', 'predicted_topic', 'confidence_score', 'priority_level', 'source_type', 'status']]
         display = view.copy()
         display['predicted_topic'] = display['predicted_topic'].map(TOPICS)
         display['status'] = display['status'].map({
@@ -87,23 +119,47 @@ def render_dashboard(service=None, clf_model=None):
         })
         display['source_type'] = display['source_type'].map({
             'manual_demo': 'Nhập thủ công',
-            'controlled_demo': 'Mẫu kiểm thử'
-        })
+            'controlled_demo': 'Mẫu kiểm thử',
+            'portal_student': 'Cổng sinh viên'
+        }).fillna('Cổng sinh viên')
+        display['processed_at'] = display['processed_at'].apply(lambda t: format_datetime_vn(t) if pd.notna(t) else '')
         display = display.rename(columns={
             'record_id': 'Mã yêu cầu',
-            'clean_text': 'Nội dung đã che',
+            'processed_at': 'Ngày đăng',
+            'clean_text': 'Nội dung phản ánh',
             'predicted_topic': 'Nhóm dự đoán',
             'confidence_score': 'Độ tự tin',
             'priority_level': 'Ưu tiên',
             'source_type': 'Nguồn',
-            'status': 'Trạng thái',
-            'processed_at': 'Thời điểm UTC'
+            'status': 'Trạng thái'
         })
-        st.dataframe(display, width='stretch', hide_index=True)
+        st.caption("👆 **Mẹo:** Bấm chọn trực tiếp một dòng trong bảng để xem vết thực thi & nhật ký suy luận của yêu cầu đó bên dưới.")
+        dash_tbl_event = st.dataframe(
+            display,
+            width='stretch',
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="single-row",
+            key="dash_table_select"
+        )
+
+        if dash_tbl_event and hasattr(dash_tbl_event, 'selection') and dash_tbl_event.selection:
+            dash_sel = dash_tbl_event.selection.get('rows', []) if isinstance(dash_tbl_event.selection, dict) else getattr(dash_tbl_event.selection, 'rows', [])
+            last_dash_row = st.session_state.get('_last_dash_tbl_row')
+            if dash_sel:
+                d_idx = dash_sel[0]
+                if d_idx != last_dash_row:
+                    st.session_state['_last_dash_tbl_row'] = d_idx
+                    if 0 <= d_idx < len(sorted_rows):
+                        sel_d_rid = sorted_rows[d_idx]['record_id']
+                        if sel_d_rid != st.session_state.get('dash_select_trace_rid'):
+                            st.session_state['dash_select_trace_rid'] = sel_d_rid
+                            st.rerun()
+
         st.download_button(
-            'Tải danh sách đã che thông tin',
+            'Tải danh sách yêu cầu (CSV)',
             data=export_csv(view),
-            file_name='yeu_cau_da_che.csv',
+            file_name='danh_sach_yeu_cau.csv',
             mime='text/csv'
         )
 
@@ -182,6 +238,55 @@ def render_dashboard(service=None, clf_model=None):
             'subject': 'Tiêu đề thông báo'
         })
         st.dataframe(df_emails, width='stretch', hide_index=True)
+
+    # Phân hệ Tra cứu Vết Thực Thi & Nhật Ký Suy Luận của Model
+    if rows:
+        st.subheader('Tra cứu Vết Thực Thi & Nhật Ký Suy Luận Của Model')
+        st.caption('Kiểm toán toàn bộ quá trình xử lý, phân phối xác suất và chuỗi suy luận của Local Learning Machine cho từng yêu cầu lịch sử.')
+        from src.database import get_execution_trace
+        from app.components.trace_viewer import render_trace_view
+        from src.local_machine import get_local_machine
+
+        trace_rids = [r['record_id'] for r in rows]
+        if st.session_state.get('dash_select_trace_rid') not in trace_rids and trace_rids:
+            st.session_state['dash_select_trace_rid'] = trace_rids[0]
+
+        curr_t_rid = st.session_state.get('dash_select_trace_rid')
+        curr_t_idx = trace_rids.index(curr_t_rid) if curr_t_rid in trace_rids else 0
+
+        selected_trace_rid = st.selectbox(
+            "Yêu cầu đang kiểm tra chi tiết quá trình xử lý (Bấm dòng trên bảng hoặc chọn tại đây):",
+            options=trace_rids,
+            index=curr_t_idx,
+            format_func=lambda k: f"{k} — [{next((r['predicted_topic'] for r in rows if r['record_id'] == k), '')}] {next((r['clean_text'][:50] for r in rows if r['record_id'] == k), '')}...",
+            key="dash_select_trace_rid"
+        )
+        st.session_state['_last_dash_tbl_row'] = trace_rids.index(selected_trace_rid) if selected_trace_rid in trace_rids else None
+        if selected_trace_rid:
+            t_row = get_execution_trace(selected_trace_rid)
+            t_data = None
+            t_log = ""
+            if t_row and t_row.get('steps_json'):
+                try:
+                    t_data = json.loads(t_row['steps_json']) if isinstance(t_row['steps_json'], str) else t_row['steps_json']
+                    t_log = t_row.get('terminal_log', '')
+                except Exception:
+                    t_data = None
+            if not t_data:
+                target_r = next((r for r in rows if r['record_id'] == selected_trace_rid), None)
+                if target_r:
+                    lm = get_local_machine()
+                    res_lm = lm.process_request_with_trace(target_r['clean_text'], record_id=selected_trace_rid)
+                    t_data = res_lm.get('execution_trace', {})
+                    t_log = res_lm.get('terminal_log', '')
+
+            render_trace_view(
+                trace_data=t_data,
+                terminal_log=t_log,
+                title=f"Vết Thực Thi Của Model Cho Yêu Cầu [{selected_trace_rid}]",
+                expanded=False,
+                key_prefix=f"dash_trace_{selected_trace_rid}"
+            )
 
     # Phân hệ Kiểm tra chất lượng dữ liệu
     st.subheader('Kiểm tra chất lượng dữ liệu')
@@ -264,3 +369,39 @@ def render_dashboard(service=None, clf_model=None):
                 save_request(service.process(text), record_id=rid, source_type='controlled_demo')
         st.session_state['notice'] = 'Đã nạp các mẫu còn thiếu. Kết quả duyệt trước đó được giữ nguyên.'
         st.rerun()
+
+    # Nhật ký hoạt động Web / App theo thời gian thực
+    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+    st.subheader('Nhật ký hoạt động ứng dụng (Live Server & Web Console Logs)')
+    st.caption('Ghi nhận mọi lời gọi hàm, xử lý máy học, truy vấn CSDL và gửi email theo thời gian thực như một Web Server chuẩn.')
+
+    try:
+        from src.app_logger import get_recent_logs, render_log_terminal_html, clear_logs, export_logs_text
+        c_l1, c_l2 = st.columns([3, 1])
+        with c_l1:
+            comp_filter = st.selectbox("Lọc thành phần gọi:", ["TẤT CẢ", "INTAKE", "CLEANER", "AI-MODEL", "RAG-DOCX", "SYNTHESIS", "GUARDRAILS", "DATABASE", "EMAIL", "WORKBENCH"], key="dash_log_filter")
+        with c_l2:
+            st.write("")
+            st.write("")
+            if st.button("🔄 Làm mới log", key="dash_btn_ref_log"):
+                st.rerun()
+
+        logs_data = get_recent_logs(limit=50, component_filter=comp_filter)
+        st.markdown(render_log_terminal_html(logs_data, height_px=300), unsafe_allow_html=True)
+
+        c_d1, c_d2 = st.columns(2)
+        with c_d1:
+            st.download_button(
+                "📥 Tải toàn bộ nhật ký (TXT)",
+                data=export_logs_text(),
+                file_name="app_server_logs.txt",
+                mime="text/plain",
+                key="dash_btn_dl_logs",
+                width="stretch"
+            )
+        with c_d2:
+            if st.button("🗑️ Xóa nhật ký phiên", key="dash_btn_clr_logs", width="stretch"):
+                clear_logs()
+                st.rerun()
+    except Exception:
+        pass

@@ -138,6 +138,13 @@ def run_live_demo():
         print(f"    + Ma sinh vien: {report['pii_stats']['mssv_count']}")
         print(f"  - Diem suc khoe du lieu (Data Health Score): {report['health_score']}/100")
 
+    # 7. Tinh huong 6: Minh bach cach thuc lam viec cua Local Machine & LLM qua Execution Trace Log
+    print_separator("TINH HUONG 6: MINH BACH CACH THUC LAM VIEC CUA LOCAL MACHINE & LLM LOG")
+    raw_query_6 = "Em muon xin giay xac nhan sinh vien de nop tam hoan nghia vu quan su nam 2026, sdt 0912345678, mssv 2022601234"
+    print(f"Van ban dau vao: \"{raw_query_6}\"")
+    proc_res = svc.process(raw_query_6)
+    print("\n" + proc_res.get('terminal_log', ''))
+
     print_separator("HOAN TAT DEMO THUC TE")
     print("Giao dien truc quan: Mo trinh duyet tai http://localhost:8501 de tuong tac.")
 

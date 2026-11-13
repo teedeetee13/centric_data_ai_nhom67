@@ -2,7 +2,6 @@
 import json
 import os
 from pathlib import Path
-import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -12,7 +11,6 @@ from src.cleaner import clean_dataframe,clean_text_single
 from src.database import (init_db,save_request,get_request,list_requests,
                           save_draft,log_review_action,review_history)
 from src.service import RequestService
-from src.faq_engine import FAQEngine
 from src.quality_profiler import profile_dataset
 from app.components.dashboard import analyze_dataframe_realtime,export_csv
 

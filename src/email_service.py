@@ -12,20 +12,23 @@ Tuyệt đối không sử dụng emoji, tuân thủ chuẩn phong cách Sapphir
 
 import os
 import smtplib
-from datetime import datetime, timezone
+from datetime import datetime
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from src.config import TOPICS, database_path
+from src.config import TOPICS
 try:
     from src.config import DEFAULT_TEST_EMAIL
 except ImportError:
-    import os
     DEFAULT_TEST_EMAIL = os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com")
-from src.database import ClosingConnection, get_connection
+from src.database import get_connection
+try:
+    from src.app_logger import app_log
+except ImportError:
+    def app_log(*args, **kwargs):
+        pass
 
 def get_smtp_config() -> Dict[str, str]:
     """
@@ -69,7 +72,7 @@ def record_dispatch(
 ) -> int:
     """Ghi nhận bản ghi gửi email vào CSDL SQLite."""
     init_email_table(db_path)
-    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    stamp = datetime.now().astimezone().isoformat(timespec="seconds")
     with get_connection(db_path) as conn:
         cursor = conn.execute(
             '''INSERT INTO email_dispatches
@@ -77,7 +80,10 @@ def record_dispatch(
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
             (record_id or "", recipient_email, subject, body_text, dispatch_mode, status, error_message, stamp)
         )
-        return cursor.lastrowid
+        row_id = cursor.lastrowid
+
+    app_log("EMAIL", "Ghi nhận tiến trình gửi email giải quyết", f"Mã: [{record_id}], Người nhận: [{recipient_email}], Chế độ: {dispatch_mode}, Trạng thái: {status}", level="SUCCESS" if status == "success" else "WARN")
+    return row_id
 
 def list_email_dispatches(limit: int = 50, db_path=None) -> List[Dict]:
     """Truy vấn danh sách lịch sử email đã gửi."""
