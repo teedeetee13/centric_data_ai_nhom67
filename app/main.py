@@ -584,19 +584,7 @@ with tabs[1]:
             </table>
             """, unsafe_allow_html=True)
 
-        st.markdown("""
-        <div style="margin-top: 14px; text-align: center;">
-            <div style="font-size: 0.92rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
-                ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á
-            </div>
-            <div style="font-size: 0.78rem; color: #2563eb; margin-top: 4px;">
-                📍 <strong>Cơ sở Hà Nội:</strong> Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
-            </div>
-            <div style="font-size: 0.78rem; color: #2563eb; margin-top: 2px;">
-                📍 <strong>Cơ sở Bắc Ninh:</strong> Làng Đại học, Phường Võ Cường, Bắc Ninh.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+
 
     if submitted:
         parts = []
@@ -1041,16 +1029,4 @@ with tabs[4]:
                 width="stretch"
             )
 
-    st.markdown("""
-    <div style="margin-top: 28px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 18px;">
-        <div style="font-size: 0.95rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
-            ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á
-        </div>
-        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 5px;">
-            📍 <strong>Cơ sở Hà Nội:</strong> Trường Đại học Công nghệ Đông Á, Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
-        </div>
-        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 3px;">
-            📍 <strong>Cơ sở Bắc Ninh:</strong> Trường Đại học Công nghệ Đông Á, Làng Đại học, Phường Võ Cường, Bắc Ninh.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+
