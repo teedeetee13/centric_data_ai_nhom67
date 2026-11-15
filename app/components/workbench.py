@@ -161,17 +161,15 @@ def render_workbench(faq_engine=None):
     # CỘT TRÁI: HÀNG ĐỢI TIẾP NHẬN (TICKET INBOX)
     # =========================================================================
     with col_queue:
-        st.markdown(f"""
-        <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 14px 18px 8px 18px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 1.02rem; font-weight: 800; color: #1a508b;">Hàng Đợi Tiếp Nhận & Phê Duyệt</span>
-                <span style="background: #1a508b; color: #ffffff; font-size: 0.74rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">
-                    {len(all_requests)} hồ sơ
-                </span>
-            </div>
-            <div style="font-size: 0.78rem; color: #475569; margin-top: 2px;">Phân quyền theo đơn vị chuyên môn và mức độ ưu tiên</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown((
+            '<div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 14px 18px 8px 18px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">'
+            '<div style="display: flex; justify-content: space-between; align-items: center;">'
+            '<span style="font-size: 1.02rem; font-weight: 800; color: #1a508b;">Hàng Đợi Tiếp Nhận & Phê Duyệt</span>'
+            f'<span style="background: #1a508b; color: #ffffff; font-size: 0.74rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">{len(all_requests)} hồ sơ</span>'
+            '</div>'
+            '<div style="font-size: 0.78rem; color: #475569; margin-top: 2px;">Phân quyền theo đơn vị chuyên môn và mức độ ưu tiên</div>'
+            '</div>'
+        ), unsafe_allow_html=True)
 
         # 1. Bộ lọc trạng thái nhanh
         filter_status = st.radio(
@@ -305,31 +303,28 @@ def render_workbench(faq_engine=None):
         prio_bg = "#fef2f2" if prio == "Khẩn cấp" else ("#fff7ed" if prio == "Cao" else "#eff6ff")
         prio_badge_icon = "🔴" if prio == "Khẩn cấp" else ("🟠" if prio == "Cao" else "🔵")
 
-        st.markdown(f"""
-        <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 14px 18px 10px 18px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="background: #1a508b; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.04em;">HỒ SƠ HỌC VỤ</span>
-                    <span style="font-size: 1.05rem; font-weight: 800; color: #1a508b; font-family: monospace;">{rid}</span>
-                </div>
-                <div style="display: flex; gap: 6px; align-items: center;">
-                    <span style="background: {prio_bg}; color: {prio_color}; border: 1px solid {prio_color}33; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">
-                        {prio_badge_icon} {prio}
-                    </span>
-                    <span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">
-                        🎯 AI Tin cậy: {conf:.1%}
-                    </span>
-                </div>
-            </div>
-            <div style="font-size: 0.82rem; color: #475569; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-top: 1px solid #b8cad8; padding-top: 6px; margin-top: 6px;">
-                <span>Đơn vị phụ trách: <strong style="color: #1a508b;">{item_dept}</strong></span>
-                <span>•</span>
-                <span>Chuyên môn: <strong style="color: #1a508b;">{TOPICS.get(item['predicted_topic'], item['predicted_topic'])}</strong></span>
-                <span>•</span>
-                <span>Tiếp nhận: {format_datetime_vn(item.get('processed_at'), fmt='%d/%m/%Y %H:%M')}</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        card_header_html = (
+            '<div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 14px 18px 10px 18px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">'
+            '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">'
+            '<div style="display: flex; align-items: center; gap: 8px;">'
+            '<span style="background: #1a508b; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.04em;">HỒ SƠ HỌC VỤ</span>'
+            f'<span style="font-size: 1.05rem; font-weight: 800; color: #1a508b; font-family: monospace;">{rid}</span>'
+            '</div>'
+            '<div style="display: flex; gap: 6px; align-items: center;">'
+            f'<span style="background: {prio_bg}; color: {prio_color}; border: 1px solid {prio_color}33; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">{prio_badge_icon} {prio}</span>'
+            f'<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">🎯 AI Tin cậy: {conf:.1%}</span>'
+            '</div>'
+            '</div>'
+            '<div style="font-size: 0.82rem; color: #475569; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-top: 1px solid #b8cad8; padding-top: 6px; margin-top: 6px;">'
+            f'<span>Đơn vị phụ trách: <strong style="color: #1a508b;">{item_dept}</strong></span>'
+            '<span>•</span>'
+            f'<span>Chuyên môn: <strong style="color: #1a508b;">{TOPICS.get(item["predicted_topic"], item["predicted_topic"])}</strong></span>'
+            '<span>•</span>'
+            f'<span>Tiếp nhận: {format_datetime_vn(item.get("processed_at"), fmt="%d/%m/%Y %H:%M")}</span>'
+            '</div>'
+            '</div>'
+        )
+        st.markdown(card_header_html, unsafe_allow_html=True)
 
         # 2. Nội dung phản ánh từ sinh viên (Giao diện hội thoại chăm sóc học vụ)
         parsed_f = parse_student_feedback(item['clean_text'])
@@ -337,31 +332,30 @@ def render_workbench(faq_engine=None):
         issue_recorded = parsed_f['issue']
         contacts_recorded = parsed_f['contacts']
 
-        st.markdown(f"""
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
-                        SV
-                    </div>
-                    <div>
-                        <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a;">Nội dung phản ánh từ Sinh viên</div>
-                        <div style="font-size: 0.74rem; color: #64748b;">Gửi qua Cổng tiếp nhận học vụ trực tuyến EAUT</div>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 6px;">
-                    {f'<span style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-size: 0.74rem; font-weight: 600;">🆔 {contacts_recorded}</span>' if contacts_recorded else ''}
-                </div>
-            </div>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 12px 14px; font-size: 0.92rem; color: #1e293b; line-height: 1.55; white-space: pre-wrap; font-weight: 500;">
-                {html.escape(student_msg)}
-            </div>
-            <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.74rem;">
-                {f'<span style="background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 4px;">📌 Vấn đề: {issue_recorded}</span>' if issue_recorded and issue_recorded != student_msg else ''}
-                <span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 4px;">🛡️ Đã làm sạch chuẩn NFC & bảo mật PII</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        contacts_badge = f'<span style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-size: 0.74rem; font-weight: 600;">🆔 {html.escape(contacts_recorded)}</span>' if contacts_recorded else ''
+        issue_badge = f'<span style="background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 4px;">📌 Vấn đề: {html.escape(issue_recorded)}</span>' if issue_recorded and issue_recorded != student_msg else ''
+        safe_msg = html.escape(student_msg)
+
+        card_student_html = (
+            '<div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">'
+            '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">'
+            '<div style="display: flex; align-items: center; gap: 10px;">'
+            '<div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; box-shadow: 0 2px 4px rgba(37,99,235,0.2); flex-shrink: 0;">SV</div>'
+            '<div>'
+            '<div style="font-size: 0.88rem; font-weight: 700; color: #0f172a;">Nội dung phản ánh từ Sinh viên</div>'
+            '<div style="font-size: 0.74rem; color: #64748b;">Gửi qua Cổng tiếp nhận học vụ trực tuyến EAUT</div>'
+            '</div>'
+            '</div>'
+            f'<div style="display: flex; gap: 6px;">{contacts_badge}</div>'
+            '</div>'
+            f'<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 12px 14px; font-size: 0.92rem; color: #1e293b; line-height: 1.55; white-space: pre-wrap; font-weight: 500;">{safe_msg}</div>'
+            '<div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.74rem;">'
+            f'{issue_badge}'
+            '<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 4px;">🛡️ Đã làm sạch chuẩn NFC & bảo mật PII</span>'
+            '</div>'
+            '</div>'
+        )
+        st.markdown(card_student_html, unsafe_allow_html=True)
 
         # 3. AI Copilot: Căn cứ quy chế & Thời hạn cam kết (SLA)
         from src.local_machine import get_local_machine
@@ -369,22 +363,19 @@ def render_workbench(faq_engine=None):
         matched_procs = lm.retrieve_procedure(item['clean_text'], predicted_topic=item['predicted_topic'], top_k=1)
         if matched_procs:
             proc = matched_procs[0]
-            st.markdown(f"""
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="background: linear-gradient(135deg, #4338ca, #6366f1); color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">AI COPILOT</span>
-                        <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Căn cứ quy chế EAUT chính thức:</span>
-                    </div>
-                    <span style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">
-                        ⏱️ SLA: {proc.get('processing_time', '24 - 48 giờ')}
-                    </span>
-                </div>
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 0.86rem; font-weight: 700; color: #0f172a;">
-                    [{proc['proc_id']}] {proc['title']}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            card_copilot_html = (
+                '<div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">'
+                '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">'
+                '<div style="display: flex; align-items: center; gap: 8px;">'
+                '<span style="background: linear-gradient(135deg, #4338ca, #6366f1); color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">AI COPILOT</span>'
+                '<span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Căn cứ quy chế EAUT chính thức:</span>'
+                '</div>'
+                f'<span style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">⏱️ SLA: {proc.get("processing_time", "24 - 48 giờ")}</span>'
+                '</div>'
+                f'<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 0.86rem; font-weight: 700; color: #0f172a;">[{proc["proc_id"]}] {proc["title"]}</div>'
+                '</div>'
+            )
+            st.markdown(card_copilot_html, unsafe_allow_html=True)
             with st.expander(f"Chi tiết quy trình & Biểu mẫu [{proc['proc_id']}]", expanded=False):
                 st.caption(f"Căn cứ pháp lý: {proc.get('legal_basis')} | Biểu mẫu: {proc.get('forms_required')}")
                 for s in proc.get('steps', []):
