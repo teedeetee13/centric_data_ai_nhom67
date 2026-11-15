@@ -63,6 +63,7 @@ class EmailServiceTests(unittest.TestCase):
             subject="Test Tiêu đề",
             body_text="Nội dung kiểm thử gửi mail",
             record_id="REQ_MOCK",
+            smtp_override={"user": "", "password": ""},
             db_path=self.db_path
         )
         self.assertTrue(ok)

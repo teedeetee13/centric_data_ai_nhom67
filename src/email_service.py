@@ -267,6 +267,13 @@ def _wrap_email_html(
         for k, v in summary_table_rows
     ])
 
+    badge_tr = f"""<!-- Status Badge -->
+          <tr>
+            <td style="padding: 20px 28px 0 28px;">
+              {status_badge_html}
+            </td>
+          </tr>""" if status_badge_html and status_badge_html.strip() else ""
+
     return f"""<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -294,12 +301,7 @@ def _wrap_email_html(
             </td>
           </tr>
 
-          <!-- Status Badge -->
-          <tr>
-            <td style="padding: 20px 28px 0 28px;">
-              {status_badge_html}
-            </td>
-          </tr>
+          {badge_tr}
 
           <!-- Main Body -->
           <tr>
@@ -432,15 +434,8 @@ Trường Đại học Công nghệ Đông Á (EAUT)
 """.strip()
 
     # --- 2. XÂY DỰNG HTML BODY ---
-    if is_auto_approved:
-        conf_badge_text = f"TỰ ĐỘNG PHÊ DUYỆT BỞI AI (ĐỘ TIN CẬY: {confidence_score:.1%})" if confidence_score else "TỰ ĐỘNG PHÊ DUYỆT BỞI AI"
-        badge_html = f"""<div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 6px; display: inline-block;">
-            [XỬ LÝ TỰ ĐỘNG BỞI AI] &nbsp; {conf_badge_text}
-        </div>"""
-    else:
-        badge_html = """<div style="background: #eff6ff; border: 1px solid #3b82f6; color: #1e40af; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 6px; display: inline-block;">
-            [KIỂM DUYỆT BỞI CÁN BỘ CHUYÊN TRÁCH] &nbsp; HỒ SƠ ĐÃ ĐƯỢC XÁC THỰC VÀ PHÊ DUYỆT
-        </div>"""
+    # Không hiển thị nhãn kỹ thuật AI đối với email gửi sinh viên để đảm bảo tính trang trọng, tinh gọn
+    badge_html = ""
 
     st_display = f"<strong>{html.escape(student_name)}</strong> " if student_name else "<strong>Quý Sinh viên</strong>"
     if student_id:
