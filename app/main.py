@@ -143,9 +143,26 @@ st.set_page_config(
     initial_sidebar_state='collapsed'
 )
 
-# Custom CSS phong cách Sapphire Academic & Slate chuyên nghiệp chuẩn SaaS
+# Custom CSS phong cách Sapphire Academic & Slate chuyên nghiệp chuẩn SaaS Đích Thực
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    :root {
+        --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono: 'JetBrains Mono', Courier, monospace;
+        --brand-navy: #1e3a8a;
+        --brand-blue: #2563eb;
+        --brand-sky: #0284c7;
+        --bg-canvas: #f8fafc;
+        --bg-card: #ffffff;
+        --border-subtle: #e2e8f0;
+        --border-medium: #cbd5e1;
+        --text-headline: #0f172a;
+        --text-body: #334155;
+        --text-muted: #64748b;
+    }
+
     /* Ẩn hoàn toàn header mặc định, footer và nút Deploy của Streamlit */
     #MainMenu { visibility: hidden !important; }
     header { visibility: hidden !important; }
@@ -155,55 +172,81 @@ st.markdown("""
     [data-testid="stStatusWidget"] { display: none !important; }
     section[data-testid="stSidebar"] { display: none !important; }
 
-    /* Tối ưu hóa padding toàn trang */
-    .block-container {
-        padding-top: 1.2rem !important;
-        padding-bottom: 2rem !important;
-        max-width: 1380px !important;
+    /* Nền tổng thể và font chữ chuẩn SaaS */
+    .stApp {
+        background-color: var(--bg-canvas) !important;
+        font-family: var(--font-sans) !important;
+        color: var(--text-body) !important;
     }
 
-    /* App Header & Navigation Bar chuẩn SaaS */
+    /* Tối ưu hóa padding toàn trang */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 2.5rem !important;
+        max-width: 1440px !important;
+    }
+
+    /* Tùy chỉnh thanh cuộn thanh mảnh */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* App Header & Navigation Bar chuẩn SaaS Đích Thực */
     .app-navbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 12px 20px;
+        border-radius: 12px;
+        padding: 12px 24px;
         margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
     }
     .brand-container {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 14px;
     }
     .brand-pill {
-        background: #1e3a8a;
+        background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
         color: #ffffff;
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         font-weight: 800;
-        padding: 4px 8px;
-        border-radius: 6px;
-        letter-spacing: 0.05em;
+        padding: 5px 10px;
+        border-radius: 8px;
+        letter-spacing: 0.06em;
+        box-shadow: 0 2px 4px rgba(30, 58, 138, 0.25);
     }
     .brand-title {
         font-size: 1.25rem;
-        font-weight: 700;
+        font-weight: 800;
         color: #0f172a;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.025em;
     }
     .brand-sub {
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         color: #64748b;
         border-left: 1px solid #cbd5e1;
-        padding-left: 10px;
+        padding-left: 12px;
+        font-weight: 500;
     }
     .nav-meta {
         display: flex;
         align-items: center;
         gap: 10px;
+    }
+    .nav-badge-term {
+        display: inline-flex;
+        align-items: center;
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 0.76rem;
+        font-weight: 600;
     }
     .nav-badge-live {
         display: inline-flex;
@@ -214,74 +257,125 @@ st.markdown("""
         border: 1px solid #a7f3d0;
         padding: 4px 10px;
         border-radius: 9999px;
-        font-size: 0.78rem;
+        font-size: 0.76rem;
         font-weight: 600;
+    }
+    .pulse-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background-color: #10b981;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
     }
     .user-chip {
         display: inline-flex;
         align-items: center;
-        background: #f1f5f9;
-        color: #334155;
-        padding: 4px 10px;
+        gap: 6px;
+        background: #eff6ff;
+        color: #1e40af;
+        border: 1px solid #dbeafe;
+        padding: 4px 12px;
         border-radius: 9999px;
-        font-size: 0.78rem;
-        font-weight: 500;
+        font-size: 0.76rem;
+        font-weight: 600;
     }
 
+    /* Thanh Tabs chuẩn SaaS (Navigation Pills Bar) */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 1.5rem;
-        border-bottom: 1px solid #e2e8f0;
+        gap: 0.4rem;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 6px 8px;
         margin-bottom: 1.2rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
     }
     .stTabs [data-baseweb="tab"] {
-        padding: 8px 6px 12px 6px;
-        font-size: 0.95rem;
+        padding: 8px 16px;
+        font-size: 0.88rem;
         font-weight: 600;
         color: #64748b;
         background-color: transparent !important;
+        border-radius: 6px !important;
         border: none !important;
+        transition: all 0.15s ease-in-out;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #0f172a !important;
+        background-color: #f8fafc !important;
     }
     .stTabs [aria-selected="true"] {
-        color: #1d4ed8 !important;
+        color: #ffffff !important;
+        background: #1e3a8a !important;
         font-weight: 700 !important;
-        border-bottom: 2px solid #1d4ed8 !important;
+        box-shadow: 0 2px 4px rgba(30, 58, 138, 0.2) !important;
     }
+
+    /* Khung nhập liệu Form Controls */
+    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        background-color: #ffffff !important;
+        transition: all 0.15s ease !important;
+    }
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within, div[data-baseweb="textarea"]:focus-within {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+    }
+
+    /* Nút bấm Buttons */
     .stButton > button[kind="primary"] {
-        background-color: #1d4ed8 !important;
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
         color: #ffffff !important;
         border: none !important;
         font-weight: 600 !important;
-        border-radius: 6px !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1.2rem !important;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2) !important;
+        transition: all 0.15s ease !important;
     }
     .stButton > button[kind="primary"]:hover {
-        background-color: #1e40af !important;
-        color: #ffffff !important;
+        background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%) !important;
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3) !important;
+        transform: translateY(-1px);
     }
     .stButton > button:not([kind="primary"]) {
         background-color: #ffffff !important;
         color: #334155 !important;
         border: 1px solid #cbd5e1 !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
         font-weight: 500 !important;
+        transition: all 0.15s ease !important;
     }
     .stButton > button:not([kind="primary"]):hover {
         background-color: #f8fafc !important;
         border-color: #94a3b8 !important;
         color: #0f172a !important;
     }
+
+    /* Expanders */
+    div[data-testid="stExpander"] {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    /* Terminal Console Box */
     .terminal-box {
         background-color: #0b1120;
         color: #38bdf8;
-        font-family: 'Courier New', Courier, monospace;
+        font-family: var(--font-mono);
         font-size: 0.81rem;
-        padding: 14px;
-        border-radius: 8px;
+        padding: 16px;
+        border-radius: 10px;
         border: 1px solid #1e293b;
         white-space: pre-wrap;
-        line-height: 1.45;
+        line-height: 1.5;
         overflow-x: auto;
         max-height: 480px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -301,17 +395,20 @@ except Exception as exc:
     st.code(str(exc))
     st.stop()
 
-# Header ứng dụng nghiệp vụ chuẩn SaaS
+# Header ứng dụng nghiệp vụ chuẩn SaaS Đích Thực
 st.markdown("""
 <div class="app-navbar">
     <div class="brand-container">
         <span class="brand-pill">EAUT</span>
-        <span class="brand-title">EduSupportAI</span>
-        <span class="brand-sub">Cổng Điều phối & Phê duyệt Học vụ Sinh viên</span>
+        <div>
+            <div class="brand-title">EduSupport AI</div>
+        </div>
+        <span class="brand-sub">Hệ thống Tiếp nhận, Điều phối & Phê duyệt Học vụ Sinh viên</span>
     </div>
     <div class="nav-meta">
-        <span class="nav-badge-live">● Trực tuyến</span>
-        <span class="user-chip">👤 Bộ phận Tiếp nhận & Phê duyệt</span>
+        <span class="nav-badge-term">🏛️ Học kỳ I · 2024 - 2025</span>
+        <span class="nav-badge-live"><span class="pulse-dot"></span> Hệ thống sẵn sàng</span>
+        <span class="user-chip">👤 Cán bộ trực ban: Phòng QL Đào tạo & Khảo thí</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -337,7 +434,12 @@ with tabs[0]:
     render_workbench()
 
 with tabs[1]:
-    st.subheader('Tiếp nhận phản ánh sinh viên')
+    st.markdown("""
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">📝 Tiếp nhận & Khởi tạo Hồ sơ Phản ánh Học vụ</div>
+        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Mô hình AI tự động làm sạch Unicode NFC, bảo vệ PII và đối soát thời gian thực với quy trình đại học chính thức</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Chọn nhanh tình huống thực tế theo quy trình EAUT
     with st.expander('Chọn nhanh tình huống mẫu chuẩn hóa', expanded=False):
@@ -862,8 +964,12 @@ with tabs[3]:
     render_dashboard(service=service)
 
 with tabs[4]:
-    st.subheader("Cài đặt & Quản trị Hệ thống")
-    st.caption("Cấu hình máy chủ gửi email SMTP, huấn luyện lại mô hình học máy và giám sát nhật ký vận hành thời gian thực.")
+    st.markdown("""
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">⚙️ Cài đặt & Quản trị Hạ tầng Hệ thống</div>
+        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Cấu hình máy chủ SMTP Gmail gửi thư thực tế, huấn luyện mô hình Active Learning và giám sát Server Console thời gian thực</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     c_cfg1, c_cfg2 = st.columns([1, 1], gap="large")
 

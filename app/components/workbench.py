@@ -154,7 +154,14 @@ def render_workbench(faq_engine=None):
     # CỘT TRÁI: HÀNG ĐỢI TIẾP NHẬN (TICKET INBOX)
     # =========================================================================
     with col_queue:
-        st.markdown("##### 📋 Hàng đợi tiếp nhận")
+        st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 0.95rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.03em;">📋 Hàng đợi tiếp nhận</span>
+            <span style="background: #eff6ff; color: #1d4ed8; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px; border: 1px solid #bfdbfe;">
+                {len(all_requests)} hồ sơ
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
 
         # 1. Bộ lọc trạng thái nhanh
         filter_status = st.radio(
@@ -221,7 +228,16 @@ def render_workbench(faq_engine=None):
             st.session_state['review_id'] = ids[0]
 
         curr_id = st.session_state['review_id']
-        st.caption(f"Tổng cộng: **{len(queue)}** yêu cầu &nbsp;|&nbsp; Đang xem: **{curr_id}**")
+
+        # Menu chọn nhanh hồ sơ
+        rid = st.selectbox(
+            "Chọn mã hồ sơ cần xem:",
+            options=ids,
+            index=ids.index(st.session_state['review_id']) if st.session_state.get('review_id') in ids else 0,
+            key="review_id",
+            format_func=lambda k: f"{'🔴' if by_id[k]['priority_level']=='Khẩn cấp' else ('🟠' if by_id[k]['priority_level']=='Cao' else '🔵')} [{k}] · {TOPICS.get(by_id[k]['predicted_topic'], by_id[k]['predicted_topic'])} · {by_id[k].get('confidence_score', 0):.0%}",
+            label_visibility="collapsed"
+        )
 
         # Bảng tóm tắt danh sách yêu cầu
         df_rows = []
@@ -229,17 +245,17 @@ def render_workbench(faq_engine=None):
             prio = r['priority_level']
             prio_badge = "🔴 Khẩn cấp" if prio == "Khẩn cấp" else ("🟠 Cao" if prio == "Cao" else "🔵 Bình thường")
             parsed_txt = parse_student_feedback(r['clean_text'])['student_message']
-            snip = (parsed_txt[:36] + "...") if len(parsed_txt) > 36 else parsed_txt
+            snip = (parsed_txt[:38] + "...") if len(parsed_txt) > 38 else parsed_txt
             df_rows.append({
-                'Mã phiếu': r['record_id'],
                 'Ưu tiên': prio_badge,
+                'Mã phiếu': r['record_id'],
                 'Chuyên môn': TOPICS.get(r['predicted_topic'], r['predicted_topic']),
                 'Tóm tắt phản ánh': snip
             })
 
         tbl_event = st.dataframe(
             pd.DataFrame(df_rows),
-            height=540,
+            height=460,
             width="stretch",
             hide_index=True,
             on_select="rerun",
@@ -262,14 +278,7 @@ def render_workbench(faq_engine=None):
                         st.session_state['review_id'] = clicked_rid
                         st.rerun()
 
-        # Cho phép đổi phiếu nhanh bằng menu nếu không click bảng
-        rid = st.selectbox(
-            "Chọn mã hồ sơ cần xem:",
-            options=ids,
-            index=ids.index(st.session_state['review_id']) if st.session_state.get('review_id') in ids else 0,
-            key="review_id",
-            label_visibility="collapsed"
-        )
+        st.caption(f"💡 Đang chọn xem: **{rid}** (Bấm trực tiếp dòng trong bảng hoặc dùng menu trên để chuyển hồ sơ).")
 
     # =========================================================================
     # CỘT PHẢI: BÀN LÀM VIỆC TẬP TRUNG (FOCUS WORKSPACE)
@@ -285,37 +294,62 @@ def render_workbench(faq_engine=None):
         # 1. Header Card hồ sơ chi tiết
         prio_color = "#dc2626" if prio == "Khẩn cấp" else ("#ea580c" if prio == "Cao" else "#2563eb")
         prio_bg = "#fef2f2" if prio == "Khẩn cấp" else ("#fff7ed" if prio == "Cao" else "#eff6ff")
+        prio_badge_icon = "🔴" if prio == "Khẩn cấp" else ("🟠" if prio == "Cao" else "🔵")
 
         st.markdown(f"""
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.04em;">HỒ SƠ HỌC VỤ: <strong>{rid}</strong></span>
-                <div style="display: flex; gap: 6px;">
-                    <span style="background: {prio_bg}; color: {prio_color}; border: 1px solid {prio_color}33; font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">{prio}</span>
-                    <span style="background: #f1f5f9; color: #334155; font-size: 0.74rem; font-weight: 600; padding: 2px 8px; border-radius: 9999px;">Độ tin cậy: {conf:.1%}</span>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: #1e3a8a; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.04em;">HỒ SƠ HỌC VỤ</span>
+                    <span style="font-size: 1.05rem; font-weight: 800; color: #0f172a; font-family: monospace;">{rid}</span>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <span style="background: {prio_bg}; color: {prio_color}; border: 1px solid {prio_color}33; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">
+                        {prio_badge_icon} {prio}
+                    </span>
+                    <span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">
+                        🎯 AI Tin cậy: {conf:.1%}
+                    </span>
                 </div>
             </div>
-            <div style="font-size: 0.84rem; color: #475569;">
-                Đơn vị phụ trách: <strong style="color:#0f172a;">{item_dept}</strong> &nbsp;|&nbsp; 
-                Chuyên môn: <strong style="color:#0f172a;">{TOPICS.get(item['predicted_topic'], item['predicted_topic'])}</strong> &nbsp;|&nbsp; 
-                Ngày gửi: {format_datetime_vn(item.get('processed_at'), fmt='%d/%m/%Y %H:%M')}
+            <div style="font-size: 0.82rem; color: #64748b; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 6px; margin-top: 6px;">
+                <span>Đơn vị phụ trách: <strong style="color: #0f172a;">{item_dept}</strong></span>
+                <span>•</span>
+                <span>Chuyên môn: <strong style="color: #0f172a;">{TOPICS.get(item['predicted_topic'], item['predicted_topic'])}</strong></span>
+                <span>•</span>
+                <span>Tiếp nhận: {format_datetime_vn(item.get('processed_at'), fmt='%d/%m/%Y %H:%M')}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # 2. Nội dung phản ánh từ sinh viên
+        # 2. Nội dung phản ánh từ sinh viên (Giao diện hội thoại chăm sóc học vụ)
         parsed_f = parse_student_feedback(item['clean_text'])
         student_msg = parsed_f['student_message']
         issue_recorded = parsed_f['issue']
         contacts_recorded = parsed_f['contacts']
 
         st.markdown(f"""
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 6px; padding: 12px 16px; margin-bottom: 12px;">
-            <div style="font-size: 0.74rem; font-weight: 700; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Nội dung phản ánh từ sinh viên:</div>
-            <div style="font-size: 0.92rem; color: #1e293b; line-height: 1.55; white-space: pre-wrap; font-weight: 500;">{html.escape(student_msg)}</div>
-            <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.78rem;">
-                {f'<span style="background:#ffffff; border:1px solid #cbd5e1; padding:2px 8px; border-radius:4px; color:#334155;">👤 {contacts_recorded}</span>' if contacts_recorded else ''}
-                {f'<span style="background:#ffffff; border:1px solid #cbd5e1; padding:2px 8px; border-radius:4px; color:#334155;">📌 {issue_recorded}</span>' if issue_recorded and issue_recorded != student_msg else ''}
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
+                        SV
+                    </div>
+                    <div>
+                        <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a;">Nội dung phản ánh từ Sinh viên</div>
+                        <div style="font-size: 0.74rem; color: #64748b;">Gửi qua Cổng tiếp nhận học vụ trực tuyến EAUT</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    {f'<span style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-size: 0.74rem; font-weight: 600;">🆔 {contacts_recorded}</span>' if contacts_recorded else ''}
+                </div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 12px 14px; font-size: 0.92rem; color: #1e293b; line-height: 1.55; white-space: pre-wrap; font-weight: 500;">
+                {html.escape(student_msg)}
+            </div>
+            <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.74rem;">
+                {f'<span style="background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 4px;">📌 Vấn đề: {issue_recorded}</span>' if issue_recorded and issue_recorded != student_msg else ''}
+                <span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 4px;">🛡️ Đã làm sạch chuẩn NFC & bảo mật PII</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -327,12 +361,19 @@ def render_workbench(faq_engine=None):
         if matched_procs:
             proc = matched_procs[0]
             st.markdown(f"""
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.72rem; font-weight: 700; color: #15803d; text-transform: uppercase;">Căn cứ quy chế EAUT:</span>
-                    <span style="font-size: 0.74rem; color: #166534; font-weight: 600;">SLA: {proc.get('processing_time', '24 - 48 giờ')}</span>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="background: linear-gradient(135deg, #4338ca, #6366f1); color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">AI COPILOT</span>
+                        <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Căn cứ quy chế EAUT chính thức:</span>
+                    </div>
+                    <span style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">
+                        ⏱️ SLA: {proc.get('processing_time', '24 - 48 giờ')}
+                    </span>
                 </div>
-                <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-top: 2px;">[{proc['proc_id']}] {proc['title']}</div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 0.86rem; font-weight: 700; color: #0f172a;">
+                    [{proc['proc_id']}] {proc['title']}
+                </div>
             </div>
             """, unsafe_allow_html=True)
             with st.expander(f"Chi tiết quy trình & Biểu mẫu [{proc['proc_id']}]", expanded=False):
@@ -360,6 +401,11 @@ def render_workbench(faq_engine=None):
         recipient_email = email_match.group(1) if email_match else ("sinhvien.eaut@student.edu.vn" if "[EMAIL]" in item['clean_text'] else "sinhvien@eaut.edu.vn")
 
         with st.form('review_form_' + rid):
+            st.markdown("""
+            <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>✍️ Soạn thảo văn bản giải đáp gửi người phản ánh</span>
+            </div>
+            """, unsafe_allow_html=True)
             curr_topic = item['predicted_topic'] if item['predicted_topic'] in topics else topics[0]
             final_topic = st.selectbox(
                 'Nhóm phân loại cuối cùng:',
@@ -369,7 +415,7 @@ def render_workbench(faq_engine=None):
                 key='topic_' + rid
             )
             response = st.text_area('Văn bản giải quyết gửi sinh viên:', key=response_key, height=140)
-            notes = st.text_input('Ghi chú nội bộ:', key='notes_' + rid, placeholder='Nhập ghi chú xử lý nội bộ (nếu có)...')
+            notes = st.text_input('Ghi chú nội bộ:', key='notes_' + rid, placeholder='Nhập căn cứ xử lý hoặc lý do nếu từ chối...')
 
             c_rf_m1, c_rf_m2 = st.columns([3, 2])
             with c_rf_m1:

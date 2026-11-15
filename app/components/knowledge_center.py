@@ -48,8 +48,12 @@ SAMPLE_SCENARIOS = {
 }
 
 def render_knowledge_center():
-    st.subheader("Trung tâm Tri thức & Quy chuẩn Nghiệp vụ")
-    st.caption("Quản trị tài liệu quy trình EAUT, tích hợp tính năng đối chiếu tham chiếu quy chế trực tiếp và huấn luyện Local Learning Machine.")
+    st.markdown("""
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">📚 Trung tâm Tri thức Quy chế & Kho Tài liệu Nghiệp vụ</div>
+        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Quản trị tài liệu quy trình đại học chính thức (data-doc), đối soát căn cứ pháp lý và tra cứu thư viện OPAC</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     machine = get_local_machine()
     procedures = machine.procedures or build_procedure_catalog()

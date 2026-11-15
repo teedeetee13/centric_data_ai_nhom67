@@ -113,6 +113,12 @@ def hashlib_bytes(frame, text_col):
     return hashlib.sha256(frame[text_col].fillna('').astype(str).str.cat(sep='\n').encode()).hexdigest()
 
 def render_dashboard(service=None, clf_model=None):
+    st.markdown("""
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">📊 Thống kê & Phân tích Chất lượng Vận hành Học vụ</div>
+        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Tổng hợp chỉ số KPI, giám sát lưu lượng phản ánh, tỷ lệ phê duyệt tự động và nhật ký xử lý của cán bộ</div>
+    </div>
+    """, unsafe_allow_html=True)
     rows = list_requests()
     logs = review_history()
 
