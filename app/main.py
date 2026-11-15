@@ -461,117 +461,141 @@ with tabs[1]:
                     st.session_state["request_text"] = text
                     st.rerun()
 
-    # 3 Nhóm chuyên môn chính thức tương ứng 3 tài liệu trong data-doc/
-    three_doc_domains = {
-        'Cơ sở vật chất & Giảng đường': {
-            'source_doc': 'baocao-quanly-csvc-eaut.docx',
-            'department': 'Phòng Quản trị - Cơ sở vật chất',
-            'default_topic': 'Co_so_vat_chat',
-            'issues': {
-                'Vấn đề vệ sinh phòng học / Giảng đường': ('Co_so_vat_chat', 'PROC_CSVC_01'),
-                'Điều hòa phòng học hỏng / chảy nước / không mát': ('Co_so_vat_chat', 'PROC_CSVC_01'),
-                'Máy chiếu / Màn chiếu không hoạt động / hỏng cáp HDMI': ('Co_so_vat_chat', 'PROC_CSVC_01'),
-                'Hệ thống âm thanh / Loa micro giảng đường lỗi rè': ('Co_so_vat_chat', 'PROC_CSVC_01'),
-                'Bàn ghế, bóng điện chiếu sáng, ổ cắm phòng học hư hại': ('Co_so_vat_chat', 'PROC_CSVC_01'),
-                'Đăng ký mượn phòng học, Hội trường và Thiết bị ngoài giờ': ('Co_so_vat_chat', 'PROC_CSVC_02'),
-                'Khai thác Thư viện số và Mượn trả tài liệu Thư viện': ('Co_so_vat_chat', 'PROC_CSVC_03')
-            }
-        },
-        'Công tác sinh viên & Chế độ chính sách': {
-            'source_doc': 'bao_cao_quy_trinh_nghiep_vu_sinh_vien_eaut.docx',
-            'department': 'Phòng Công tác sinh viên',
-            'default_topic': 'Thu_tuc_hanh_chinh',
-            'issues': {
-                'Xin cấp Giấy xác nhận sinh viên (Tạm hoãn NVQS, Vay vốn, Xe buýt)': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_01'),
-                'Đề nghị cấp lại thẻ sinh viên (mất, gãy hỏng chip, sai thông tin)': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_02'),
-                'Thủ tục miễn giảm học phí & Hỗ trợ chi phí học tập (Nghị định 81)': ('Hoc_phi', 'PROC_CTSV_03'),
-                'Thắc mắc / Khiếu nại kết quả Đánh giá điểm rèn luyện (ĐRL)': ('Diem_khao_thi', 'PROC_CTSV_04'),
-                'Tiếp nhận hồ sơ sinh viên nhập học & Cam kết bổ sung giấy tờ': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_05')
-            }
-        },
-        'Quản lý Đào tạo & Khảo thí': {
-            'source_doc': 'bao_cao_tong_hop_quy_trinh_dao_tao.docx',
-            'department': 'Phòng Quản lý Đào tạo & Khảo thí',
-            'default_topic': 'Lich_hoc_lich_thi',
-            'issues': {
-                'Thủ tục xin chuyển ngành đào tạo (BM_CN01)': ('Thu_tuc_hanh_chinh', 'PROC_DT_01'),
-                'Thủ tục xin bảo lưu kết quả học tập & Quay lại học (BM01/BM05)': ('Thu_tuc_hanh_chinh', 'PROC_DT_02'),
-                'Đăng ký học lại môn bị trượt (điểm F) & Học cải thiện điểm': ('Lich_hoc_lich_thi', 'PROC_DT_03'),
-                'Đơn đề nghị phúc khảo bài thi kết thúc học phần': ('Diem_khao_thi', 'PROC_DT_04'),
-                'Đơn xin hoãn thi kết thúc học phần do trùng ca thi hoặc ốm đau': ('Diem_khao_thi', 'PROC_DT_04'),
-                'Thủ tục xét công nhận tốt nghiệp & Cấp bản sao văn bằng tốt nghiệp': ('Thu_tuc_hanh_chinh', 'PROC_DT_05')
-            }
+    # Bố cục 2 cột chuẩn Cổng Hỗ trợ Sinh viên mis.eaut.edu.vn/ho-tro
+    col_form, col_guide = st.columns([5.2, 6.8], gap="large")
+
+    with col_form:
+        st.markdown("""
+        <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">Phiếu Tiếp Nhận & Hỗ Trợ Sinh Viên</div>
+            <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Vui lòng điền thông tin để được bộ phận chức năng xử lý theo đúng quy trình</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        service_topic_map = {
+            'Học tập, học vụ và cảnh báo': ('Lich_hoc_lich_thi', 'PROC_DT_03'),
+            'Hồ sơ và thủ tục sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_01'),
+            'Cơ sở vật chất & Giảng đường': ('Co_so_vat_chat', 'PROC_CSVC_01'),
+            'Học bổng, chế độ và chính sách': ('Hoc_phi', 'PROC_CTSV_03'),
+            'Rèn luyện, khen thưởng và kỷ luật': ('Diem_khao_thi', 'PROC_CTSV_04'),
+            'Dịch vụ phục vụ sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_02'),
+            'Ký túc xá và cư trú': ('Co_so_vat_chat', 'PROC_CSVC_01'),
+            'Hoạt động và phát triển sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_05'),
+            'Khó khăn cá nhân và hỗ trợ đặc biệt': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_01'),
+            'Phản ánh, kiến nghị và khiếu nại': ('Khac', None),
+            'Khác': ('Khac', None),
         }
-    }
 
-    # Chọn 1 trong 3 nhóm chuyên môn chính
-    st.markdown('##### Chọn nhóm chuyên môn cần hỗ trợ:')
-    domain_options = list(three_doc_domains.keys())
-    selected_domain = st.radio(
-        'Chuyên môn tiếp nhận:',
-        options=domain_options,
-        horizontal=True,
-        key='intake_topic_radio',
-        label_visibility='collapsed'
-    )
-    current_domain_info = three_doc_domains[selected_domain]
-    st.caption(f"Tài liệu căn cứ: **{current_domain_info['source_doc']}** &nbsp;|&nbsp; Đơn vị chủ trì: **{current_domain_info['department']}**")
+        service_options = ['-- Chọn dịch vụ hỗ trợ (tùy chọn) --'] + list(service_topic_map.keys())
 
-    # Form tiếp nhận chính
-    with st.form('intake_form', clear_on_submit=False):
-        st.markdown(f"##### Chọn vấn đề cụ thể thuộc [{selected_domain}]:")
-        sub_issues_dict = current_domain_info['issues']
-        sub_issues = list(sub_issues_dict.keys())
-        chk_cols = st.columns(2)
-        checked_issues = []
-        for idx, issue in enumerate(sub_issues):
-            with chk_cols[idx % 2]:
-                if st.checkbox(issue, key=f"chk_{selected_domain}_{idx}"):
-                    checked_issues.append(issue)
+        with st.form('intake_form', clear_on_submit=False):
+            in_fullname = st.text_input('Họ và tên *', placeholder='Nhập đầy đủ họ và tên...', key='in_fullname')
+            in_service = st.selectbox('Dịch vụ *', options=service_options, key='in_service')
+            in_mssv = st.text_input('Mã sinh viên *', placeholder='Ví dụ: 2022601234', key='in_mssv')
+            in_phone = st.text_input('Số điện thoại *', placeholder='Ví dụ: 0987654321', key='in_phone')
+            in_email = st.text_input('Email *', placeholder='Ví dụ: sinhvien@eaut.edu.vn', key='in_email')
+            in_issue = st.text_input('Vấn đề đang gặp *', placeholder='Tóm tắt vấn đề (Vd: Mượn phòng học, Phúc khảo điểm...)', key='in_issue')
+            
+            user_text = st.text_area(
+                'Mô tả thêm nếu có',
+                key='request_text',
+                height=95,
+                max_chars=8000,
+                placeholder='Mô tả chi tiết sự việc, địa điểm (phòng học, tòa nhà), thời gian xảy ra hoặc đề xuất cụ thể của bạn...'
+            )
 
-        st.markdown("##### Nội dung phản ánh chi tiết (hoặc tự điền ý kiến cá nhân):")
-        user_text = st.text_area(
-            'Nội dung yêu cầu',
-            key='request_text',
-            height=110,
-            max_chars=8000,
-            placeholder='Mô tả chi tiết sự việc, địa điểm (phòng học, tòa nhà), thời gian xảy ra hoặc đề xuất cụ thể của bạn...',
-            label_visibility='collapsed'
-        )
+            in_file = st.file_uploader('Tệp đính kèm', type=['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'], key='in_file')
 
-        st.markdown("##### Thông tin sinh viên nhận phản hồi:")
-        c_mssv, c_phone, c_mail = st.columns(3)
-        with c_mssv:
-            in_mssv = st.text_input('Mã sinh viên (MSSV):', key='in_mssv', placeholder='Ví dụ: 2022601234')
-        with c_phone:
-            in_phone = st.text_input('Số điện thoại:', key='in_phone', placeholder='Ví dụ: 0987654321')
-        with c_mail:
-            in_email = st.text_input('Gmail / Email sinh viên:', key='in_email', placeholder='Ví dụ: sinhvien@eaut.edu.vn')
+            c_btn1, c_btn2 = st.columns([1, 1])
+            with c_btn2:
+                submitted = st.form_submit_button('Gửi phiếu hỗ trợ', type='primary', width='stretch')
 
-        st.caption('Thông tin sinh viên (MSSV, SĐT, Email) và nội dung phản ánh được tiếp nhận đầy đủ để phục vụ giải quyết học vụ.')
-        submitted = st.form_submit_button('Gửi', type='primary', width='stretch')
+    with col_guide:
+        st.markdown("""
+        <div style="font-size: 1.15rem; font-weight: 700; color: #1a508b; text-align: center; margin-bottom: 12px;">
+            Hướng dẫn chọn dịch vụ hỗ trợ sinh viên
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #cbd5e1;">
+            <thead>
+                <tr style="background: #1a508b; color: #ffffff; text-align: left;">
+                    <th style="padding: 10px 14px; width: 36%; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">DỊCH VỤ</th>
+                    <th style="padding: 10px 14px; width: 64%; font-weight: 700;">PHẠM VI NỘI DUNG</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Học tập, học vụ và cảnh báo</td>
+                    <td style="padding: 8px 12px; color: #334155;">Lịch học, lịch thi, học phần, kết quả học tập, cảnh báo học vụ; tư vấn và kết nối đầu mối giải quyết</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Hồ sơ và thủ tục sinh viên</td>
+                    <td style="padding: 8px 12px; color: #334155;">Hồ sơ sinh viên, xác nhận, điều chỉnh thông tin, giấy tờ và thủ tục hành chính</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Học bổng, chế độ và chính sách</td>
+                    <td style="padding: 8px 12px; color: #334155;">Điều kiện, hồ sơ, tiến độ xét duyệt, kết quả thực hiện chế độ, chính sách</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Rèn luyện, khen thưởng và kỷ luật</td>
+                    <td style="padding: 8px 12px; color: #334155;">Tiêu chí, hồ sơ, quy trình, kết quả đánh giá rèn luyện; khen thưởng, kỷ luật</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Dịch vụ phục vụ sinh viên</td>
+                    <td style="padding: 8px 12px; color: #334155;">Thẻ sinh viên, đồng phục, bảo hiểm y tế, tiện ích và dịch vụ phục vụ sinh viên</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Ký túc xá và cư trú</td>
+                    <td style="padding: 8px 12px; color: #334155;">Đăng ký nội trú, điều kiện sinh hoạt, phản ánh ký túc xá, hướng dẫn cư trú</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Hoạt động và phát triển sinh viên</td>
+                    <td style="padding: 8px 12px; color: #334155;">Hoạt động ngoại khóa, câu lạc bộ, phong trào, chương trình phát triển sinh viên</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Khó khăn cá nhân và hỗ trợ đặc biệt</td>
+                    <td style="padding: 8px 12px; color: #334155;">Trường hợp cần hỗ trợ về sức khỏe, tâm lý, hoàn cảnh hoặc nguy cơ mất an toàn</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Phản ánh, kiến nghị và khiếu nại</td>
+                    <td style="padding: 8px 12px; color: #334155;">Tiếp nhận, xác minh, chuyển xử lý, theo dõi và thông tin kết quả phản ánh</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Khác</td>
+                    <td style="padding: 8px 12px; color: #334155;">Nội dung không thuộc các loại dịch vụ trên</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 22px; text-align: center;">
+            <div style="font-size: 0.95rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
+                ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á
+            </div>
+            <div style="font-size: 0.8rem; color: #2563eb; margin-top: 6px;">
+                📍 <strong>Cơ sở Hà Nội:</strong> Trường Đại học Công nghệ Đông Á, Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
+            </div>
+            <div style="font-size: 0.8rem; color: #2563eb; margin-top: 3px;">
+                📍 <strong>Cơ sở Bắc Ninh:</strong> Trường Đại học Công nghệ Đông Á, Làng Đại học, Phường Võ Cường, Bắc Ninh.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     if submitted:
-        # Bất cứ phản hồi nào cũng được gửi đi: tổng hợp tickbox + ý kiến chi tiết + thông tin liên hệ
         parts = []
         topic_hint = None
         proc_hint = None
 
-        if checked_issues:
-            parts.append(f"Vấn đề ghi nhận: {', '.join(checked_issues)}.")
-            first_issue = checked_issues[0]
-            issue_meta = current_domain_info['issues'].get(first_issue)
-            if issue_meta:
-                topic_hint = issue_meta[0]
-                proc_hint = issue_meta[1]
-        else:
-            topic_hint = None
-            proc_hint = None
+        if in_service in service_topic_map:
+            topic_hint, proc_hint = service_topic_map[in_service]
+
+        if in_issue.strip():
+            parts.append(f"Vấn đề ghi nhận: {in_issue.strip()}.")
 
         if user_text.strip():
             parts.append(user_text.strip())
 
         contacts = []
+        if in_fullname.strip():
+            contacts.append(f"Họ tên {in_fullname.strip()}")
         if in_mssv.strip():
             contacts.append(f"Mã sinh viên {in_mssv.strip()}")
         if in_phone.strip():
@@ -581,6 +605,11 @@ with tabs[1]:
 
         if contacts:
             parts.append(f"Thông tin liên hệ: {', '.join(contacts)}.")
+
+        if in_file is not None:
+            extracted_f = extract_text_from_upload(in_file)
+            if extracted_f and not extracted_f.startswith("Lỗi"):
+                parts.append(f"Tệp đính kèm ({in_file.name}): {extracted_f}")
 
         combined_input = "\n".join(parts) if parts else user_text
 
@@ -593,7 +622,7 @@ with tabs[1]:
                 st.info('Yêu cầu này đã được lưu trong phiên hiện tại; không tạo thêm bản ghi trùng lặp.')
             else:
                 try:
-                    app_log("INTAKE", "Người dùng nhấn nút [Gửi phản ánh]", f"Chuyên môn: [{selected_domain}], Vấn đề: {len(checked_issues)} mục, MSSV: {in_mssv.strip() or 'N/A'}")
+                    app_log("INTAKE", "Người dùng nhấn nút [Gửi phản ánh]", f"Chuyên môn: [{in_service}], Vấn đề: {in_issue.strip() or 'N/A'}, MSSV: {in_mssv.strip() or 'N/A'}")
                     result = service.process(combined_input, topic_hint=topic_hint, proc_hint=proc_hint, mask_pii=False)
                     rid = save_request(result, source_type='portal_student', mask_pii=False)
                     st.session_state.update(

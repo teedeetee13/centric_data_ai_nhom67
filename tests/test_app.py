@@ -22,7 +22,7 @@ class AppFlowTests(unittest.TestCase):
         self.temp.cleanup()
 
     def button(self,label):
-        return next(b for b in self.app.button if b.label==label)
+        return next(b for b in self.app.button if b.label==label or (label=='Gửi' and 'Gửi' in b.label))
 
     def submit(self,text):
         self.app.text_area(key='request_text').input(text)
