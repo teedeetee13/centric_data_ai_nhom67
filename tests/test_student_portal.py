@@ -38,20 +38,5 @@ class StudentPortalTests(unittest.TestCase):
         self.assertEqual(reqs[0]['source_type'], 'portal_student')
         self.assertIn('2023608888', reqs[0]['clean_text'])
 
-    def test_student_lookup_ticket(self):
-        # Nạp trước 1 yêu cầu vào CSDL
-        self.app.text_input(key='sp_fullname').input('Lê Văn Nam')
-        self.app.text_input(key='sp_mssv').input('2022601111')
-        self.app.text_area(key='sp_text').input('Phòng học 302 bị chập điện điều hòa.')
-        submit_btn = next(b for b in self.app.button if 'Gửi' in b.label)
-        submit_btn.click().run()
-        self.assertFalse(self.app.exception)
-
-        # Chuyển sang tra cứu
-        self.app.text_input(key='sp_lookup_input').input('2022601111')
-        lookup_btn = next(b for b in self.app.button if 'Tra cứu' in b.label)
-        lookup_btn.click().run()
-        self.assertFalse(self.app.exception)
-
 if __name__ == '__main__':
     unittest.main()
