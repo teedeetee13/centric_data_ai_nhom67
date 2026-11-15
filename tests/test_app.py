@@ -21,10 +21,21 @@ class AppFlowTests(unittest.TestCase):
         self.env.stop()
         self.temp.cleanup()
 
+    def open_admin(self):
+        if not self.app.session_state.get('show_admin_view', False):
+            self.app.button(key='btn_toggle_admin').click().run()
+            self.assertFalse(self.app.exception)
+
+    def open_workbench(self):
+        if self.app.session_state.get('show_admin_view', False):
+            self.app.button(key='btn_toggle_workbench').click().run()
+            self.assertFalse(self.app.exception)
+
     def button(self,label):
         return next(b for b in self.app.button if b.label==label or (label=='Gửi' and 'Gửi' in b.label))
 
     def submit(self,text):
+        self.open_admin()
         self.app.text_area(key='request_text').input(text)
         self.button('Gửi').click().run()
         self.assertFalse(self.app.exception)
@@ -39,6 +50,9 @@ class AppFlowTests(unittest.TestCase):
         self.button('Lưu bản nháp').click().run()
         self.assertFalse(self.app.exception)
         self.assertIn('Cán bộ đã kiểm tra',get_request(rid)['draft_response'])
+        
+        # Quay về Bàn duyệt hồ sơ để cán bộ kiểm tra và duyệt
+        self.open_workbench()
         self.assertEqual(self.app.text_area(key='response_'+rid).value,get_request(rid)['draft_response'])
         self.app.text_area(key='response_'+rid).input('Nội dung cán bộ đã duyệt.')
         self.button('Duyệt và lưu').click().run()
@@ -49,12 +63,15 @@ class AppFlowTests(unittest.TestCase):
         self.assertEqual(len(review_history()),1)
 
     def test_demo_import_is_repeatable_and_preserves_approval(self):
+        self.open_admin()
         self.button('Nạp 3 yêu cầu demo').click().run()
         self.assertFalse(self.app.exception)
         self.assertEqual(len(list_requests()),3)
+        self.open_workbench()
         rid=self.app.selectbox(key='review_id').value
         self.button('Duyệt và lưu').click().run()
         self.assertFalse(self.app.exception)
+        self.open_admin()
         self.button('Nạp 3 yêu cầu demo').click().run()
         self.assertFalse(self.app.exception)
         self.assertEqual(len(list_requests()),3)
@@ -71,6 +88,7 @@ class AppFlowTests(unittest.TestCase):
         self.assertTrue(any(b.label=='Tải dữ liệu đã che' for b in self.app.get('download_button')))
 
     def test_high_confidence_auto_approval_and_sample_email(self):
+        self.open_admin()
         btn_label = 'Gửi email giải quyết mẫu tới kennysk114239@gmail.com'
         self.button(btn_label).click().run()
         self.assertFalse(self.app.exception)

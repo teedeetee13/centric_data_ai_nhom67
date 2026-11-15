@@ -194,6 +194,36 @@ st.markdown("""
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
     /* App Header & Navigation Bar chuẩn SaaS Đích Thực */
+    /* Nút icon bánh răng mở Quản trị ở góc trên bên phải */
+    .stButton > button[key="btn_toggle_admin"],
+    .stButton > button[key="btn_toggle_workbench"],
+    button[key="btn_toggle_admin"],
+    button[key="btn_toggle_workbench"] {
+        font-size: 1.4rem !important;
+        height: 52px !important;
+        min-height: 52px !important;
+        border-radius: 12px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        background: #ffffff !important;
+        color: #1e3a8a !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+        transition: all 0.2s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    button[key="btn_toggle_admin"]:hover {
+        background: #eff6ff !important;
+        border-color: #2563eb !important;
+        color: #2563eb !important;
+        transform: rotate(45deg);
+    }
+    button[key="btn_toggle_workbench"]:hover {
+        background: #eff6ff !important;
+        border-color: #2563eb !important;
+        color: #2563eb !important;
+    }
+
     .app-navbar {
         display: flex;
         justify-content: space-between;
@@ -418,8 +448,13 @@ except Exception as exc:
     st.code(str(exc))
     st.stop()
 
-# Header ứng dụng nghiệp vụ chuẩn SaaS Đích Thực
-st.markdown("""
+is_admin_mode = st.session_state.get("show_admin_view", False)
+
+# Header ứng dụng nghiệp vụ chuẩn SaaS Đích Thực kèm Icon Bánh Răng ở góc trên bên phải
+col_nav, col_gear = st.columns([0.94, 0.06], vertical_alignment="center")
+
+with col_nav:
+    st.markdown("""
 <div class="app-navbar">
     <div class="brand-container">
         <span class="brand-pill">EAUT</span>
@@ -436,6 +471,16 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+with col_gear:
+    if not is_admin_mode:
+        if st.button("⚙️", key="btn_toggle_admin", help="Mở Trung tâm Quản trị, Quy chế & Cài đặt hệ thống", width="stretch"):
+            st.session_state["show_admin_view"] = True
+            st.rerun()
+    else:
+        if st.button("📥", key="btn_toggle_workbench", help="Quay lại Bàn duyệt hồ sơ cán bộ", width="stretch"):
+            st.session_state["show_admin_view"] = False
+            st.rerun()
+
 if st.session_state.get('notice'):
     st.success(st.session_state.pop('notice'))
 
@@ -445,588 +490,606 @@ samples = {
     'Thiếu thông tin': 'Giúp em với',
 }
 
-tabs = st.tabs([
-    '📥 Bàn duyệt hồ sơ',
-    '📝 Tiếp nhận phản ánh',
-    '📚 Quy chế & Tri thức',
-    '📊 Thống kê & Báo cáo',
-    '⚙️ Cài đặt & Hệ thống'
-])
-
-with tabs[0]:
+if not is_admin_mode:
+    # -------------------------------------------------------------
+    # MÀN HÌNH CHÍNH: CHỈ GIỮ LẠI BÀN DUYỆT HỒ SƠ
+    # -------------------------------------------------------------
     render_workbench()
-
-with tabs[1]:
-    st.markdown("""
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-        <div style="font-size: 1.15rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">📝 Cổng Tiếp Nhận & Hỗ Trợ Học Vụ Sinh Viên EAUT</div>
-        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Điền thông tin và phản ánh của bạn để được hỗ trợ giải quyết nhanh chóng theo đúng quy trình quy chế Nhà trường</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Chọn nhanh tình huống thực tế theo quy trình EAUT
-    with st.expander('💡 Điền nhanh tình huống mẫu (Học phí, Phúc khảo, CSVC, Giấy tờ...)', expanded=False):
-        scenarios = {
-            'Hỏng điều hòa / Vệ sinh CSVC': 'Điều hòa phòng học 402 nhà B bị hỏng chảy nước lênh láng không mát, phòng học có rác chưa được dọn dẹp, đề nghị tổ CSVC kiểm tra.',
-            'Mượn phòng học / Hội trường': 'Câu lạc bộ sinh viên muốn làm thủ tục nộp giấy đề xuất BMPH-01 mượn Hội trường lớn để tổ chức tọa đàm khoa học ngoài giờ.',
-            'Cấp giấy xác nhận SV hoãn NVQS': 'Em cần xin Giấy xác nhận sinh viên tại Bộ phận Một cửa để nộp cho ban chỉ huy quân sự phường xin tạm hoãn nghĩa vụ quân sự năm 2026.',
-            'Làm lại thẻ sinh viên bị mất': 'Em bị rơi mất thẻ sinh viên trên xe buýt, em muốn làm thủ tục cấp lại thẻ sinh viên và xin giấy xác nhận tạm thời để đi thi.',
-            'Đơn đề nghị phúc khảo bài thi': 'Em làm đơn đề nghị phúc khảo bài thi kết thúc học phần môn Toán cao cấp 2, điểm hiện tại báo 4.0 em thấy không chính xác.',
-            'Thủ tục xin chuyển ngành học': 'Em muốn làm thủ tục chuyển ngành đào tạo từ Quản trị kinh doanh sang CNTT theo mẫu BM_CN01, mã sinh viên 2023605678.',
-            'Tra cứu sách Thư viện & Vị trí kệ': 'Cho em hỏi cuốn Giáo trình Kỹ thuật phần mềm còn sách ở thư viện trường không ạ và ở kệ nào?',
-            'Kiểm tra sách mượn & Hạn trả (MSSV)': 'Em mã sinh viên 2021600123 muốn kiểm tra xem đang mượn sách gì và có bị phạt quá hạn không ạ?'
-        }
-        sc_cols = st.columns(4)
-        for idx, (label, text) in enumerate(scenarios.items()):
-            with sc_cols[idx % 4]:
-                if st.button(f"{label}", key=f"quick_sc_{idx}", width="stretch"):
-                    app_log("INTAKE", "Người dùng chọn tình huống mẫu chuẩn hóa", f"Mẫu: [{label}]")
-                    st.session_state["request_text"] = text
-                    st.rerun()
-
-    # Bố cục 2 cột chuẩn Cổng Hỗ trợ Sinh viên mis.eaut.edu.vn/ho-tro
-    col_form, col_guide = st.columns([5.5, 4.5], gap="large")
-
-    with col_form:
+else:
+    # -------------------------------------------------------------
+    # TRANG QUẢN TRỊ & TIỆN ÍCH: ĐẦY ĐỦ CÁC PHẦN CÒN LẠI
+    # -------------------------------------------------------------
+    c_back, c_title = st.columns([0.24, 0.76], vertical_alignment="center")
+    with c_back:
+        if st.button("⬅️ Quay lại Bàn duyệt hồ sơ", key="btn_back_main_top", type="primary", width="stretch"):
+            st.session_state["show_admin_view"] = False
+            st.rerun()
+    with c_title:
         st.markdown("""
-        <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">Phiếu Tiếp Nhận & Hỗ Trợ Sinh Viên</div>
-            <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Vui lòng điền thông tin để được bộ phận chức năng xử lý theo đúng quy trình</div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 18px; margin-bottom: 8px;">
+            <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b;">⚙️ Trung Tâm Quản Trị, Quy Chế & Cài Đặt Hệ Thống</div>
+            <div style="font-size: 0.8rem; color: #64748b;">Quản lý kho tri thức quy chế, xem báo cáo phân tích học vụ, kiểm thử tiếp nhận và cấu hình máy chủ SMTP / CSDL</div>
         </div>
         """, unsafe_allow_html=True)
 
-        service_topic_map = {
-            'Học tập, học vụ và cảnh báo': ('Lich_hoc_lich_thi', 'PROC_DT_03'),
-            'Hồ sơ và thủ tục sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_01'),
-            'Cơ sở vật chất & Giảng đường': ('Co_so_vat_chat', 'PROC_CSVC_01'),
-            'Học bổng, chế độ và chính sách': ('Hoc_phi', 'PROC_CTSV_03'),
-            'Rèn luyện, khen thưởng và kỷ luật': ('Diem_khao_thi', 'PROC_CTSV_04'),
-            'Dịch vụ phục vụ sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_02'),
-            'Ký túc xá và cư trú': ('Co_so_vat_chat', 'PROC_CSVC_01'),
-            'Hoạt động và phát triển sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_05'),
-            'Khó khăn cá nhân và hỗ trợ đặc biệt': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_01'),
-            'Phản ánh, kiến nghị và khiếu nại': ('Khac', None),
-            'Khác': ('Khac', None),
-        }
+    admin_tabs = st.tabs([
+        '📝 Tiếp nhận phản ánh',
+        '📚 Quy chế & Tri thức',
+        '📊 Thống kê & Báo cáo',
+        '⚙️ Cài đặt & Hệ thống'
+    ])
 
-        service_options = ['-- Chọn dịch vụ hỗ trợ (tùy chọn) --'] + list(service_topic_map.keys())
-
-        with st.form('intake_form', clear_on_submit=False):
-            f_c1, f_c2 = st.columns(2)
-            with f_c1:
-                in_fullname = st.text_input('Họ và tên *', placeholder='Nhập họ và tên...', key='in_fullname')
-            with f_c2:
-                in_mssv = st.text_input('Mã sinh viên *', placeholder='Ví dụ: 2022601234', key='in_mssv')
-
-            f_c3, f_c4 = st.columns(2)
-            with f_c3:
-                in_phone = st.text_input('Số điện thoại *', placeholder='Ví dụ: 0987654321', key='in_phone')
-            with f_c4:
-                in_email = st.text_input('Email *', placeholder='Ví dụ: sinhvien@eaut.edu.vn', key='in_email')
-
-            in_service = st.selectbox('Dịch vụ *', options=service_options, key='in_service')
-            in_issue = st.text_input('Vấn đề đang gặp *', placeholder='Tóm tắt vấn đề (Vd: Mượn phòng học, Phúc khảo điểm...)', key='in_issue')
-            
-            user_text = st.text_area(
-                'Mô tả thêm nếu có',
-                key='request_text',
-                height=95,
-                max_chars=8000,
-                placeholder='Mô tả chi tiết sự việc, địa điểm (phòng học, tòa nhà), thời gian xảy ra hoặc đề xuất cụ thể của bạn...'
-            )
-
-            in_file = st.file_uploader('Tệp đính kèm', type=['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'], key='in_file')
-
-            submitted = st.form_submit_button('Gửi phiếu hỗ trợ', type='primary', width='stretch')
-
-    with col_guide:
+    with admin_tabs[0]:
         st.markdown("""
-        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 12px;">
-            <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; margin-bottom: 10px;">
-                ℹ️ Đầu Mối & Cam Kết Hỗ Trợ Sinh Viên EAUT
-            </div>
-            <div style="font-size: 0.85rem; color: #334155; line-height: 1.6;">
-                <p style="margin-bottom: 6px;">🏛️ <strong>Bộ phận Một cửa Sinh viên:</strong> Tầng 1 Tòa nhà Hiệu bộ (Cơ sở Hà Nội & Cơ sở Bắc Ninh)</p>
-                <p style="margin-bottom: 6px;">📞 <strong>Tổng đài hỗ trợ:</strong> <code>024.3768.9999</code> &nbsp;|&nbsp; ✉️ <strong>Email:</strong> <code>hotro@eaut.edu.vn</code></p>
-                <p style="margin-bottom: 6px;">⏱️ <strong>Giờ làm việc:</strong> Thứ 2 - Thứ 6 (08:00 - 17:00), Thứ 7 (08:00 - 12:00)</p>
-                <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 6px; margin: 10px 0;">
-                    <strong style="color: #1e40af;">⚡ Cam kết thời hạn xử lý (SLA):</strong>
-                    <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 0.82rem; color: #1e3a8a;">
-                        <li>Tiếp nhận & đối soát quy chế: <strong>Tức thì qua AI</strong></li>
-                        <li>Giải quyết thủ tục hành chính, điểm thi: <strong>24 - 48 giờ làm việc</strong></li>
-                        <li>Hồ sơ khẩn cấp (sự cố CSVC, y tế): <strong>Ưu tiên xử lý trong 04 - 12 giờ</strong></li>
-                    </ul>
-                </div>
-            </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="font-size: 1.15rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">📝 Cổng Tiếp Nhận & Hỗ Trợ Học Vụ Sinh Viên EAUT</div>
+            <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Điền thông tin và phản ánh của bạn để được hỗ trợ giải quyết nhanh chóng theo đúng quy trình quy chế Nhà trường</div>
         </div>
         """, unsafe_allow_html=True)
 
-        with st.expander("📋 Xem phạm vi 10 nhóm dịch vụ sinh viên", expanded=False):
+        # Chọn nhanh tình huống thực tế theo quy trình EAUT
+        with st.expander('💡 Điền nhanh tình huống mẫu (Học phí, Phúc khảo, CSVC, Giấy tờ...)', expanded=False):
+            scenarios = {
+                'Hỏng điều hòa / Vệ sinh CSVC': 'Điều hòa phòng học 402 nhà B bị hỏng chảy nước lênh láng không mát, phòng học có rác chưa được dọn dẹp, đề nghị tổ CSVC kiểm tra.',
+                'Mượn phòng học / Hội trường': 'Câu lạc bộ sinh viên muốn làm thủ tục nộp giấy đề xuất BMPH-01 mượn Hội trường lớn để tổ chức tọa đàm khoa học ngoài giờ.',
+                'Cấp giấy xác nhận SV hoãn NVQS': 'Em cần xin Giấy xác nhận sinh viên tại Bộ phận Một cửa để nộp cho ban chỉ huy quân sự phường xin tạm hoãn nghĩa vụ quân sự năm 2026.',
+                'Làm lại thẻ sinh viên bị mất': 'Em bị rơi mất thẻ sinh viên trên xe buýt, em muốn làm thủ tục cấp lại thẻ sinh viên và xin giấy xác nhận tạm thời để đi thi.',
+                'Đơn đề nghị phúc khảo bài thi': 'Em làm đơn đề nghị phúc khảo bài thi kết thúc học phần môn Toán cao cấp 2, điểm hiện tại báo 4.0 em thấy không chính xác.',
+                'Thủ tục xin chuyển ngành học': 'Em muốn làm thủ tục chuyển ngành đào tạo từ Quản trị kinh doanh sang CNTT theo mẫu BM_CN01, mã sinh viên 2023605678.',
+                'Tra cứu sách Thư viện & Vị trí kệ': 'Cho em hỏi cuốn Giáo trình Kỹ thuật phần mềm còn sách ở thư viện trường không ạ và ở kệ nào?',
+                'Kiểm tra sách mượn & Hạn trả (MSSV)': 'Em mã sinh viên 2021600123 muốn kiểm tra xem đang mượn sách gì và có bị phạt quá hạn không ạ?'
+            }
+            sc_cols = st.columns(4)
+            for idx, (label, text) in enumerate(scenarios.items()):
+                with sc_cols[idx % 4]:
+                    if st.button(f"{label}", key=f"quick_sc_{idx}", width="stretch"):
+                        app_log("INTAKE", "Người dùng chọn tình huống mẫu chuẩn hóa", f"Mẫu: [{label}]")
+                        st.session_state["request_text"] = text
+                        st.rerun()
+
+        # Bố cục 2 cột chuẩn Cổng Hỗ trợ Sinh viên mis.eaut.edu.vn/ho-tro
+        col_form, col_guide = st.columns([5.5, 4.5], gap="large")
+
+        with col_form:
             st.markdown("""
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
-                <thead>
-                    <tr style="background: #1a508b; color: #ffffff; text-align: left;">
-                        <th style="padding: 8px 10px; width: 40%;">DỊCH VỤ</th>
-                        <th style="padding: 8px 10px; width: 60%;">PHẠM VI NỘI DUNG</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Học tập, học vụ và cảnh báo</td><td style="padding: 6px 10px;">Lịch học, lịch thi, học phần, kết quả học tập</td></tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Hồ sơ và thủ tục sinh viên</td><td style="padding: 6px 10px;">Xác nhận sinh viên, giấy tờ hành chính</td></tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Cơ sở vật chất & Giảng đường</td><td style="padding: 6px 10px;">Báo hỏng thiết bị, mượn phòng học, hội trường</td></tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Học bổng & Chế độ chính sách</td><td style="padding: 6px 10px;">Học phí, miễn giảm, học bổng khuyến khích</td></tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Rèn luyện & Khen thưởng</td><td style="padding: 6px 10px;">Điểm rèn luyện, khen thưởng, kỷ luật</td></tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Dịch vụ phục vụ sinh viên</td><td style="padding: 6px 10px;">Thẻ sinh viên, bảo hiểm y tế, đồng phục</td></tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Ký túc xá & Cư trú</td><td style="padding: 6px 10px;">Đăng ký nội trú, sinh hoạt KTX</td></tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Khó khăn & Hỗ trợ đặc biệt</td><td style="padding: 6px 10px;">Tư vấn sức khỏe, tâm lý, hoàn cảnh</td></tr>
-                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Phản ánh, kiến nghị & khiếu nại</td><td style="padding: 6px 10px;">Tiếp nhận và giải quyết khiếu nại học vụ</td></tr>
-                </tbody>
-            </table>
+            <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">Phiếu Tiếp Nhận & Hỗ Trợ Sinh Viên</div>
+                <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Vui lòng điền thông tin để được bộ phận chức năng xử lý theo đúng quy trình</div>
+            </div>
             """, unsafe_allow_html=True)
 
+            service_topic_map = {
+                'Học tập, học vụ và cảnh báo': ('Lich_hoc_lich_thi', 'PROC_DT_03'),
+                'Hồ sơ và thủ tục sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_01'),
+                'Cơ sở vật chất & Giảng đường': ('Co_so_vat_chat', 'PROC_CSVC_01'),
+                'Học bổng, chế độ và chính sách': ('Hoc_phi', 'PROC_CTSV_03'),
+                'Rèn luyện, khen thưởng và kỷ luật': ('Diem_khao_thi', 'PROC_CTSV_04'),
+                'Dịch vụ phục vụ sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_02'),
+                'Ký túc xá và cư trú': ('Co_so_vat_chat', 'PROC_CSVC_01'),
+                'Hoạt động và phát triển sinh viên': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_05'),
+                'Khó khăn cá nhân và hỗ trợ đặc biệt': ('Thu_tuc_hanh_chinh', 'PROC_CTSV_01'),
+                'Phản ánh, kiến nghị và khiếu nại': ('Khac', None),
+                'Khác': ('Khac', None),
+            }
 
+            service_options = ['-- Chọn dịch vụ hỗ trợ (tùy chọn) --'] + list(service_topic_map.keys())
 
-    if submitted:
-        parts = []
-        topic_hint = None
-        proc_hint = None
+            with st.form('intake_form', clear_on_submit=False):
+                f_c1, f_c2 = st.columns(2)
+                with f_c1:
+                    in_fullname = st.text_input('Họ và tên *', placeholder='Nhập họ và tên...', key='in_fullname')
+                with f_c2:
+                    in_mssv = st.text_input('Mã sinh viên *', placeholder='Ví dụ: 2022601234', key='in_mssv')
 
-        if in_service in service_topic_map:
-            topic_hint, proc_hint = service_topic_map[in_service]
+                f_c3, f_c4 = st.columns(2)
+                with f_c3:
+                    in_phone = st.text_input('Số điện thoại *', placeholder='Ví dụ: 0987654321', key='in_phone')
+                with f_c4:
+                    in_email = st.text_input('Email *', placeholder='Ví dụ: sinhvien@eaut.edu.vn', key='in_email')
 
-        if in_issue.strip():
-            parts.append(f"Vấn đề ghi nhận: {in_issue.strip()}.")
+                in_service = st.selectbox('Dịch vụ *', options=service_options, key='in_service')
+                in_issue = st.text_input('Vấn đề đang gặp *', placeholder='Tóm tắt vấn đề (Vd: Mượn phòng học, Phúc khảo điểm...)', key='in_issue')
 
-        if user_text.strip():
-            parts.append(user_text.strip())
+                user_text = st.text_area(
+                    'Mô tả thêm nếu có',
+                    key='request_text',
+                    height=95,
+                    max_chars=8000,
+                    placeholder='Mô tả chi tiết sự việc, địa điểm (phòng học, tòa nhà), thời gian xảy ra hoặc đề xuất cụ thể của bạn...'
+                )
 
-        contacts = []
-        if in_fullname.strip():
-            contacts.append(f"Họ tên {in_fullname.strip()}")
-        if in_mssv.strip():
-            contacts.append(f"Mã sinh viên {in_mssv.strip()}")
-        if in_phone.strip():
-            contacts.append(f"Số điện thoại {in_phone.strip()}")
-        if in_email.strip():
-            contacts.append(f"Email {in_email.strip()}")
+                in_file = st.file_uploader('Tệp đính kèm', type=['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'], key='in_file')
 
-        if contacts:
-            parts.append(f"Thông tin liên hệ: {', '.join(contacts)}.")
+                submitted = st.form_submit_button('Gửi phiếu hỗ trợ', type='primary', width='stretch')
 
-        if in_file is not None:
-            extracted_f = extract_text_from_upload(in_file)
-            if extracted_f and not extracted_f.startswith("Lỗi"):
-                parts.append(f"Tệp đính kèm ({in_file.name}): {extracted_f}")
-
-        combined_input = "\n".join(parts) if parts else user_text
-
-        if not combined_input.strip():
-            st.warning('Bạn cần chọn vấn đề hoặc nhập nội dung phản ánh trước khi gửi.')
-        else:
-            fingerprint = hashlib.sha256(combined_input.strip().encode()).hexdigest()
-            old_id = st.session_state.get('last_record_id')
-            if fingerprint == st.session_state.get('submission_fingerprint') and old_id and get_request(old_id):
-                st.info('Yêu cầu này đã được lưu trong phiên hiện tại; không tạo thêm bản ghi trùng lặp.')
-            else:
-                try:
-                    app_log("INTAKE", "Người dùng nhấn nút [Gửi phản ánh]", f"Chuyên môn: [{in_service}], Vấn đề: {in_issue.strip() or 'N/A'}, MSSV: {in_mssv.strip() or 'N/A'}")
-                    result = service.process(combined_input, topic_hint=topic_hint, proc_hint=proc_hint, mask_pii=False)
-                    rid = save_request(result, source_type='portal_student', mask_pii=False)
-                    st.session_state.update(
-                        analysis_result=result,
-                        last_record_id=rid,
-                        submission_fingerprint=fingerprint,
-                        focus_review_id=rid,
-                        review_id=rid
-                    )
-
-                    target_email = in_email.strip()
-                    if not target_email:
-                        match_mail = re.search(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', combined_input)
-                        target_email = match_mail.group(1) if match_mail else DEFAULT_TEST_EMAIL
-
-                    # Kiểm tra điều kiện tự động phê duyệt và gửi thẳng email:
-                    thresh = float(st.session_state.get('auto_conf_thresh', AUTO_APPROVE_CONFIDENCE_THRESHOLD))
-                    is_auto_approved = (
-                        result['confidence_score'] >= thresh
-                        and bool(result.get('is_usable'))
-                        and (bool(result.get('matched_kb_id')) or bool(result.get('matched_procedure')))
-                        and result.get('priority_level') != 'Khẩn cấp'
-                    )
-
-                    if is_auto_approved:
-                        # ĐỦ ĐỘ TIN CẬY: Model gửi thẳng email giải quyết ngay cho người nhận (định dạng HTML + Plain Text)
-                        best_response = result.get('procedure_draft_response') or result.get('draft_response', '')
-                        subj, body_plain, body_html = build_rich_resolution_email(
-                            record_id=rid,
-                            topic=result['predicted_topic'],
-                            department=result['department'],
-                            resolution_text=best_response,
-                            confidence_score=result['confidence_score'],
-                            is_auto_approved=True,
-                            student_id=in_mssv.strip() or None,
-                            procedure_info=result.get('matched_procedure'),
-                            library_info=result.get('library_lookup')
-                        )
-                        mail_ok, mail_msg = send_resolution_email(
-                            recipient_email=target_email,
-                            subject=subj,
-                            body_text=body_plain,
-                            body_html=body_html,
-                            record_id=rid
-                        )
-                        st.session_state['last_sent_email'] = {
-                            "subject": subj,
-                            "body_plain": body_plain,
-                            "body_html": body_html,
-                            "recipient": target_email,
-                            "status": f"Tự động gửi thẳng văn bản giải quyết (Độ tin cậy: {result['confidence_score']:.1%} >= {thresh:.0%})"
-                        }
-                        app_log("EMAIL", "Model gửi thẳng email giải quyết tự động", f"Mã: [{rid}], Gửi tới: [{target_email}], Độ tin cậy: {result['confidence_score']:.1%} >= {thresh:.0%}, Kết quả: {'Thành công' if mail_ok else 'Thất bại'}")
-
-                        log_review_action(
-                            record_id=rid,
-                            officer_action='approve',
-                            original_topic=result['predicted_topic'],
-                            final_topic=result['predicted_topic'],
-                            final_response=best_response,
-                            notes=f"Model AI tự động gửi thẳng email khi đủ độ tin cậy ({result['confidence_score']:.1%} >= {thresh:.0%})"
-                        )
-                        app_log("DISPATCH", f"Tự động phê duyệt hồ sơ [{rid}]", f"Độ tin cậy {result['confidence_score']:.1%} >= {thresh:.0%} chuẩn hóa theo {result['department']}", level="SUCCESS")
-                        st.success(
-                            f"TIẾP NHẬN & TỰ ĐỘNG GỬI EMAIL THÀNH CÔNG: Độ tin cậy của AI đạt {result['confidence_score']:.1%} (Đạt chuẩn tự động ≥ {thresh:.0%}). "
-                            f"Model đã gửi thẳng văn bản giải quyết chi tiết tới email: **{target_email}** mà không cần qua cán bộ duyệt thủ công!"
-                        )
-                    elif result.get('priority_level') == 'Khẩn cấp':
-                        # KHẨN CẤP: Gửi email biên nhận tiếp nhận ưu tiên và chuyển ngay Bàn duyệt cán bộ
-                        conf_subj, conf_plain, conf_html = build_intake_confirmation_email(
-                            record_id=rid,
-                            topic=result['predicted_topic'],
-                            department=result['department'],
-                            clean_text=combined_input,
-                            priority_level='Khẩn cấp',
-                            student_id=in_mssv.strip() or None,
-                            estimated_sla="Xử lý ưu tiên trong 04 - 12 giờ làm việc"
-                        )
-                        send_resolution_email(
-                            recipient_email=target_email,
-                            subject=conf_subj,
-                            body_text=conf_plain,
-                            body_html=conf_html,
-                            record_id=rid
-                        )
-                        st.session_state['last_sent_email'] = {
-                            "subject": conf_subj,
-                            "body_plain": conf_plain,
-                            "body_html": conf_html,
-                            "recipient": target_email,
-                            "status": "Đã gửi email biên nhận tiếp nhận hồ sơ ưu tiên khẩn cấp"
-                        }
-                        app_log("DISPATCH", f"Chuyển ưu tiên khẩn cấp hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]", level="WARN")
-                        st.warning(
-                            f"ĐÃ TIẾP NHẬN ƯU TIÊN KHẨN CẤP: Yêu cầu {rid} thuộc diện khẩn cấp. Email xác nhận tiếp nhận hồ sơ đã được gửi tới **{target_email}**. "
-                            f"Hồ sơ đã được ưu tiên chuyển trực tiếp tới Bàn duyệt cán bộ ({result['department']}) để thụ lý và phản hồi giải pháp ngay."
-                        )
-                    else:
-                        # CHƯA ĐỦ ĐỘ TIN CẬY: Gửi email biên nhận tiếp nhận hồ sơ, chuyển sang Bàn duyệt cán bộ
-                        conf_subj, conf_plain, conf_html = build_intake_confirmation_email(
-                            record_id=rid,
-                            topic=result['predicted_topic'],
-                            department=result['department'],
-                            clean_text=combined_input,
-                            priority_level=result.get('priority_level', 'Bình thường'),
-                            student_id=in_mssv.strip() or None,
-                            estimated_sla="Trong 24 - 48 giờ làm việc theo quy định"
-                        )
-                        send_resolution_email(
-                            recipient_email=target_email,
-                            subject=conf_subj,
-                            body_text=conf_plain,
-                            body_html=conf_html,
-                            record_id=rid
-                        )
-                        st.session_state['last_sent_email'] = {
-                            "subject": conf_subj,
-                            "body_plain": conf_plain,
-                            "body_html": conf_html,
-                            "recipient": target_email,
-                            "status": f"Đã gửi email biên nhận tiếp nhận hồ sơ (Độ tin cậy: {result['confidence_score']:.1%} < {thresh:.0%})"
-                        }
-                        app_log("DISPATCH", f"Chưa đủ độ tin cậy ({result['confidence_score']:.1%} < {thresh:.0%}), chuyển hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]")
-                        st.info(
-                            f"ĐÃ TIẾP NHẬN YÊU CẦU: Độ tin cậy của mô hình đạt {result['confidence_score']:.1%} (chưa đủ ngưỡng tự động gửi thẳng ≥ {thresh:.0%}). "
-                            f"Email xác nhận tiếp nhận mã số **{rid}** đã gửi về **{target_email}**. "
-                            f"Hồ sơ đã được chuyển an toàn sang Bàn duyệt cán bộ ({result['department']}) để thẩm định trước khi gửi kết quả hoàn tất."
-                        )
-                except ValueError as exc:
-                    st.error(str(exc))
-
-    result = st.session_state.get('analysis_result')
-    rid = st.session_state.get('last_record_id')
-    row = get_request(rid) if rid else None
-
-    if result and row:
-        st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-        
-        # 1. Thẻ Biên Nhận Tiếp Nhận Học Vụ Trang Nhã (Student Receipt Card)
-        prio = row.get('priority_level', 'Bình thường')
-        is_auto = (row.get('status') == 'reviewed_approve' or 'tự động' in (str(row.get('final_response', '')) + str(row.get('reviewed_at', ''))).lower())
-        
-        status_label = "🟢 ĐÃ PHÊ DUYỆT TỰ ĐỘNG & GỬI EMAIL" if is_auto else ("🔴 TIẾP NHẬN ƯU TIÊN KHẨN CẤP" if prio == "Khẩn cấp" else "🔵 TIẾP NHẬN THÀNH CÔNG")
-        status_bg = "#f0fdf4" if is_auto else ("#fef2f2" if prio == "Khẩn cấp" else "#eff6ff")
-        status_color = "#15803d" if is_auto else ("#dc2626" if prio == "Khẩn cấp" else "#1e40af")
-        sla_est = "Trong 04 - 12 giờ làm việc" if prio == "Khẩn cấp" else "Trong 24 - 48 giờ làm việc"
-
-        receipt_html = (
-            f'<div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-top: 5px solid {status_color}; border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">'
-            f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">'
-            f'<div style="display: flex; align-items: center; gap: 8px;">'
-            f'<span style="background: {status_bg}; color: {status_color}; font-weight: 800; font-size: 0.76rem; padding: 3px 10px; border-radius: 6px; letter-spacing: 0.03em;">{status_label}</span>'
-            f'<span style="font-size: 1.1rem; font-weight: 800; color: #1a508b; font-family: monospace;">{rid}</span>'
-            f'</div>'
-            f'<span style="font-size: 0.8rem; color: #64748b;">Thời gian: {format_datetime_vn(row.get("processed_at"), fmt="%d/%m/%Y %H:%M")}</span>'
-            f'</div>'
-            f'<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-top: 10px;">'
-            f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">ĐƠN VỊ PHỤ TRÁCH</div><div style="font-weight: 700; color: #1a508b; font-size: 0.88rem; margin-top: 2px;">{row["department"]}</div></div>'
-            f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">CHUYÊN MÔN / THỦ TỤC</div><div style="font-weight: 700; color: #0f172a; font-size: 0.88rem; margin-top: 2px;">{TOPICS.get(row["predicted_topic"], row["predicted_topic"])}</div></div>'
-            f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">THỜI HẠN XỬ LÝ (SLA)</div><div style="font-weight: 700; color: #15803d; font-size: 0.88rem; margin-top: 2px;">⏱️ {sla_est}</div></div>'
-            f'</div>'
-            f'</div>'
-        )
-        st.markdown(receipt_html, unsafe_allow_html=True)
-
-        # 2. Hướng dẫn giải quyết chuẩn hóa & Văn bản phản hồi
-        resp_to_show = row.get('final_response') or result.get('procedure_draft_response') or result.get('draft_response')
-        if resp_to_show:
-            matched_p = result.get('matched_procedure')
-            p_title = f"[{matched_p['proc_id']}] {matched_p['title']}" if matched_p else "Hướng dẫn xử lý học vụ EAUT"
-            st.markdown(f"""
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                <div style="font-size: 0.95rem; font-weight: 700; color: #1a508b; margin-bottom: 6px;">
-                    📋 {p_title}
+        with col_guide:
+            st.markdown("""
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 12px;">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; margin-bottom: 10px;">
+                    ℹ️ Đầu Mối & Cam Kết Hỗ Trợ Sinh Viên EAUT
                 </div>
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; color: #1e293b; line-height: 1.6; white-space: pre-wrap;">
-{resp_to_show}
+                <div style="font-size: 0.85rem; color: #334155; line-height: 1.6;">
+                    <p style="margin-bottom: 6px;">🏛️ <strong>Bộ phận Một cửa Sinh viên:</strong> Tầng 1 Tòa nhà Hiệu bộ (Cơ sở Hà Nội & Cơ sở Bắc Ninh)</p>
+                    <p style="margin-bottom: 6px;">📞 <strong>Tổng đài hỗ trợ:</strong> <code>024.3768.9999</code> &nbsp;|&nbsp; ✉️ <strong>Email:</strong> <code>hotro@eaut.edu.vn</code></p>
+                    <p style="margin-bottom: 6px;">⏱️ <strong>Giờ làm việc:</strong> Thứ 2 - Thứ 6 (08:00 - 17:00), Thứ 7 (08:00 - 12:00)</p>
+                    <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 6px; margin: 10px 0;">
+                        <strong style="color: #1e40af;">⚡ Cam kết thời hạn xử lý (SLA):</strong>
+                        <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 0.82rem; color: #1e3a8a;">
+                            <li>Tiếp nhận & đối soát quy chế: <strong>Tức thì qua AI</strong></li>
+                            <li>Giải quyết thủ tục hành chính, điểm thi: <strong>24 - 48 giờ làm việc</strong></li>
+                            <li>Hồ sơ khẩn cấp (sự cố CSVC, y tế): <strong>Ưu tiên xử lý trong 04 - 12 giờ</strong></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-        # 3. Tra cứu thư viện (nếu có dữ liệu)
-        lib_data = result.get('library_lookup')
-        if lib_data and lib_data.get('has_live_data'):
-            b_list = lib_data.get('books_found', [])
-            br_list = lib_data.get('student_borrows', [])
-            if b_list or br_list:
-                with st.expander("📚 Dữ liệu tra cứu Thư viện EAUT thời gian thực", expanded=True):
-                    if b_list:
-                        b_cols = st.columns(min(len(b_list), 3))
-                        for b_idx, book in enumerate(b_list[:3]):
-                            with b_cols[b_idx % 3]:
-                                avail_badge = "<span style='color:#16a34a; font-weight:700;'>🟢 Còn sách</span>" if book['available_copies'] > 0 else "<span style='color:#dc2626; font-weight:700;'>🔴 Hết</span>"
-                                st.markdown(f"""
-                                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 0.82rem;">
-                                    <strong>{book['title']}</strong><br/>
-                                    <span style="color:#64748b;">Vị trí: {book['location']}</span> · {avail_badge}
-                                </div>
-                                """, unsafe_allow_html=True)
-                    if br_list:
-                        for br in br_list:
-                            st.caption(f"📘 **{br['book_title']}** · Hạn trả: **{br['due_date']}** · Trạng thái: **{br['status']}**")
+            with st.expander("📋 Xem phạm vi 10 nhóm dịch vụ sinh viên", expanded=False):
+                st.markdown("""
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: #1a508b; color: #ffffff; text-align: left;">
+                            <th style="padding: 8px 10px; width: 40%;">DỊCH VỤ</th>
+                            <th style="padding: 8px 10px; width: 60%;">PHẠM VI NỘI DUNG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Học tập, học vụ và cảnh báo</td><td style="padding: 6px 10px;">Lịch học, lịch thi, học phần, kết quả học tập</td></tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Hồ sơ và thủ tục sinh viên</td><td style="padding: 6px 10px;">Xác nhận sinh viên, giấy tờ hành chính</td></tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Cơ sở vật chất & Giảng đường</td><td style="padding: 6px 10px;">Báo hỏng thiết bị, mượn phòng học, hội trường</td></tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Học bổng & Chế độ chính sách</td><td style="padding: 6px 10px;">Học phí, miễn giảm, học bổng khuyến khích</td></tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Rèn luyện & Khen thưởng</td><td style="padding: 6px 10px;">Điểm rèn luyện, khen thưởng, kỷ luật</td></tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Dịch vụ phục vụ sinh viên</td><td style="padding: 6px 10px;">Thẻ sinh viên, bảo hiểm y tế, đồng phục</td></tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Ký túc xá & Cư trú</td><td style="padding: 6px 10px;">Đăng ký nội trú, sinh hoạt KTX</td></tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Khó khăn & Hỗ trợ đặc biệt</td><td style="padding: 6px 10px;">Tư vấn sức khỏe, tâm lý, hoàn cảnh</td></tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Phản ánh, kiến nghị & khiếu nại</td><td style="padding: 6px 10px;">Tiếp nhận và giải quyết khiếu nại học vụ</td></tr>
+                    </tbody>
+                </table>
+                """, unsafe_allow_html=True)
 
-        # 4. Xác nhận gửi email thông báo
-        last_mail = st.session_state.get('last_sent_email')
-        if last_mail:
-            st.info(f"📧 **Thông báo:** Đã gửi email xác nhận và hướng dẫn tới hộp thư **{last_mail['recipient']}**.")
-            with st.expander("Xem trước email đã gửi", expanded=False):
-                st.caption(f"Tiêu đề: {last_mail['subject']}")
-                st.text_area("Nội dung thư:", value=last_mail['body_plain'], height=160, disabled=True, key=f"preview_plain_{rid}")
 
-        # 5. Dành cho cán bộ: Bản nháp & Tra cứu quy chế tham chiếu (Tương thích kiểm thử & Xử lý nhanh)
-        with st.expander("🛠️ Dành cho cán bộ tiếp nhận: Chỉnh sửa bản nháp & Tham chiếu quy chế", expanded=(row['status'] == 'pending_review')):
-            draft_key = 'intake_draft_' + rid
-            if draft_key not in st.session_state:
-                st.session_state[draft_key] = row.get('draft_response', '')
 
-            with st.form('draft_form_' + rid):
-                draft = st.text_area('Bản nháp phản hồi có thể chỉnh sửa', key=draft_key, height=120)
-                draft_saved = st.form_submit_button('Lưu bản nháp', width='stretch')
+        if submitted:
+            parts = []
+            topic_hint = None
+            proc_hint = None
 
-            if draft_saved:
-                try:
-                    save_draft(rid, draft)
-                    st.session_state['notice'] = f'Đã cập nhật bản nháp cho {rid}.'
-                    st.session_state.pop('response_' + rid, None)
-                    st.rerun()
-                except ValueError as exc:
-                    st.error(str(exc))
+            if in_service in service_topic_map:
+                topic_hint, proc_hint = service_topic_map[in_service]
 
-            if result.get('articles'):
-                st.caption("Các điều khoản FAQ tham chiếu:")
-                for article in result['articles'][:2]:
-                    st.markdown(f"- **{article['kb_id']}**: {article['question_standard']}")
+            if in_issue.strip():
+                parts.append(f"Vấn đề ghi nhận: {in_issue.strip()}.")
 
-with tabs[2]:
-    render_knowledge_center()
+            if user_text.strip():
+                parts.append(user_text.strip())
 
-with tabs[3]:
-    render_dashboard(service=service)
+            contacts = []
+            if in_fullname.strip():
+                contacts.append(f"Họ tên {in_fullname.strip()}")
+            if in_mssv.strip():
+                contacts.append(f"Mã sinh viên {in_mssv.strip()}")
+            if in_phone.strip():
+                contacts.append(f"Số điện thoại {in_phone.strip()}")
+            if in_email.strip():
+                contacts.append(f"Email {in_email.strip()}")
 
-with tabs[4]:
-    st.markdown("""
-    <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-        <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b;">Cài Đặt Hệ Thống & Quản Trị Hạ Tầng EAUT</div>
-        <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Cấu hình máy chủ SMTP Gmail gửi thư thực tế, huấn luyện mô hình Active Learning và giám sát Server Console thời gian thực</div>
-    </div>
-    """, unsafe_allow_html=True)
+            if contacts:
+                parts.append(f"Thông tin liên hệ: {', '.join(contacts)}.")
 
-    c_cfg1, c_cfg2 = st.columns([1, 1], gap="large")
+            if in_file is not None:
+                extracted_f = extract_text_from_upload(in_file)
+                if extracted_f and not extracted_f.startswith("Lỗi"):
+                    parts.append(f"Tệp đính kèm ({in_file.name}): {extracted_f}")
 
-    with c_cfg1:
-        st.markdown("##### 📬 Máy chủ Gửi Email (SMTP Gmail)")
-        smtp_cfg = get_smtp_config()
-        is_smtp_active = bool(smtp_cfg.get("user") and smtp_cfg.get("password"))
-        if is_smtp_active:
-            st.success(f"🟢 **Máy chủ SMTP đã kích hoạt:** Gửi thực tế qua `{smtp_cfg.get('user')}` (Cổng {smtp_cfg.get('port', 587)})")
-        else:
-            st.warning("⚠️ **Chế độ hiện tại: Mô phỏng (Mock).** Chưa thiết lập Mật khẩu ứng dụng Gmail 16 ký tự.")
+            combined_input = "\n".join(parts) if parts else user_text
 
-        with st.expander("⚙️ Cấu hình thông tin tài khoản SMTP", expanded=not is_smtp_active):
-            st.caption("Nhập tài khoản Gmail và Mật khẩu ứng dụng 16 ký tự để kích hoạt gửi thư thực tế:")
-            sb_u = st.text_input("Gmail gửi:", value=smtp_cfg.get("user", ""), key="cfg_smtp_user", placeholder="hotro@gmail.com")
-            sb_p = st.text_input("Mật khẩu ứng dụng (16 ký tự):", value=smtp_cfg.get("password", ""), type="password", key="cfg_smtp_pass", placeholder="xxxx yyyy zzzz wwww", help="Google App Password 16 chữ cái tạo tại myaccount.google.com/apppasswords")
-            if st.button("💾 Lưu cấu hình & Kiểm tra kết nối SMTP", key="cfg_btn_save_smtp", type="primary", width="stretch"):
-                if not sb_u.strip() or not sb_p.strip():
-                    st.error("Cần nhập cả Gmail và Mật khẩu ứng dụng.")
+            if not combined_input.strip():
+                st.warning('Bạn cần chọn vấn đề hoặc nhập nội dung phản ánh trước khi gửi.')
+            else:
+                fingerprint = hashlib.sha256(combined_input.strip().encode()).hexdigest()
+                old_id = st.session_state.get('last_record_id')
+                if fingerprint == st.session_state.get('submission_fingerprint') and old_id and get_request(old_id):
+                    st.info('Yêu cầu này đã được lưu trong phiên hiện tại; không tạo thêm bản ghi trùng lặp.')
                 else:
-                    with st.spinner("Đang kết nối thử tới máy chủ Gmail..."):
-                        ok_sb, msg_sb = test_smtp_connection(sb_u, sb_p)
-                        if ok_sb:
-                            save_smtp_credentials(sb_u, sb_p)
-                            st.success(f"Kết nối thành công! {msg_sb}")
-                            st.rerun()
+                    try:
+                        app_log("INTAKE", "Người dùng nhấn nút [Gửi phản ánh]", f"Chuyên môn: [{in_service}], Vấn đề: {in_issue.strip() or 'N/A'}, MSSV: {in_mssv.strip() or 'N/A'}")
+                        result = service.process(combined_input, topic_hint=topic_hint, proc_hint=proc_hint, mask_pii=False)
+                        rid = save_request(result, source_type='portal_student', mask_pii=False)
+                        st.session_state.update(
+                            analysis_result=result,
+                            last_record_id=rid,
+                            submission_fingerprint=fingerprint,
+                            focus_review_id=rid,
+                            review_id=rid
+                        )
+
+                        target_email = in_email.strip()
+                        if not target_email:
+                            match_mail = re.search(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', combined_input)
+                            target_email = match_mail.group(1) if match_mail else DEFAULT_TEST_EMAIL
+
+                        # Kiểm tra điều kiện tự động phê duyệt và gửi thẳng email:
+                        thresh = float(st.session_state.get('auto_conf_thresh', AUTO_APPROVE_CONFIDENCE_THRESHOLD))
+                        is_auto_approved = (
+                            result['confidence_score'] >= thresh
+                            and bool(result.get('is_usable'))
+                            and (bool(result.get('matched_kb_id')) or bool(result.get('matched_procedure')))
+                            and result.get('priority_level') != 'Khẩn cấp'
+                        )
+
+                        if is_auto_approved:
+                            # ĐỦ ĐỘ TIN CẬY: Model gửi thẳng email giải quyết ngay cho người nhận (định dạng HTML + Plain Text)
+                            best_response = result.get('procedure_draft_response') or result.get('draft_response', '')
+                            subj, body_plain, body_html = build_rich_resolution_email(
+                                record_id=rid,
+                                topic=result['predicted_topic'],
+                                department=result['department'],
+                                resolution_text=best_response,
+                                confidence_score=result['confidence_score'],
+                                is_auto_approved=True,
+                                student_id=in_mssv.strip() or None,
+                                procedure_info=result.get('matched_procedure'),
+                                library_info=result.get('library_lookup')
+                            )
+                            mail_ok, mail_msg = send_resolution_email(
+                                recipient_email=target_email,
+                                subject=subj,
+                                body_text=body_plain,
+                                body_html=body_html,
+                                record_id=rid
+                            )
+                            st.session_state['last_sent_email'] = {
+                                "subject": subj,
+                                "body_plain": body_plain,
+                                "body_html": body_html,
+                                "recipient": target_email,
+                                "status": f"Tự động gửi thẳng văn bản giải quyết (Độ tin cậy: {result['confidence_score']:.1%} >= {thresh:.0%})"
+                            }
+                            app_log("EMAIL", "Model gửi thẳng email giải quyết tự động", f"Mã: [{rid}], Gửi tới: [{target_email}], Độ tin cậy: {result['confidence_score']:.1%} >= {thresh:.0%}, Kết quả: {'Thành công' if mail_ok else 'Thất bại'}")
+
+                            log_review_action(
+                                record_id=rid,
+                                officer_action='approve',
+                                original_topic=result['predicted_topic'],
+                                final_topic=result['predicted_topic'],
+                                final_response=best_response,
+                                notes=f"Model AI tự động gửi thẳng email khi đủ độ tin cậy ({result['confidence_score']:.1%} >= {thresh:.0%})"
+                            )
+                            app_log("DISPATCH", f"Tự động phê duyệt hồ sơ [{rid}]", f"Độ tin cậy {result['confidence_score']:.1%} >= {thresh:.0%} chuẩn hóa theo {result['department']}", level="SUCCESS")
+                            st.success(
+                                f"TIẾP NHẬN & TỰ ĐỘNG GỬI EMAIL THÀNH CÔNG: Độ tin cậy của AI đạt {result['confidence_score']:.1%} (Đạt chuẩn tự động ≥ {thresh:.0%}). "
+                                f"Model đã gửi thẳng văn bản giải quyết chi tiết tới email: **{target_email}** mà không cần qua cán bộ duyệt thủ công!"
+                            )
+                        elif result.get('priority_level') == 'Khẩn cấp':
+                            # KHẨN CẤP: Gửi email biên nhận tiếp nhận ưu tiên và chuyển ngay Bàn duyệt cán bộ
+                            conf_subj, conf_plain, conf_html = build_intake_confirmation_email(
+                                record_id=rid,
+                                topic=result['predicted_topic'],
+                                department=result['department'],
+                                clean_text=combined_input,
+                                priority_level='Khẩn cấp',
+                                student_id=in_mssv.strip() or None,
+                                estimated_sla="Xử lý ưu tiên trong 04 - 12 giờ làm việc"
+                            )
+                            send_resolution_email(
+                                recipient_email=target_email,
+                                subject=conf_subj,
+                                body_text=conf_plain,
+                                body_html=conf_html,
+                                record_id=rid
+                            )
+                            st.session_state['last_sent_email'] = {
+                                "subject": conf_subj,
+                                "body_plain": conf_plain,
+                                "body_html": conf_html,
+                                "recipient": target_email,
+                                "status": "Đã gửi email biên nhận tiếp nhận hồ sơ ưu tiên khẩn cấp"
+                            }
+                            app_log("DISPATCH", f"Chuyển ưu tiên khẩn cấp hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]", level="WARN")
+                            st.warning(
+                                f"ĐÃ TIẾP NHẬN ƯU TIÊN KHẨN CẤP: Yêu cầu {rid} thuộc diện khẩn cấp. Email xác nhận tiếp nhận hồ sơ đã được gửi tới **{target_email}**. "
+                                f"Hồ sơ đã được ưu tiên chuyển trực tiếp tới Bàn duyệt cán bộ ({result['department']}) để thụ lý và phản hồi giải pháp ngay."
+                            )
                         else:
-                            st.error(msg_sb)
+                            # CHƯA ĐỦ ĐỘ TIN CẬY: Gửi email biên nhận tiếp nhận hồ sơ, chuyển sang Bàn duyệt cán bộ
+                            conf_subj, conf_plain, conf_html = build_intake_confirmation_email(
+                                record_id=rid,
+                                topic=result['predicted_topic'],
+                                department=result['department'],
+                                clean_text=combined_input,
+                                priority_level=result.get('priority_level', 'Bình thường'),
+                                student_id=in_mssv.strip() or None,
+                                estimated_sla="Trong 24 - 48 giờ làm việc theo quy định"
+                            )
+                            send_resolution_email(
+                                recipient_email=target_email,
+                                subject=conf_subj,
+                                body_text=conf_plain,
+                                body_html=conf_html,
+                                record_id=rid
+                            )
+                            st.session_state['last_sent_email'] = {
+                                "subject": conf_subj,
+                                "body_plain": conf_plain,
+                                "body_html": conf_html,
+                                "recipient": target_email,
+                                "status": f"Đã gửi email biên nhận tiếp nhận hồ sơ (Độ tin cậy: {result['confidence_score']:.1%} < {thresh:.0%})"
+                            }
+                            app_log("DISPATCH", f"Chưa đủ độ tin cậy ({result['confidence_score']:.1%} < {thresh:.0%}), chuyển hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]")
+                            st.info(
+                                f"ĐÃ TIẾP NHẬN YÊU CẦU: Độ tin cậy của mô hình đạt {result['confidence_score']:.1%} (chưa đủ ngưỡng tự động gửi thẳng ≥ {thresh:.0%}). "
+                                f"Email xác nhận tiếp nhận mã số **{rid}** đã gửi về **{target_email}**. "
+                                f"Hồ sơ đã được chuyển an toàn sang Bàn duyệt cán bộ ({result['department']}) để thẩm định trước khi gửi kết quả hoàn tất."
+                            )
+                    except ValueError as exc:
+                        st.error(str(exc))
 
-        st.markdown("##### 🧪 Thử nghiệm gửi email giải quyết mẫu")
-        c_tm1, c_tm2 = st.columns([2, 1])
-        with c_tm1:
-            t_email_dest = st.text_input("Email người nhận thử nghiệm:", value=DEFAULT_TEST_EMAIL, key="cfg_test_email_dest")
-        with c_tm2:
-            t_topic_sample = st.selectbox("Chuyên môn mẫu:", options=list(TOPICS.keys()), format_func=lambda k: TOPICS.get(k, k), key="cfg_topic_sample")
+        result = st.session_state.get('analysis_result')
+        rid = st.session_state.get('last_record_id')
+        row = get_request(rid) if rid else None
 
-        sample_solutions = {
-            'Hoc_phi': 'Phòng Tài chính - Kế toán đã đối soát giao dịch nộp học phí qua ngân hàng. Hệ thống cổng đào tạo đã hoàn tất gạch nợ học kỳ cho sinh viên.',
-            'Lich_hoc_lich_thi': 'Phòng Đào tạo đã ghi nhận và xử lý đơn trùng ca thi. Lịch thi bổ sung của sinh viên đã được bố trí vào phòng B302 tuần tới.',
-            'Diem_khao_thi': 'Ban Khảo thí & Đảm bảo chất lượng đã hoàn tất chấm phúc khảo bài thi kết thúc học phần. Điểm số chính thức đã được cập nhật trên cổng.',
-            'Thu_tuc_hanh_chinh': 'Bộ phận Một cửa đã xác nhận và cấp Giấy xác nhận sinh viên tạm hoãn nghĩa vụ quân sự. Sinh viên có thể đến bàn tiếp nhận nhận bản cứng.',
-            'Co_so_vat_chat': 'Phòng Quản trị Cơ sở vật chất đã cử nhân viên kỹ thuật kiểm tra và khắc phục sự cố điều hòa phòng học trong sáng nay.',
-            'He_thong_CNTT': 'Trung tâm CNTT đã cấp lại mật khẩu tài khoản cổng đào tạo sinh viên daotao.eaut.edu.vn và hướng dẫn đổi mật khẩu an toàn.',
-            'Khac': 'Bộ phận Tiếp nhận chung đã ghi nhận đóng góp ý kiến nâng cao chất lượng dịch vụ của bạn và chuyển đến Ban Giám hiệu xem xét.'
-        }
-        chosen_sample_sol = sample_solutions.get(t_topic_sample, 'Đã ghi nhận và xử lý phản ánh.')
-        if st.button('Gửi email giải quyết mẫu tới ' + t_email_dest, type="primary", key="cfg_btn_send_sample"):
-            with st.spinner("Đang tiến hành gửi email..."):
-                from app.components.workbench import DEPT_DOCX_MAPPING
-                t_dept = DEPT_DOCX_MAPPING.get(t_topic_sample, "Bộ phận Tiếp nhận")
-                subj, body_plain, body_html = build_rich_resolution_email(
-                    record_id="DEMO_TEST_EMAIL",
-                    topic=t_topic_sample,
-                    department=t_dept,
-                    resolution_text=chosen_sample_sol,
-                    confidence_score=0.92,
-                    is_auto_approved=True,
-                    student_name="Sinh viên Thử nghiệm",
-                    student_id="2024609999"
-                )
-                ok, send_info = send_resolution_email(
-                    recipient_email=t_email_dest,
-                    subject=subj,
-                    body_text=body_plain,
-                    body_html=body_html,
-                    record_id="DEMO_TEST_EMAIL"
-                )
-                if ok:
-                    if is_smtp_active:
-                        st.success(f"🎉 **Đã gửi thư thực tế thành công!** {send_info} Vui lòng kiểm tra hộp thư đến của **{t_email_dest}**.")
+        if result and row:
+            st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+
+            # 1. Thẻ Biên Nhận Tiếp Nhận Học Vụ Trang Nhã (Student Receipt Card)
+            prio = row.get('priority_level', 'Bình thường')
+            is_auto = (row.get('status') == 'reviewed_approve' or 'tự động' in (str(row.get('final_response', '')) + str(row.get('reviewed_at', ''))).lower())
+
+            status_label = "🟢 ĐÃ PHÊ DUYỆT TỰ ĐỘNG & GỬI EMAIL" if is_auto else ("🔴 TIẾP NHẬN ƯU TIÊN KHẨN CẤP" if prio == "Khẩn cấp" else "🔵 TIẾP NHẬN THÀNH CÔNG")
+            status_bg = "#f0fdf4" if is_auto else ("#fef2f2" if prio == "Khẩn cấp" else "#eff6ff")
+            status_color = "#15803d" if is_auto else ("#dc2626" if prio == "Khẩn cấp" else "#1e40af")
+            sla_est = "Trong 04 - 12 giờ làm việc" if prio == "Khẩn cấp" else "Trong 24 - 48 giờ làm việc"
+
+            receipt_html = (
+                f'<div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-top: 5px solid {status_color}; border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">'
+                f'<div style="display: flex; align-items: center; gap: 8px;">'
+                f'<span style="background: {status_bg}; color: {status_color}; font-weight: 800; font-size: 0.76rem; padding: 3px 10px; border-radius: 6px; letter-spacing: 0.03em;">{status_label}</span>'
+                f'<span style="font-size: 1.1rem; font-weight: 800; color: #1a508b; font-family: monospace;">{rid}</span>'
+                f'</div>'
+                f'<span style="font-size: 0.8rem; color: #64748b;">Thời gian: {format_datetime_vn(row.get("processed_at"), fmt="%d/%m/%Y %H:%M")}</span>'
+                f'</div>'
+                f'<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-top: 10px;">'
+                f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">ĐƠN VỊ PHỤ TRÁCH</div><div style="font-weight: 700; color: #1a508b; font-size: 0.88rem; margin-top: 2px;">{row["department"]}</div></div>'
+                f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">CHUYÊN MÔN / THỦ TỤC</div><div style="font-weight: 700; color: #0f172a; font-size: 0.88rem; margin-top: 2px;">{TOPICS.get(row["predicted_topic"], row["predicted_topic"])}</div></div>'
+                f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">THỜI HẠN XỬ LÝ (SLA)</div><div style="font-weight: 700; color: #15803d; font-size: 0.88rem; margin-top: 2px;">⏱️ {sla_est}</div></div>'
+                f'</div>'
+                f'</div>'
+            )
+            st.markdown(receipt_html, unsafe_allow_html=True)
+
+            # 2. Hướng dẫn giải quyết chuẩn hóa & Văn bản phản hồi
+            resp_to_show = row.get('final_response') or result.get('procedure_draft_response') or result.get('draft_response')
+            if resp_to_show:
+                matched_p = result.get('matched_procedure')
+                p_title = f"[{matched_p['proc_id']}] {matched_p['title']}" if matched_p else "Hướng dẫn xử lý học vụ EAUT"
+                st.markdown(f"""
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #1a508b; margin-bottom: 6px;">
+                        📋 {p_title}
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; color: #1e293b; line-height: 1.6; white-space: pre-wrap;">
+    {resp_to_show}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # 3. Tra cứu thư viện (nếu có dữ liệu)
+            lib_data = result.get('library_lookup')
+            if lib_data and lib_data.get('has_live_data'):
+                b_list = lib_data.get('books_found', [])
+                br_list = lib_data.get('student_borrows', [])
+                if b_list or br_list:
+                    with st.expander("📚 Dữ liệu tra cứu Thư viện EAUT thời gian thực", expanded=True):
+                        if b_list:
+                            b_cols = st.columns(min(len(b_list), 3))
+                            for b_idx, book in enumerate(b_list[:3]):
+                                with b_cols[b_idx % 3]:
+                                    avail_badge = "<span style='color:#16a34a; font-weight:700;'>🟢 Còn sách</span>" if book['available_copies'] > 0 else "<span style='color:#dc2626; font-weight:700;'>🔴 Hết</span>"
+                                    st.markdown(f"""
+                                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 0.82rem;">
+                                        <strong>{book['title']}</strong><br/>
+                                        <span style="color:#64748b;">Vị trí: {book['location']}</span> · {avail_badge}
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                        if br_list:
+                            for br in br_list:
+                                st.caption(f"📘 **{br['book_title']}** · Hạn trả: **{br['due_date']}** · Trạng thái: **{br['status']}**")
+
+            # 4. Xác nhận gửi email thông báo
+            last_mail = st.session_state.get('last_sent_email')
+            if last_mail:
+                st.info(f"📧 **Thông báo:** Đã gửi email xác nhận và hướng dẫn tới hộp thư **{last_mail['recipient']}**.")
+                with st.expander("Xem trước email đã gửi", expanded=False):
+                    st.caption(f"Tiêu đề: {last_mail['subject']}")
+                    st.text_area("Nội dung thư:", value=last_mail['body_plain'], height=160, disabled=True, key=f"preview_plain_{rid}")
+
+            # 5. Dành cho cán bộ: Bản nháp & Tra cứu quy chế tham chiếu (Tương thích kiểm thử & Xử lý nhanh)
+            with st.expander("🛠️ Dành cho cán bộ tiếp nhận: Chỉnh sửa bản nháp & Tham chiếu quy chế", expanded=(row['status'] == 'pending_review')):
+                draft_key = 'intake_draft_' + rid
+                if draft_key not in st.session_state:
+                    st.session_state[draft_key] = row.get('draft_response', '')
+
+                with st.form('draft_form_' + rid):
+                    draft = st.text_area('Bản nháp phản hồi có thể chỉnh sửa', key=draft_key, height=120)
+                    draft_saved = st.form_submit_button('Lưu bản nháp', width='stretch')
+
+                if draft_saved:
+                    try:
+                        save_draft(rid, draft)
+                        st.session_state['notice'] = f'Đã cập nhật bản nháp cho {rid}.'
+                        st.session_state.pop('response_' + rid, None)
+                        st.rerun()
+                    except ValueError as exc:
+                        st.error(str(exc))
+
+                if result.get('articles'):
+                    st.caption("Các điều khoản FAQ tham chiếu:")
+                    for article in result['articles'][:2]:
+                        st.markdown(f"- **{article['kb_id']}**: {article['question_standard']}")
+
+    with admin_tabs[1]:
+        render_knowledge_center()
+
+    with admin_tabs[2]:
+        render_dashboard(service=service)
+
+    with admin_tabs[3]:
+        st.markdown("""
+        <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b;">Cài Đặt Hệ Thống & Quản Trị Hạ Tầng EAUT</div>
+            <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Cấu hình máy chủ SMTP Gmail gửi thư thực tế, huấn luyện mô hình Active Learning và giám sát Server Console thời gian thực</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        c_cfg1, c_cfg2 = st.columns([1, 1], gap="large")
+
+        with c_cfg1:
+            st.markdown("##### 📬 Máy chủ Gửi Email (SMTP Gmail)")
+            smtp_cfg = get_smtp_config()
+            is_smtp_active = bool(smtp_cfg.get("user") and smtp_cfg.get("password"))
+            if is_smtp_active:
+                st.success(f"🟢 **Máy chủ SMTP đã kích hoạt:** Gửi thực tế qua `{smtp_cfg.get('user')}` (Cổng {smtp_cfg.get('port', 587)})")
+            else:
+                st.warning("⚠️ **Chế độ hiện tại: Mô phỏng (Mock).** Chưa thiết lập Mật khẩu ứng dụng Gmail 16 ký tự.")
+
+            with st.expander("⚙️ Cấu hình thông tin tài khoản SMTP", expanded=not is_smtp_active):
+                st.caption("Nhập tài khoản Gmail và Mật khẩu ứng dụng 16 ký tự để kích hoạt gửi thư thực tế:")
+                sb_u = st.text_input("Gmail gửi:", value=smtp_cfg.get("user", ""), key="cfg_smtp_user", placeholder="hotro@gmail.com")
+                sb_p = st.text_input("Mật khẩu ứng dụng (16 ký tự):", value=smtp_cfg.get("password", ""), type="password", key="cfg_smtp_pass", placeholder="xxxx yyyy zzzz wwww", help="Google App Password 16 chữ cái tạo tại myaccount.google.com/apppasswords")
+                if st.button("💾 Lưu cấu hình & Kiểm tra kết nối SMTP", key="cfg_btn_save_smtp", type="primary", width="stretch"):
+                    if not sb_u.strip() or not sb_p.strip():
+                        st.error("Cần nhập cả Gmail và Mật khẩu ứng dụng.")
                     else:
-                        st.warning(f"{send_info}\n\n👉 Lưu ý: Để thư thực sự đến hộp thư đến, hãy lưu Mật khẩu ứng dụng ở trên.")
-                else:
-                    st.error(send_info)
+                        with st.spinner("Đang kết nối thử tới máy chủ Gmail..."):
+                            ok_sb, msg_sb = test_smtp_connection(sb_u, sb_p)
+                            if ok_sb:
+                                save_smtp_credentials(sb_u, sb_p)
+                                st.success(f"Kết nối thành công! {msg_sb}")
+                                st.rerun()
+                            else:
+                                st.error(msg_sb)
 
-        st.markdown("---")
-        st.markdown("##### 🤖 Tự động hóa & Huấn luyện lại AI (Active Learning)")
-        auto_conf_thresh = st.slider(
-            "Ngưỡng tin cậy tự động duyệt & gửi thẳng mail:",
-            min_value=0.50,
-            max_value=0.95,
-            value=float(st.session_state.get('auto_conf_thresh', AUTO_APPROVE_CONFIDENCE_THRESHOLD)),
-            step=0.05,
-            format="%.0f%%",
-            key="cfg_slider_thresh",
-            help="Khi độ tin cậy AI >= ngưỡng này, hệ thống sẽ tự động duyệt và gửi thẳng email giải quyết cho sinh viên mà không cần chờ cán bộ duyệt thủ công."
-        )
-        st.session_state['auto_conf_thresh'] = auto_conf_thresh
-        st.caption(f"Trạng thái: Khi AI đạt ≥ **{auto_conf_thresh:.0%}**, Model sẽ tự động gửi thẳng email ngay.")
+            st.markdown("##### 🧪 Thử nghiệm gửi email giải quyết mẫu")
+            c_tm1, c_tm2 = st.columns([2, 1])
+            with c_tm1:
+                t_email_dest = st.text_input("Email người nhận thử nghiệm:", value=DEFAULT_TEST_EMAIL, key="cfg_test_email_dest")
+            with c_tm2:
+                t_topic_sample = st.selectbox("Chuyên môn mẫu:", options=list(TOPICS.keys()), format_func=lambda k: TOPICS.get(k, k), key="cfg_topic_sample")
 
-        if st.button("🔄 Huấn luyện lại mô hình AI từ nhật ký duyệt", key="cfg_btn_retrain_model", width="stretch"):
-            with st.spinner("Đang huấn luyện lại mô hình Logistic Regression + TF-IDF..."):
-                from src.model import train_and_save_production_model
-                clf = train_and_save_production_model()
-                st.success("Đã huấn luyện lại mô hình thành công! Khả năng tự động hóa đã được nâng cấp.")
+            sample_solutions = {
+                'Hoc_phi': 'Phòng Tài chính - Kế toán đã đối soát giao dịch nộp học phí qua ngân hàng. Hệ thống cổng đào tạo đã hoàn tất gạch nợ học kỳ cho sinh viên.',
+                'Lich_hoc_lich_thi': 'Phòng Đào tạo đã ghi nhận và xử lý đơn trùng ca thi. Lịch thi bổ sung của sinh viên đã được bố trí vào phòng B302 tuần tới.',
+                'Diem_khao_thi': 'Ban Khảo thí & Đảm bảo chất lượng đã hoàn tất chấm phúc khảo bài thi kết thúc học phần. Điểm số chính thức đã được cập nhật trên cổng.',
+                'Thu_tuc_hanh_chinh': 'Bộ phận Một cửa đã xác nhận và cấp Giấy xác nhận sinh viên tạm hoãn nghĩa vụ quân sự. Sinh viên có thể đến bàn tiếp nhận nhận bản cứng.',
+                'Co_so_vat_chat': 'Phòng Quản trị Cơ sở vật chất đã cử nhân viên kỹ thuật kiểm tra và khắc phục sự cố điều hòa phòng học trong sáng nay.',
+                'He_thong_CNTT': 'Trung tâm CNTT đã cấp lại mật khẩu tài khoản cổng đào tạo sinh viên daotao.eaut.edu.vn và hướng dẫn đổi mật khẩu an toàn.',
+                'Khac': 'Bộ phận Tiếp nhận chung đã ghi nhận đóng góp ý kiến nâng cao chất lượng dịch vụ của bạn và chuyển đến Ban Giám hiệu xem xét.'
+            }
+            chosen_sample_sol = sample_solutions.get(t_topic_sample, 'Đã ghi nhận và xử lý phản ánh.')
+            if st.button('Gửi email giải quyết mẫu tới ' + t_email_dest, type="primary", key="cfg_btn_send_sample"):
+                with st.spinner("Đang tiến hành gửi email..."):
+                    from app.components.workbench import DEPT_DOCX_MAPPING
+                    t_dept = DEPT_DOCX_MAPPING.get(t_topic_sample, "Bộ phận Tiếp nhận")
+                    subj, body_plain, body_html = build_rich_resolution_email(
+                        record_id="DEMO_TEST_EMAIL",
+                        topic=t_topic_sample,
+                        department=t_dept,
+                        resolution_text=chosen_sample_sol,
+                        confidence_score=0.92,
+                        is_auto_approved=True,
+                        student_name="Sinh viên Thử nghiệm",
+                        student_id="2024609999"
+                    )
+                    ok, send_info = send_resolution_email(
+                        recipient_email=t_email_dest,
+                        subject=subj,
+                        body_text=body_plain,
+                        body_html=body_html,
+                        record_id="DEMO_TEST_EMAIL"
+                    )
+                    if ok:
+                        if is_smtp_active:
+                            st.success(f"🎉 **Đã gửi thư thực tế thành công!** {send_info} Vui lòng kiểm tra hộp thư đến của **{t_email_dest}**.")
+                        else:
+                            st.warning(f"{send_info}\n\n👉 Lưu ý: Để thư thực sự đến hộp thư đến, hãy lưu Mật khẩu ứng dụng ở trên.")
+                    else:
+                        st.error(send_info)
 
-        st.markdown("---")
-        with st.expander("📥 Nạp danh sách nhiều Ticket từ tệp (.xlsx / .csv)", expanded=False):
-            batch_file = st.file_uploader(
-                'Chọn tệp bảng tính (.xlsx hoặc .csv):',
-                type=['csv', 'xlsx'],
-                key='batch_file_settings'
+            st.markdown("---")
+            st.markdown("##### 🤖 Tự động hóa & Huấn luyện lại AI (Active Learning)")
+            auto_conf_thresh = st.slider(
+                "Ngưỡng tin cậy tự động duyệt & gửi thẳng mail:",
+                min_value=0.50,
+                max_value=0.95,
+                value=float(st.session_state.get('auto_conf_thresh', AUTO_APPROVE_CONFIDENCE_THRESHOLD)),
+                step=0.05,
+                format="%.0f%%",
+                key="cfg_slider_thresh",
+                help="Khi độ tin cậy AI >= ngưỡng này, hệ thống sẽ tự động duyệt và gửi thẳng email giải quyết cho sinh viên mà không cần chờ cán bộ duyệt thủ công."
             )
-            if batch_file is not None:
-                try:
-                    df_b = pd.read_csv(batch_file) if batch_file.name.lower().endswith('.csv') else pd.read_excel(batch_file)
-                    if not df_b.empty:
-                        potential = [c for c in df_b.columns if any(k in str(c).lower() for k in ['noi_dung', 'text', 'cau_hoi', 'phan_anh', 'content'])]
-                        col_picked = potential[0] if potential else df_b.columns[0]
-                        col_target = st.selectbox('Cột nội dung:', options=list(df_b.columns), index=list(df_b.columns).index(col_picked), key='batch_col_target_settings')
-                        st.dataframe(df_b[[col_target]].head(3), width='stretch')
-                        if st.button(f'Nạp {min(len(df_b), 50)} Ticket vào Bàn duyệt', type='primary', key='btn_do_batch_import_settings'):
-                            added = 0
-                            for _, r in df_b.head(50).iterrows():
-                                val = str(r[col_target]).strip()
-                                if val and val != 'nan' and val != 'None':
-                                    b_res = service.process(val)
-                                    save_request(b_res, source_type='file_batch')
-                                    added += 1
-                            st.success(f'Đã nạp thành công {added} Ticket vào Bàn duyệt cán bộ!')
-                            st.rerun()
-                except Exception as err:
-                    st.error(f'Lỗi đọc tệp: {err}')
+            st.session_state['auto_conf_thresh'] = auto_conf_thresh
+            st.caption(f"Trạng thái: Khi AI đạt ≥ **{auto_conf_thresh:.0%}**, Model sẽ tự động gửi thẳng email ngay.")
 
-    with c_cfg2:
-        st.markdown("##### 🖥️ Console Nhật ký Web & Server")
-        st.caption("Ghi nhận thời gian thực: gọi hàm gì, xử lý gì, kết quả ra sao.")
-        comp_options = ["TẤT CẢ", "INTAKE", "CLEANER", "AI-MODEL", "RAG-DOCX", "SYNTHESIS", "GUARDRAILS", "DATABASE", "EMAIL", "WORKBENCH"]
-        selected_comp = st.selectbox("Lọc thành phần:", options=comp_options, key="cfg_filter_comp")
+            if st.button("🔄 Huấn luyện lại mô hình AI từ nhật ký duyệt", key="cfg_btn_retrain_model", width="stretch"):
+                with st.spinner("Đang huấn luyện lại mô hình Logistic Regression + TF-IDF..."):
+                    from src.model import train_and_save_production_model
+                    clf = train_and_save_production_model()
+                    st.success("Đã huấn luyện lại mô hình thành công! Khả năng tự động hóa đã được nâng cấp.")
 
-        recent_logs = get_recent_logs(limit=35, component_filter=selected_comp)
-        st.markdown(render_log_terminal_html(recent_logs, height_px=380), unsafe_allow_html=True)
+            st.markdown("---")
+            with st.expander("📥 Nạp danh sách nhiều Ticket từ tệp (.xlsx / .csv)", expanded=False):
+                batch_file = st.file_uploader(
+                    'Chọn tệp bảng tính (.xlsx hoặc .csv):',
+                    type=['csv', 'xlsx'],
+                    key='batch_file_settings'
+                )
+                if batch_file is not None:
+                    try:
+                        df_b = pd.read_csv(batch_file) if batch_file.name.lower().endswith('.csv') else pd.read_excel(batch_file)
+                        if not df_b.empty:
+                            potential = [c for c in df_b.columns if any(k in str(c).lower() for k in ['noi_dung', 'text', 'cau_hoi', 'phan_anh', 'content'])]
+                            col_picked = potential[0] if potential else df_b.columns[0]
+                            col_target = st.selectbox('Cột nội dung:', options=list(df_b.columns), index=list(df_b.columns).index(col_picked), key='batch_col_target_settings')
+                            st.dataframe(df_b[[col_target]].head(3), width='stretch')
+                            if st.button(f'Nạp {min(len(df_b), 50)} Ticket vào Bàn duyệt', type='primary', key='btn_do_batch_import_settings'):
+                                added = 0
+                                for _, r in df_b.head(50).iterrows():
+                                    val = str(r[col_target]).strip()
+                                    if val and val != 'nan' and val != 'None':
+                                        b_res = service.process(val)
+                                        save_request(b_res, source_type='file_batch')
+                                        added += 1
+                                st.success(f'Đã nạp thành công {added} Ticket vào Bàn duyệt cán bộ!')
+                                st.rerun()
+                    except Exception as err:
+                        st.error(f'Lỗi đọc tệp: {err}')
 
-        c_sb1, c_sb2, c_sb3 = st.columns([1, 1, 1])
-        with c_sb1:
-            if st.button("🔄 Làm mới", key="cfg_btn_refresh_log", width="stretch"):
-                st.rerun()
-        with c_sb2:
-            if st.button("🗑️ Xóa log", key="cfg_btn_clear_log", width="stretch"):
-                clear_logs()
-                st.rerun()
-        with c_sb3:
-            st.download_button(
-                "📥 Tải log (.txt)",
-                data=export_logs_text(),
-                file_name="app_server_logs.txt",
-                mime="text/plain",
-                key="cfg_btn_dl_logs",
-                width="stretch"
-            )
+        with c_cfg2:
+            st.markdown("##### 🖥️ Console Nhật ký Web & Server")
+            st.caption("Ghi nhận thời gian thực: gọi hàm gì, xử lý gì, kết quả ra sao.")
+            comp_options = ["TẤT CẢ", "INTAKE", "CLEANER", "AI-MODEL", "RAG-DOCX", "SYNTHESIS", "GUARDRAILS", "DATABASE", "EMAIL", "WORKBENCH"]
+            selected_comp = st.selectbox("Lọc thành phần:", options=comp_options, key="cfg_filter_comp")
+
+            recent_logs = get_recent_logs(limit=35, component_filter=selected_comp)
+            st.markdown(render_log_terminal_html(recent_logs, height_px=380), unsafe_allow_html=True)
+
+            c_sb1, c_sb2, c_sb3 = st.columns([1, 1, 1])
+            with c_sb1:
+                if st.button("🔄 Làm mới", key="cfg_btn_refresh_log", width="stretch"):
+                    st.rerun()
+            with c_sb2:
+                if st.button("🗑️ Xóa log", key="cfg_btn_clear_log", width="stretch"):
+                    clear_logs()
+                    st.rerun()
+            with c_sb3:
+                st.download_button(
+                    "📥 Tải log (.txt)",
+                    data=export_logs_text(),
+                    file_name="app_server_logs.txt",
+                    mime="text/plain",
+                    key="cfg_btn_dl_logs",
+                    width="stretch"
+                )
 
 
