@@ -143,53 +143,100 @@ st.set_page_config(
     initial_sidebar_state='collapsed'
 )
 
-# Custom CSS phong cách Sapphire Academic & Slate chuyên nghiệp
+# Custom CSS phong cách Sapphire Academic & Slate chuyên nghiệp chuẩn SaaS
 st.markdown("""
 <style>
+    /* Ẩn hoàn toàn header mặc định, footer và nút Deploy của Streamlit */
+    #MainMenu { visibility: hidden !important; }
+    header { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+    [data-testid="stDecoration"] { display: none !important; }
+    [data-testid="stStatusWidget"] { display: none !important; }
+    section[data-testid="stSidebar"] { display: none !important; }
+
+    /* Tối ưu hóa padding toàn trang */
     .block-container {
-        padding-top: 1.8rem;
-        padding-bottom: 2.5rem;
-        max-width: 1220px;
+        padding-top: 1.2rem !important;
+        padding-bottom: 2rem !important;
+        max-width: 1380px !important;
     }
-    .app-header {
+
+    /* App Header & Navigation Bar chuẩn SaaS */
+    .app-navbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px 20px;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .brand-container {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 0.9rem;
-        margin-bottom: 1.4rem;
+        gap: 12px;
     }
-    .app-title {
-        font-size: 1.6rem;
+    .brand-pill {
+        background: #1e3a8a;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        padding: 4px 8px;
+        border-radius: 6px;
+        letter-spacing: 0.05em;
+    }
+    .brand-title {
+        font-size: 1.25rem;
         font-weight: 700;
         color: #0f172a;
-        margin: 0;
-        letter-spacing: -0.025em;
+        letter-spacing: -0.02em;
     }
-    .app-subtitle {
-        font-size: 0.88rem;
-        color: #475569;
-        margin-top: 3px;
+    .brand-sub {
+        font-size: 0.85rem;
+        color: #64748b;
+        border-left: 1px solid #cbd5e1;
+        padding-left: 10px;
     }
-    .status-badge {
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: #047857;
-        background-color: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        padding: 4px 11px;
-        border-radius: 9999px;
+    .nav-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .nav-badge-live {
         display: inline-flex;
         align-items: center;
+        gap: 6px;
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 0.78rem;
+        font-weight: 600;
     }
+    .user-chip {
+        display: inline-flex;
+        align-items: center;
+        background: #f1f5f9;
+        color: #334155;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 0.78rem;
+        font-weight: 500;
+    }
+
     .stTabs [data-baseweb="tab-list"] {
-        gap: 1.8rem;
+        gap: 1.5rem;
         border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 1.2rem;
     }
     .stTabs [data-baseweb="tab"] {
-        padding: 8px 2px 12px 2px;
-        font-size: 0.94rem;
-        font-weight: 500;
+        padding: 8px 6px 12px 6px;
+        font-size: 0.95rem;
+        font-weight: 600;
         color: #64748b;
         background-color: transparent !important;
         border: none !important;
@@ -223,65 +270,6 @@ st.markdown("""
         border-color: #94a3b8 !important;
         color: #0f172a !important;
     }
-    .metric-card {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 13px 16px;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-    }
-    .metric-label {
-        font-size: 0.74rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #64748b;
-        margin-bottom: 4px;
-    }
-    .metric-val {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-    .badge-urgent {
-        color: #991b1b;
-        background-color: #fef2f2;
-        border: 1px solid #fecaca;
-        padding: 3px 9px;
-        border-radius: 4px;
-        font-size: 0.82rem;
-        font-weight: 600;
-    }
-    .badge-high {
-        color: #9a3412;
-        background-color: #fff7ed;
-        border: 1px solid #fed7aa;
-        padding: 3px 9px;
-        border-radius: 4px;
-        font-size: 0.82rem;
-        font-weight: 600;
-    }
-    .badge-normal {
-        color: #075985;
-        background-color: #f0f9ff;
-        border: 1px solid #bae6fd;
-        padding: 3px 9px;
-        border-radius: 4px;
-        font-size: 0.82rem;
-        font-weight: 600;
-    }
-    .badge-low {
-        color: #334155;
-        background-color: #f8fafc;
-        border: 1px solid #e2e8f0;
-        padding: 3px 9px;
-        border-radius: 4px;
-        font-size: 0.82rem;
-        font-weight: 600;
-    }
-    section[data-testid="stSidebar"] {
-        display: none;
-    }
     .terminal-box {
         background-color: #0b1120;
         color: #38bdf8;
@@ -294,24 +282,6 @@ st.markdown("""
         line-height: 1.45;
         overflow-x: auto;
         max-height: 480px;
-    }
-    .cot-card {
-        background-color: #f8fafc;
-        border-left: 4px solid #2563eb;
-        padding: 10px 14px;
-        border-radius: 0 6px 6px 0;
-        margin-bottom: 8px;
-        font-size: 0.88rem;
-        color: #1e293b;
-    }
-    .procedure-box {
-        background-color: #f8fafc;
-        border: 1px solid #cbd5e1;
-        border-left: 4px solid #059669;
-        border-radius: 6px;
-        padding: 14px;
-        margin-top: 10px;
-        margin-bottom: 12px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -331,83 +301,20 @@ except Exception as exc:
     st.code(str(exc))
     st.stop()
 
-# Header ứng dụng nghiệp vụ
+# Header ứng dụng nghiệp vụ chuẩn SaaS
 st.markdown("""
-<div class="app-header">
-    <div>
-        <div class="app-title">EduSupportAI</div>
-        <div class="app-subtitle">Cổng tiếp nhận, phân loại và xử lý phản ánh học vụ sinh viên</div>
+<div class="app-navbar">
+    <div class="brand-container">
+        <span class="brand-pill">EAUT</span>
+        <span class="brand-title">EduSupportAI</span>
+        <span class="brand-sub">Cổng Điều phối & Phê duyệt Học vụ Sinh viên</span>
     </div>
-    <div class="status-badge">Hệ thống sẵn sàng</div>
+    <div class="nav-meta">
+        <span class="nav-badge-live">● Trực tuyến</span>
+        <span class="user-chip">👤 Bộ phận Tiếp nhận & Phê duyệt</span>
+    </div>
 </div>
 """, unsafe_allow_html=True)
-
-# Sidebar: Live Server & Web Console Logs
-with st.sidebar:
-    st.markdown("### ⚙️ Cấu Hình Gửi Mail Tự Động")
-    auto_conf_thresh = st.slider(
-        "Ngưỡng tin cậy gửi thẳng mail:",
-        min_value=0.50,
-        max_value=0.95,
-        value=float(st.session_state.get('auto_conf_thresh', AUTO_APPROVE_CONFIDENCE_THRESHOLD)),
-        step=0.05,
-        format="%.0f%%",
-        help="Khi độ tin cậy AI >= ngưỡng này, hệ thống sẽ tự động duyệt và gửi thẳng email giải quyết cho sinh viên mà không cần chờ cán bộ duyệt thủ công."
-    )
-    st.session_state['auto_conf_thresh'] = auto_conf_thresh
-    st.caption(f"Trạng thái: Khi AI đạt ≥ **{auto_conf_thresh:.0%}**, Model sẽ **gửi thẳng email** ngay lập tức.")
-    st.markdown("---")
-
-    # Phân hệ Cấu hình SMTP Gmail gửi thư thực tế
-    smtp_cfg = get_smtp_config()
-    is_smtp_active = bool(smtp_cfg.get("user") and smtp_cfg.get("password"))
-    with st.expander("📬 Máy chủ SMTP Gmail" + (" (🟢 Sẵn sàng)" if is_smtp_active else " (🟡 Cần thiết lập)"), expanded=False):
-        if is_smtp_active:
-            st.success(f"Tài khoản gửi: **{smtp_cfg.get('user')}**")
-            st.caption("Đã kích hoạt gửi thực tế qua `smtp.gmail.com:587`.")
-        else:
-            st.warning("Đang ở Chế độ mô phỏng (Mock). Nhập Mật khẩu ứng dụng 16 ký tự để gửi thực:")
-        sb_u = st.text_input("Gmail gửi:", value=smtp_cfg.get("user", ""), key="sb_smtp_user", placeholder="hotro@gmail.com")
-        sb_p = st.text_input("Mật khẩu ứng dụng (16 ký tự):", value=smtp_cfg.get("password", ""), type="password", key="sb_smtp_pass", placeholder="xxxx yyyy zzzz wwww", help="Google App Password 16 chữ cái tạo tại myaccount.google.com/apppasswords")
-        if st.button("💾 Lưu cấu hình & Kiểm tra SMTP", key="sb_btn_save_smtp", width="stretch"):
-            if not sb_u.strip() or not sb_p.strip():
-                st.error("Cần nhập cả Gmail và Mật khẩu ứng dụng.")
-            else:
-                with st.spinner("Đang kết nối thử tới máy chủ Gmail..."):
-                    ok_sb, msg_sb = test_smtp_connection(sb_u, sb_p)
-                    if ok_sb:
-                        save_smtp_credentials(sb_u, sb_p)
-                        st.success("Đã kết nối thành công! Đã kích hoạt chế độ gửi thư thực tế.")
-                        st.rerun()
-                    else:
-                        st.error(msg_sb)
-    st.markdown("---")
-    st.markdown("### 🖥️ Console Nhật Ký Web & Server")
-    st.caption("Ghi nhận thời gian thực: gọi hàm gì, làm những gì, kết quả ra sao.")
-
-    comp_options = ["TẤT CẢ", "INTAKE", "CLEANER", "AI-MODEL", "RAG-DOCX", "SYNTHESIS", "GUARDRAILS", "DATABASE", "EMAIL", "WORKBENCH"]
-    selected_comp = st.selectbox("Lọc thành phần:", options=comp_options, key="sb_filter_comp")
-
-    recent_logs = get_recent_logs(limit=40, component_filter=selected_comp)
-    st.markdown(render_log_terminal_html(recent_logs, height_px=380), unsafe_allow_html=True)
-
-    c_sb1, c_sb2 = st.columns(2)
-    with c_sb1:
-        if st.button("🔄 Làm mới", key="sb_btn_refresh_log", width="stretch"):
-            st.rerun()
-    with c_sb2:
-        if st.button("🗑️ Xóa log", key="sb_btn_clear_log", width="stretch"):
-            clear_logs()
-            st.rerun()
-
-    st.download_button(
-        "📥 Tải log (.txt)",
-        data=export_logs_text(),
-        file_name="app_server_logs.txt",
-        mime="text/plain",
-        key="sb_btn_dl_logs",
-        width="stretch"
-    )
 
 if st.session_state.get('notice'):
     st.success(st.session_state.pop('notice'))
@@ -418,9 +325,18 @@ samples = {
     'Thiếu thông tin': 'Giúp em với',
 }
 
-tabs = st.tabs(['Tiếp nhận yêu cầu', 'Bàn duyệt cán bộ', 'Trung tâm tri thức', 'Dữ liệu và lịch sử'])
+tabs = st.tabs([
+    '📥 Bàn duyệt hồ sơ',
+    '📝 Tiếp nhận phản ánh',
+    '📚 Quy chế & Tri thức',
+    '📊 Thống kê & Báo cáo',
+    '⚙️ Cài đặt & Hệ thống'
+])
 
 with tabs[0]:
+    render_workbench()
+
+with tabs[1]:
     st.subheader('Tiếp nhận phản ánh sinh viên')
 
     # Chọn nhanh tình huống thực tế theo quy trình EAUT
@@ -939,23 +855,50 @@ with tabs[0]:
                 except Exception as err:
                     st.error(f'Lỗi đọc tệp: {err}')
 
-    # Thử nghiệm gửi email giải quyết mẫu tới kennysk114239@gmail.com
-    with st.expander('Thử nghiệm gửi email giải quyết mẫu tới kennysk114239@gmail.com', expanded=False):
-        st.caption('Kiểm tra trực tiếp tính năng tự động gửi email thông báo giải quyết phản ánh học vụ sinh viên.')
+with tabs[2]:
+    render_knowledge_center()
+
+with tabs[3]:
+    render_dashboard(service=service)
+
+with tabs[4]:
+    st.subheader("Cài đặt & Quản trị Hệ thống")
+    st.caption("Cấu hình máy chủ gửi email SMTP, huấn luyện lại mô hình học máy và giám sát nhật ký vận hành thời gian thực.")
+
+    c_cfg1, c_cfg2 = st.columns([1, 1], gap="large")
+
+    with c_cfg1:
+        st.markdown("##### 📬 Máy chủ Gửi Email (SMTP Gmail)")
+        smtp_cfg = get_smtp_config()
+        is_smtp_active = bool(smtp_cfg.get("user") and smtp_cfg.get("password"))
+        if is_smtp_active:
+            st.success(f"🟢 **Máy chủ SMTP đã kích hoạt:** Gửi thực tế qua `{smtp_cfg.get('user')}` (Cổng {smtp_cfg.get('port', 587)})")
+        else:
+            st.warning("⚠️ **Chế độ hiện tại: Mô phỏng (Mock).** Chưa thiết lập Mật khẩu ứng dụng Gmail 16 ký tự.")
+
+        with st.expander("⚙️ Cấu hình thông tin tài khoản SMTP", expanded=not is_smtp_active):
+            st.caption("Nhập tài khoản Gmail và Mật khẩu ứng dụng 16 ký tự để kích hoạt gửi thư thực tế:")
+            sb_u = st.text_input("Gmail gửi:", value=smtp_cfg.get("user", ""), key="cfg_smtp_user", placeholder="hotro@gmail.com")
+            sb_p = st.text_input("Mật khẩu ứng dụng (16 ký tự):", value=smtp_cfg.get("password", ""), type="password", key="cfg_smtp_pass", placeholder="xxxx yyyy zzzz wwww", help="Google App Password 16 chữ cái tạo tại myaccount.google.com/apppasswords")
+            if st.button("💾 Lưu cấu hình & Kiểm tra kết nối SMTP", key="cfg_btn_save_smtp", type="primary", width="stretch"):
+                if not sb_u.strip() or not sb_p.strip():
+                    st.error("Cần nhập cả Gmail và Mật khẩu ứng dụng.")
+                else:
+                    with st.spinner("Đang kết nối thử tới máy chủ Gmail..."):
+                        ok_sb, msg_sb = test_smtp_connection(sb_u, sb_p)
+                        if ok_sb:
+                            save_smtp_credentials(sb_u, sb_p)
+                            st.success(f"Kết nối thành công! {msg_sb}")
+                            st.rerun()
+                        else:
+                            st.error(msg_sb)
+
+        st.markdown("##### 🧪 Thử nghiệm gửi email giải quyết mẫu")
         c_tm1, c_tm2 = st.columns([2, 1])
         with c_tm1:
-            t_email_dest = st.text_input(
-                'Địa chỉ email người nhận thử nghiệm:',
-                value=DEFAULT_TEST_EMAIL,
-                key='intake_test_email_dest'
-            )
+            t_email_dest = st.text_input("Email người nhận thử nghiệm:", value=DEFAULT_TEST_EMAIL, key="cfg_test_email_dest")
         with c_tm2:
-            t_topic_sample = st.selectbox(
-                'Chủ đề giải pháp mẫu:',
-                options=list(TOPICS.keys()),
-                format_func=lambda k: TOPICS.get(k, k),
-                key='intake_test_topic_select'
-            )
+            t_topic_sample = st.selectbox("Chuyên môn mẫu:", options=list(TOPICS.keys()), format_func=lambda k: TOPICS.get(k, k), key="cfg_topic_sample")
 
         sample_solutions = {
             'Hoc_phi': 'Phòng Tài chính - Kế toán đã đối soát giao dịch nộp học phí qua ngân hàng. Hệ thống cổng đào tạo đã hoàn tất gạch nợ học kỳ cho sinh viên.',
@@ -967,53 +910,79 @@ with tabs[0]:
             'Khac': 'Bộ phận Tiếp nhận chung đã ghi nhận đóng góp ý kiến nâng cao chất lượng dịch vụ của bạn và chuyển đến Ban Giám hiệu xem xét.'
         }
         chosen_sample_sol = sample_solutions.get(t_topic_sample, 'Đã ghi nhận và xử lý phản ánh.')
-        st.text_area('Nội dung giải pháp gửi thử nghiệm:', value=chosen_sample_sol, height=85, disabled=True, key='intake_sample_sol_area')
-
-        if st.button('Gửi email giải quyết mẫu tới ' + t_email_dest, type='primary', key='btn_send_sample_email_intake'):
-            with st.spinner('Đang tiến hành gửi email thử nghiệm...'):
-                from app.components.workbench import DEPT_MAPPING
-                t_dept = DEPT_MAPPING.get(t_topic_sample, 'Bộ phận Tiếp nhận')
+        if st.button('Gửi email giải quyết mẫu tới ' + t_email_dest, type="primary", key="cfg_btn_send_sample"):
+            with st.spinner("Đang tiến hành gửi email..."):
+                from app.components.workbench import DEPT_DOCX_MAPPING
+                t_dept = DEPT_DOCX_MAPPING.get(t_topic_sample, "Bộ phận Tiếp nhận")
                 subj, body_plain, body_html = build_rich_resolution_email(
-                    record_id='DEMO_TEST_EMAIL',
+                    record_id="DEMO_TEST_EMAIL",
                     topic=t_topic_sample,
                     department=t_dept,
                     resolution_text=chosen_sample_sol,
                     confidence_score=0.92,
                     is_auto_approved=True,
-                    student_name='Sinh viên Thử nghiệm',
-                    student_id='2024609999'
+                    student_name="Sinh viên Thử nghiệm",
+                    student_id="2024609999"
                 )
                 ok, send_info = send_resolution_email(
                     recipient_email=t_email_dest,
                     subject=subj,
                     body_text=body_plain,
                     body_html=body_html,
-                    record_id='DEMO_TEST_EMAIL'
+                    record_id="DEMO_TEST_EMAIL"
                 )
                 if ok:
                     if is_smtp_active:
-                        st.success(f"🎉 **Đã gửi thư thực tế thành công!** {send_info} Vui lòng kiểm tra hộp thư đến (hoặc hòm thư Rác/Quảng cáo) của **{t_email_dest}**.")
+                        st.success(f"🎉 **Đã gửi thư thực tế thành công!** {send_info} Vui lòng kiểm tra hộp thư đến của **{t_email_dest}**.")
                     else:
-                        st.warning(f"{send_info}\n\n👉 **Lưu ý:** Thư vừa được ghi nhận ở chế độ mô phỏng. Để thực sự nhận email trong hộp thư đến, vui lòng cấu hình Mật khẩu ứng dụng tại thanh Sidebar bên trái.")
-                    t_mail_tabs = st.tabs(["📱 Xem trước giao diện HTML", "📄 Văn bản thuần (Plain Text)"])
-                    with t_mail_tabs[0]:
-                        st.components.v1.html(body_html, height=520, scrolling=True)
-                    with t_mail_tabs[1]:
-                        st.markdown(f"""
-                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-top: 8px;">
-                            <div style="font-size: 0.82rem; color: #475569; font-weight: 600;">TIÊU ĐỀ: {subj}</div>
-                            <div style="font-size: 0.82rem; color: #475569; margin-top: 4px;">NGƯỜI NHẬN: <strong>{t_email_dest}</strong> | PHƯƠNG THỨC: Tự động phê duyệt bởi AI</div>
-                            <pre style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin-top: 8px; font-size: 0.8rem; white-space: pre-wrap;">{body_plain}</pre>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.warning(f"{send_info}\n\n👉 Lưu ý: Để thư thực sự đến hộp thư đến, hãy lưu Mật khẩu ứng dụng ở trên.")
                 else:
                     st.error(send_info)
 
-with tabs[1]:
-    render_workbench()
+        st.markdown("---")
+        st.markdown("##### 🤖 Tự động hóa & Huấn luyện lại AI (Active Learning)")
+        auto_conf_thresh = st.slider(
+            "Ngưỡng tin cậy tự động duyệt & gửi thẳng mail:",
+            min_value=0.50,
+            max_value=0.95,
+            value=float(st.session_state.get('auto_conf_thresh', AUTO_APPROVE_CONFIDENCE_THRESHOLD)),
+            step=0.05,
+            format="%.0f%%",
+            key="cfg_slider_thresh",
+            help="Khi độ tin cậy AI >= ngưỡng này, hệ thống sẽ tự động duyệt và gửi thẳng email giải quyết cho sinh viên mà không cần chờ cán bộ duyệt thủ công."
+        )
+        st.session_state['auto_conf_thresh'] = auto_conf_thresh
+        st.caption(f"Trạng thái: Khi AI đạt ≥ **{auto_conf_thresh:.0%}**, Model sẽ tự động gửi thẳng email ngay.")
 
-with tabs[2]:
-    render_knowledge_center()
+        if st.button("🔄 Huấn luyện lại mô hình AI từ nhật ký duyệt", key="cfg_btn_retrain_model", width="stretch"):
+            with st.spinner("Đang huấn luyện lại mô hình Logistic Regression + TF-IDF..."):
+                from src.model import train_and_save_production_model
+                clf = train_and_save_production_model()
+                st.success("Đã huấn luyện lại mô hình thành công! Khả năng tự động hóa đã được nâng cấp.")
 
-with tabs[3]:
-    render_dashboard(service=service)
+    with c_cfg2:
+        st.markdown("##### 🖥️ Console Nhật ký Web & Server")
+        st.caption("Ghi nhận thời gian thực: gọi hàm gì, xử lý gì, kết quả ra sao.")
+        comp_options = ["TẤT CẢ", "INTAKE", "CLEANER", "AI-MODEL", "RAG-DOCX", "SYNTHESIS", "GUARDRAILS", "DATABASE", "EMAIL", "WORKBENCH"]
+        selected_comp = st.selectbox("Lọc thành phần:", options=comp_options, key="cfg_filter_comp")
+
+        recent_logs = get_recent_logs(limit=35, component_filter=selected_comp)
+        st.markdown(render_log_terminal_html(recent_logs, height_px=380), unsafe_allow_html=True)
+
+        c_sb1, c_sb2, c_sb3 = st.columns([1, 1, 1])
+        with c_sb1:
+            if st.button("🔄 Làm mới", key="cfg_btn_refresh_log", width="stretch"):
+                st.rerun()
+        with c_sb2:
+            if st.button("🗑️ Xóa log", key="cfg_btn_clear_log", width="stretch"):
+                clear_logs()
+                st.rerun()
+        with c_sb3:
+            st.download_button(
+                "📥 Tải log (.txt)",
+                data=export_logs_text(),
+                file_name="app_server_logs.txt",
+                mime="text/plain",
+                key="cfg_btn_dl_logs",
+                width="stretch"
+            )
