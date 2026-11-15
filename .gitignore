@@ -89,8 +89,23 @@ docs_tools/
 EduSupportAI_MVP/
 EduSupportAI_MVP.zip
 
-# Media & Video outputs
+# 10. Báo cáo thuyết minh (Reports & Documents)
+*.docx
+*.pdf
+EduSupportAI_Thuyet_minh*
+!doc/*.docx
+scripts/generate_updated_thuyet_minh.py
+scripts/convert_docx_to_pdf.py
+
+# 11. Tệp sinh video, audio và kịch bản demo (Video & Demo generation)
 output/
 *.mp4
-*.docx_backup
-EduSupportAI_Thuyet_minh_vong2(1)_backup.docx
+*.mp3
+*.wav
+scripts/generate_*voiceover*.py
+scripts/generate_voiceover*.py
+scripts/render_*.py
+scripts/record_*.js
+scripts/test_pup_*.js
+scripts/test_render_*.py
+scripts/test_tts.py
