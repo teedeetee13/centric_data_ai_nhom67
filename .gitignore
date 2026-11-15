@@ -38,6 +38,7 @@ logs/*.log
 *.log.*
 
 # 4. Tệp tạm & Khóa ghi CSDL SQLite
+EduSupportAI/
 *.db-journal
 *.db-wal
 *.db-shm
