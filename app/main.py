@@ -463,11 +463,6 @@ with col_nav:
         </div>
         <span class="brand-sub">Hệ thống Tiếp nhận, Điều phối & Phê duyệt Học vụ Sinh viên</span>
     </div>
-    <div class="nav-meta">
-        <span class="nav-badge-term">🏛️ Học kỳ I · 2024 - 2025</span>
-        <span class="nav-badge-live"><span class="pulse-dot"></span> Hệ thống sẵn sàng</span>
-        <span class="user-chip">👤 Cán bộ trực ban: Phòng QL Đào tạo & Khảo thí</span>
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
