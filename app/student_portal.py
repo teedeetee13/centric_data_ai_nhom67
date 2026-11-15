@@ -190,25 +190,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Chọn nhanh mẫu thử nghiệm
-with st.expander("💡 Điền nhanh tình huống mẫu (Học phí, Phúc khảo điểm, CSVC, Thẻ SV...)", expanded=False):
-    scenarios = {
-        'Hỏng điều hòa / Vệ sinh CSVC': 'Điều hòa phòng học 402 nhà B bị hỏng chảy nước lênh láng không mát, phòng học có rác chưa được dọn dẹp, đề nghị tổ CSVC kiểm tra.',
-        'Mượn phòng học / Hội trường': 'Câu lạc bộ sinh viên muốn làm thủ tục nộp giấy đề xuất BMPH-01 mượn Hội trường lớn để tổ chức tọa đàm khoa học ngoài giờ.',
-        'Cấp giấy xác nhận SV hoãn NVQS': 'Em cần xin Giấy xác nhận sinh viên tại Bộ phận Một cửa để nộp cho ban chỉ huy quân sự phường xin tạm hoãn nghĩa vụ quân sự năm 2026.',
-        'Làm lại thẻ sinh viên bị mất': 'Em bị rơi mất thẻ sinh viên trên xe buýt, em muốn làm thủ tục cấp lại thẻ sinh viên và xin giấy xác nhận tạm thời để đi thi.',
-        'Đơn đề nghị phúc khảo bài thi': 'Em làm đơn đề nghị phúc khảo bài thi kết thúc học phần môn Toán cao cấp 2, điểm hiện tại báo 4.0 em thấy không chính xác.',
-        'Thủ tục xin chuyển ngành học': 'Em muốn làm thủ tục chuyển ngành đào tạo từ Quản trị kinh doanh sang CNTT theo mẫu BM_CN01, mã sinh viên 2023605678.',
-        'Tra cứu sách Thư viện & Vị trí kệ': 'Cho em hỏi cuốn Giáo trình Kỹ thuật phần mềm còn sách ở thư viện trường không ạ và ở kệ nào?',
-        'Kiểm tra sách mượn & Hạn trả (MSSV)': 'Em mã sinh viên 2021600123 muốn kiểm tra xem đang mượn sách gì và có bị phạt quá hạn không ạ?'
-    }
-    sc_cols = st.columns(4)
-    for idx, (label, text) in enumerate(scenarios.items()):
-        with sc_cols[idx % 4]:
-            if st.button(f"{label}", key=f"portal_sc_{idx}", width="stretch"):
-                st.session_state["student_portal_req_text"] = text
-                st.rerun()
-
 col_form, col_info = st.columns([5.5, 4.5], gap="large")
 
 with col_form:
