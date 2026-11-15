@@ -497,18 +497,30 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
 
         # 5. Nội dung email đã gửi
         with st.expander("📧 Nội dung email đã gửi", expanded=True if not show_review_form else False):
+            res_content = st.session_state.get(response_key, item.get('final_response') or item.get('draft_response') or fresh_draft) or ""
+            notes_content = st.session_state.get('notes_' + rid, item.get('review_notes') or '') or ""
             pv_subj, pv_plain, pv_html = build_rich_resolution_email(
                 record_id=rid,
                 topic=st.session_state.get('topic_' + rid, item.get('final_topic') or item['predicted_topic']),
                 department=item_dept,
-                resolution_text=st.session_state.get(response_key, item.get('final_response') or item.get('draft_response') or fresh_draft),
+                resolution_text=res_content,
                 confidence_score=conf,
                 is_auto_approved=(item.get('status') == 'reviewed_approve'),
                 student_id=extract_student_id_from_text(item['clean_text']),
-                officer_notes=st.session_state.get('notes_' + rid, item.get('review_notes') or '')
+                officer_notes=notes_content
             )
             st.caption(f"Tiêu đề: **{pv_subj}** | Người nhận: **{recipient_email}**")
-            st.components.v1.html(pv_html, height=450, scrolling=True)
+
+            # Tự động tính toán chiều cao để hiển thị trọn vẹn toàn bộ email không bị thanh cuộn cắt ngang
+            lines_cnt = sum(max(1, (len(line) // 48) + 1) for line in res_content.splitlines()) if res_content else 1
+            base_height = 850
+            content_height = lines_cnt * 26
+            notes_height = 110 if notes_content else 0
+            lib_height = 200 if 'CSDL THƯ VIỆN EAUT' in pv_html else 0
+            proc_height = 60 if 'Biểu mẫu yêu cầu' in pv_html else 0
+            email_height = max(950, min(base_height + content_height + notes_height + lib_height + proc_height, 2800))
+
+            st.components.v1.html(pv_html, height=email_height, scrolling=True)
 
         if show_trace:
             with st.expander("🔬 Vết thực thi & Nhật ký suy luận AI", expanded=False):
