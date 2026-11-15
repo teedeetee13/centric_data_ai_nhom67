@@ -126,12 +126,14 @@ class AppFlowTests(unittest.TestCase):
         # Duyệt 1 hồ sơ để hồ sơ chuyển sang mục Phản ánh đã gửi
         self.button('Duyệt').click().run()
 
-        # Khi xem hồ sơ đã gửi: Không có form duyệt, có mục Nội dung email đã gửi
+        # Khi xem hồ sơ đã gửi: Không có form duyệt, có mục Nội dung email đã gửi, bỏ mức độ ưu tiên
         radio_filter = self.app.radio('wb_quick_status')
         radio_filter.set_value("Phản ánh đã gửi").run()
         sent_expanders = [e.label for e in self.app.expander]
         self.assertTrue(any('Nội dung email đã gửi' in exp for exp in sent_expanders))
         self.assertFalse(any('Duyệt' in b.label for b in self.app.button))
+        self.assertTrue(any('Đã xử lý' in m.value for m in self.app.markdown))
+        self.assertNotIn('Ưu tiên', self.app.dataframe[0].value.columns)
 
         # 2. Trong bánh răng (Admin view): Có vết thực thi
         self.open_admin()

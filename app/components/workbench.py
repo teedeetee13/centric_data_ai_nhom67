@@ -253,28 +253,48 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
         curr_id = st.session_state['review_id']
 
         # Menu chọn nhanh hồ sơ
+        def _fmt_ticket(k):
+            row_item = by_id[k]
+            topic_str = TOPICS.get(row_item.get('final_topic') or row_item['predicted_topic'], row_item.get('final_topic') or row_item['predicted_topic'])
+            if row_item.get('status') != 'pending_review':
+                # Đối với phản ánh đã xử lý: bỏ mức độ ưu tiên
+                return f"[{k}] · {topic_str}"
+            else:
+                p_icon = '🔴' if row_item['priority_level'] == 'Khẩn cấp' else ('🟠' if row_item['priority_level'] == 'Cao' else '🔵')
+                return f"{p_icon} [{k}] · {topic_str} · {row_item.get('confidence_score', 0):.0%}"
+
         rid = st.selectbox(
             "Chọn mã hồ sơ cần xem:",
             options=ids,
             index=None,
             key="review_id",
-            format_func=lambda k: f"{'🔴' if by_id[k]['priority_level']=='Khẩn cấp' else ('🟠' if by_id[k]['priority_level']=='Cao' else '🔵')} [{k}] · {TOPICS.get(by_id[k]['predicted_topic'], by_id[k]['predicted_topic'])} · {by_id[k].get('confidence_score', 0):.0%}",
+            format_func=_fmt_ticket,
             label_visibility="collapsed"
         )
 
         # Bảng tóm tắt danh sách yêu cầu
         df_rows = []
+        is_sent_view = (filter_status == "Phản ánh đã gửi")
         for r in queue:
-            prio = r['priority_level']
-            prio_badge = "🔴 Khẩn cấp" if prio == "Khẩn cấp" else ("🟠 Cao" if prio == "Cao" else "🔵 Bình thường")
             parsed_txt = parse_student_feedback(r['clean_text'])['student_message']
             snip = (parsed_txt[:38] + "...") if len(parsed_txt) > 38 else parsed_txt
-            df_rows.append({
-                'Ưu tiên': prio_badge,
-                'Mã phiếu': r['record_id'],
-                'Chuyên môn': TOPICS.get(r['predicted_topic'], r['predicted_topic']),
-                'Tóm tắt phản ánh': snip
-            })
+            topic_str = TOPICS.get(r.get('final_topic') or r['predicted_topic'], r.get('final_topic') or r['predicted_topic'])
+            if is_sent_view or r.get('status') != 'pending_review':
+                # Đối với phản ánh đã xử lý: bỏ mức độ ưu tiên
+                df_rows.append({
+                    'Mã phiếu': r['record_id'],
+                    'Chuyên môn': topic_str,
+                    'Tóm tắt phản ánh': snip
+                })
+            else:
+                prio = r['priority_level']
+                prio_badge = "🔴 Khẩn cấp" if prio == "Khẩn cấp" else ("🟠 Cao" if prio == "Cao" else "🔵 Bình thường")
+                df_rows.append({
+                    'Ưu tiên': prio_badge,
+                    'Mã phiếu': r['record_id'],
+                    'Chuyên môn': topic_str,
+                    'Tóm tắt phản ánh': snip
+                })
 
         st.dataframe(
             pd.DataFrame(df_rows),
@@ -300,9 +320,17 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
         topics = ALL_TOPICS
 
         # 1. Header Card hồ sơ chi tiết
-        prio_color = "#dc2626" if prio == "Khẩn cấp" else ("#ea580c" if prio == "Cao" else "#2563eb")
-        prio_bg = "#fef2f2" if prio == "Khẩn cấp" else ("#fff7ed" if prio == "Cao" else "#eff6ff")
-        prio_badge_icon = "🔴" if prio == "Khẩn cấp" else ("🟠" if prio == "Cao" else "🔵")
+        is_item_pending = (item.get('status') == 'pending_review')
+        if is_item_pending:
+            prio_color = "#dc2626" if prio == "Khẩn cấp" else ("#ea580c" if prio == "Cao" else "#2563eb")
+            prio_bg = "#fef2f2" if prio == "Khẩn cấp" else ("#fff7ed" if prio == "Cao" else "#eff6ff")
+            prio_badge_icon = "🔴" if prio == "Khẩn cấp" else ("🟠" if prio == "Cao" else "🔵")
+            prio_badge_html = f'<span style="background: {prio_bg}; color: {prio_color}; border: 1px solid {prio_color}33; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">{prio_badge_icon} {prio}</span>'
+            time_label = f'Tiếp nhận: {format_datetime_vn(item.get("processed_at"), fmt="%d/%m/%Y %H:%M")}'
+        else:
+            # Đối với phản ánh đã xử lý: bỏ mức độ ưu tiên
+            prio_badge_html = '<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">✅ Đã xử lý & gửi email</span>'
+            time_label = f'Đã giải quyết: {format_datetime_vn(item.get("reviewed_at") or item.get("processed_at"), fmt="%d/%m/%Y %H:%M")}'
 
         card_header_html = (
             '<div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 14px 18px 10px 18px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">'
@@ -312,16 +340,16 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
             f'<span style="font-size: 1.05rem; font-weight: 800; color: #1a508b; font-family: monospace;">{rid}</span>'
             '</div>'
             '<div style="display: flex; gap: 6px; align-items: center;">'
-            f'<span style="background: {prio_bg}; color: {prio_color}; border: 1px solid {prio_color}33; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">{prio_badge_icon} {prio}</span>'
+            f'{prio_badge_html}'
             f'<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">🎯 AI Tin cậy: {conf:.1%}</span>'
             '</div>'
             '</div>'
             '<div style="font-size: 0.82rem; color: #475569; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-top: 1px solid #b8cad8; padding-top: 6px; margin-top: 6px;">'
             f'<span>Đơn vị phụ trách: <strong style="color: #1a508b;">{item_dept}</strong></span>'
             '<span>•</span>'
-            f'<span>Chuyên môn: <strong style="color: #1a508b;">{TOPICS.get(item["predicted_topic"], item["predicted_topic"])}</strong></span>'
+            f'<span>Chuyên môn: <strong style="color: #1a508b;">{TOPICS.get(item.get("final_topic") or item["predicted_topic"], item.get("final_topic") or item["predicted_topic"])}</strong></span>'
             '<span>•</span>'
-            f'<span>Tiếp nhận: {format_datetime_vn(item.get("processed_at"), fmt="%d/%m/%Y %H:%M")}</span>'
+            f'<span>{time_label}</span>'
             '</div>'
             '</div>'
         )
