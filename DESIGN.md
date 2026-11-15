@@ -54,3 +54,12 @@
      * Student Message Bubble: Styled like a modern messaging app conversation bubble with student avatar, timestamp, contact tags, and clean text.
      * AI Copilot Box: Purple/indigo glowing accent, confidence gauge, official regulation reference, and direct resolution draft.
      * Officer Action Bar: Category selector, response editor, recipient email, and primary action buttons.
+
+---
+
+## 5. Chuẩn Hóa Đồng Bộ Toàn Bộ Phân Hệ Theo Cổng Hỗ Trợ mis.eaut.edu.vn
+Toàn bộ 5 phân hệ (tabs) trong hệ thống được thiết kế đồng bộ ngôn ngữ thị giác:
+1. **Container Cards (`#cfdce8`):** Khung thẻ màu xanh phiến lam mềm mại, viền `#b8cad8`, bo góc 12px, tiêu đề chính đậm sắc xanh đại học `#1a508b`.
+2. **Table Header Navy Pro (`#1a508b`):** Tiêu đề bảng hiển thị sắc nét với nền Deep Navy và chữ trắng hoa đậm nét.
+3. **Metric KPI Cards:** Nền trắng thanh lịch, viền `#b8cad8`, số liệu kích thước lớn `#1a508b`.
+4. **Footer Đại Học Công Nghệ Đông Á:** Chân trang chính thức gồm tên trường viết hoa và địa chỉ chi tiết 2 cơ sở (Cơ sở Hà Nội - Đường Trịnh Văn Bô, Nam Từ Liêm; Cơ sở Bắc Ninh - Làng Đại học, Phường Võ Cường) hiển thị tại tất cả các tab.

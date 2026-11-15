@@ -362,6 +362,28 @@ st.markdown("""
         margin-bottom: 0.75rem !important;
     }
 
+    /* Metric Cards */
+    .metric-card {
+        background: #ffffff;
+        border: 1px solid #b8cad8;
+        border-radius: 10px;
+        padding: 12px 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+    .metric-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .metric-val {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #1a508b;
+        margin-top: 4px;
+    }
+
     /* Terminal Console Box */
     .terminal-box {
         background-color: #0b1120;
@@ -994,9 +1016,9 @@ with tabs[3]:
 
 with tabs[4]:
     st.markdown("""
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-        <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">⚙️ Cài đặt & Quản trị Hạ tầng Hệ thống</div>
-        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Cấu hình máy chủ SMTP Gmail gửi thư thực tế, huấn luyện mô hình Active Learning và giám sát Server Console thời gian thực</div>
+    <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b;">Cài Đặt Hệ Thống & Quản Trị Hạ Tầng EAUT</div>
+        <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Cấu hình máy chủ SMTP Gmail gửi thư thực tế, huấn luyện mô hình Active Learning và giám sát Server Console thời gian thực</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1121,3 +1143,17 @@ with tabs[4]:
                 key="cfg_btn_dl_logs",
                 width="stretch"
             )
+
+    st.markdown("""
+    <div style="margin-top: 28px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
+            ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á
+        </div>
+        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 5px;">
+            📍 <strong>Cơ sở Hà Nội:</strong> Trường Đại học Công nghệ Đông Á, Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
+        </div>
+        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 3px;">
+            📍 <strong>Cơ sở Bắc Ninh:</strong> Trường Đại học Công nghệ Đông Á, Làng Đại học, Phường Võ Cường, Bắc Ninh.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)

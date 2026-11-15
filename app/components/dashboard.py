@@ -114,9 +114,9 @@ def hashlib_bytes(frame, text_col):
 
 def render_dashboard(service=None, clf_model=None):
     st.markdown("""
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-        <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">📊 Thống kê & Phân tích Chất lượng Vận hành Học vụ</div>
-        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Tổng hợp chỉ số KPI, giám sát lưu lượng phản ánh, tỷ lệ phê duyệt tự động và nhật ký xử lý của cán bộ</div>
+    <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b;">Báo Cáo & Thống Kê Chỉ Số Vận Hành Học Vụ</div>
+        <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Giám sát lưu lượng hồ sơ tiếp nhận, tỷ lệ xử lý tự động và nhật ký phê duyệt của cán bộ EAUT</div>
     </div>
     """, unsafe_allow_html=True)
     rows = list_requests()
@@ -124,9 +124,28 @@ def render_dashboard(service=None, clf_model=None):
 
     # Hàng chỉ số cấp cao
     m1, m2, m3 = st.columns(3)
-    m1.metric('Yêu cầu đã lưu', len(rows))
-    m2.metric('Đang chờ duyệt', sum(r['status'] == 'pending_review' for r in rows))
-    m3.metric('Lượt xử lý đã lưu', len(logs))
+    with m1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Tổng số yêu cầu tiếp nhận</div>
+            <div class="metric-val">{len(rows)} hồ sơ</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m2:
+        pending_cnt = sum(r['status'] == 'pending_review' for r in rows)
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Hồ sơ đang chờ xử lý</div>
+            <div class="metric-val" style="color: {'#dc2626' if pending_cnt > 0 else '#166534'};">{pending_cnt} hồ sơ</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Lượt phê duyệt đã lưu</div>
+            <div class="metric-val">{len(logs)} lượt</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Bảng yêu cầu đã lưu
     if rows:
@@ -443,3 +462,17 @@ def render_dashboard(service=None, clf_model=None):
                 st.rerun()
     except Exception:
         pass
+
+    st.markdown("""
+    <div style="margin-top: 28px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
+            ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á
+        </div>
+        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 5px;">
+            📍 <strong>Cơ sở Hà Nội:</strong> Trường Đại học Công nghệ Đông Á, Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
+        </div>
+        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 3px;">
+            📍 <strong>Cơ sở Bắc Ninh:</strong> Trường Đại học Công nghệ Đông Á, Làng Đại học, Phường Võ Cường, Bắc Ninh.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)

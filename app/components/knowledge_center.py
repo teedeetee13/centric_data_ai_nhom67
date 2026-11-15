@@ -49,9 +49,9 @@ SAMPLE_SCENARIOS = {
 
 def render_knowledge_center():
     st.markdown("""
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-        <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">📚 Trung tâm Tri thức Quy chế & Kho Tài liệu Nghiệp vụ</div>
-        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Quản trị tài liệu quy trình đại học chính thức (data-doc), đối soát căn cứ pháp lý và tra cứu thư viện OPAC</div>
+    <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b;">Trung Tâm Tri Thức Quy Chế & Cẩm Nang Nghiệp Vụ EAUT</div>
+        <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Quản trị 15 quy trình đại học chính thức từ data-doc, tra cứu căn cứ pháp lý và CSDL Thư viện OPAC</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -373,3 +373,17 @@ def render_knowledge_center():
                 st.dataframe(pd.DataFrame(br_display), width="stretch", hide_index=True)
             else:
                 st.info(f"Sinh viên MSSV {check_sid.strip()} hiện không có lịch sử mượn trả tài liệu nào trong CSDL Thư viện.")
+
+    st.markdown("""
+    <div style="margin-top: 28px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
+            ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á
+        </div>
+        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 5px;">
+            📍 <strong>Cơ sở Hà Nội:</strong> Trường Đại học Công nghệ Đông Á, Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
+        </div>
+        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 3px;">
+            📍 <strong>Cơ sở Bắc Ninh:</strong> Trường Đại học Công nghệ Đông Á, Làng Đại học, Phường Võ Cường, Bắc Ninh.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)

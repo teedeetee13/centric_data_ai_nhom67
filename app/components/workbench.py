@@ -141,6 +141,13 @@ def get_dept_name(topic: str, explicit_dept: str = None) -> str:
 def render_workbench(faq_engine=None):
     recent_rid = st.session_state.get('last_record_id') or st.session_state.get('focus_review_id')
 
+    st.markdown("""
+    <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b;">Bàn Duyệt Cán Bộ & Quản Lý Phân Luồng Học Vụ EAUT</div>
+        <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Phân quyền duyệt theo đơn vị chuyên môn, đối chiếu căn cứ quy chế và gửi thông báo giải quyết tới sinh viên</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Nạp danh sách yêu cầu
     all_requests = list_requests(pending_only=False)
     if not all_requests:
@@ -155,11 +162,14 @@ def render_workbench(faq_engine=None):
     # =========================================================================
     with col_queue:
         st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 0.95rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.03em;">📋 Hàng đợi tiếp nhận</span>
-            <span style="background: #eff6ff; color: #1d4ed8; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px; border: 1px solid #bfdbfe;">
-                {len(all_requests)} hồ sơ
-            </span>
+        <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 14px 18px 8px 18px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 1.02rem; font-weight: 800; color: #1a508b;">Hàng Đợi Tiếp Nhận & Phê Duyệt</span>
+                <span style="background: #1a508b; color: #ffffff; font-size: 0.74rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">
+                    {len(all_requests)} hồ sơ
+                </span>
+            </div>
+            <div style="font-size: 0.78rem; color: #475569; margin-top: 2px;">Phân quyền theo đơn vị chuyên môn và mức độ ưu tiên</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -297,11 +307,11 @@ def render_workbench(faq_engine=None):
         prio_badge_icon = "🔴" if prio == "Khẩn cấp" else ("🟠" if prio == "Cao" else "🔵")
 
         st.markdown(f"""
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 14px 18px 10px 18px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="background: #1e3a8a; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.04em;">HỒ SƠ HỌC VỤ</span>
-                    <span style="font-size: 1.05rem; font-weight: 800; color: #0f172a; font-family: monospace;">{rid}</span>
+                    <span style="background: #1a508b; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.04em;">HỒ SƠ HỌC VỤ</span>
+                    <span style="font-size: 1.05rem; font-weight: 800; color: #1a508b; font-family: monospace;">{rid}</span>
                 </div>
                 <div style="display: flex; gap: 6px; align-items: center;">
                     <span style="background: {prio_bg}; color: {prio_color}; border: 1px solid {prio_color}33; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 9999px;">
@@ -312,10 +322,10 @@ def render_workbench(faq_engine=None):
                     </span>
                 </div>
             </div>
-            <div style="font-size: 0.82rem; color: #64748b; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 6px; margin-top: 6px;">
-                <span>Đơn vị phụ trách: <strong style="color: #0f172a;">{item_dept}</strong></span>
+            <div style="font-size: 0.82rem; color: #475569; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-top: 1px solid #b8cad8; padding-top: 6px; margin-top: 6px;">
+                <span>Đơn vị phụ trách: <strong style="color: #1a508b;">{item_dept}</strong></span>
                 <span>•</span>
-                <span>Chuyên môn: <strong style="color: #0f172a;">{TOPICS.get(item['predicted_topic'], item['predicted_topic'])}</strong></span>
+                <span>Chuyên môn: <strong style="color: #1a508b;">{TOPICS.get(item['predicted_topic'], item['predicted_topic'])}</strong></span>
                 <span>•</span>
                 <span>Tiếp nhận: {format_datetime_vn(item.get('processed_at'), fmt='%d/%m/%Y %H:%M')}</span>
             </div>
@@ -530,3 +540,17 @@ def render_workbench(faq_engine=None):
                 t_data = res_t.get('execution_trace', {})
                 t_log = res_t.get('terminal_log', '')
             render_trace_view(t_data, t_log, rid)
+
+    st.markdown("""
+    <div style="margin-top: 28px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
+            ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á
+        </div>
+        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 5px;">
+            📍 <strong>Cơ sở Hà Nội:</strong> Trường Đại học Công nghệ Đông Á, Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
+        </div>
+        <div style="font-size: 0.8rem; color: #2563eb; margin-top: 3px;">
+            📍 <strong>Cơ sở Bắc Ninh:</strong> Trường Đại học Công nghệ Đông Á, Làng Đại học, Phường Võ Cường, Bắc Ninh.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
