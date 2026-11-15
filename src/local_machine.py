@@ -30,9 +30,40 @@ import joblib
 
 from src.config import MODEL_PATH, TOPICS
 from src.cleaner import clean_text_single
+try:
+    from src.cleaner import parse_student_feedback
+except ImportError:
+    try:
+        import importlib
+        import src.cleaner
+        importlib.reload(src.cleaner)
+        from src.cleaner import parse_student_feedback
+    except Exception:
+        def parse_student_feedback(raw_text: str) -> dict:
+            import re
+            if not isinstance(raw_text, str) or not raw_text.strip():
+                return {"issue": "", "contacts": "", "student_message": ""}
+            content = raw_text.strip()
+            issue = ""
+            contacts = ""
+            m_contact = re.search(r'Thông tin liên hệ:\s*(.+)$', content, re.IGNORECASE | re.DOTALL)
+            if m_contact:
+                contacts = m_contact.group(1).strip()
+                content = content[:m_contact.start()].strip()
+            m_issue = re.search(r'Vấn đề ghi nhận:\s*([^.\n]+(?:\.[^.\n]+)*?)(?:\.\s*|\n|$)', content, re.IGNORECASE)
+            if m_issue:
+                issue = m_issue.group(1).strip()
+                content = content[m_issue.end():].strip()
+            student_msg = content.strip(' .;\n')
+            if not student_msg and issue:
+                student_msg = issue
+            elif not student_msg:
+                student_msg = raw_text.strip()
+            return {"issue": issue, "contacts": contacts, "student_message": student_msg}
 from src.doc_parser import build_procedure_catalog, KB_OUTPUT_JSON
 from src.trace_logger import ExecutionTrace
 from src.model import determine_priority, KEYWORDS_URGENT, KEYWORDS_HIGH
+from src.email_service import get_dept_contact
 
 DEPT_MAP = {
     "Hoc_phi": "Phòng Tài chính - Kế toán",
@@ -43,6 +74,389 @@ DEPT_MAP = {
     "He_thong_CNTT": "Trung tâm Công nghệ Thông tin",
     "Khac": "Bộ phận Tiếp nhận chung"
 }
+
+def analyze_specific_situation(clean_text: str, topic: str, proc_id: str = "") -> Dict[str, Any]:
+    """
+    Chẩn đoán bối cảnh chi tiết của sinh viên và sinh giải pháp trực diện (Context-Aware Diagnosis & Direct Solution).
+    Nhận diện các tình huống thực tế thường gặp nhất từ kho dữ liệu 122 phản ánh EAUT và đối chiếu với thủ tục tương ứng.
+    Tập trung giải đáp đúng trọng tâm, thực tế, không liệt kê thủ tục rườm rà.
+    """
+    fb = parse_student_feedback(clean_text)
+    msg_clean = fb.get("student_message", "").lower()
+    issue_clean = fb.get("issue", "").lower()
+    raw_lower = clean_text.lower()
+    text_lower = f"{msg_clean} {issue_clean} {raw_lower}"
+
+    # 1. HỌC PHÍ & TÀI CHÍNH (Hoc_phi / PROC_TC_01 / PROC_CTSV_03)
+    if any(k in text_lower for k in [
+        "chuyen khoan", "chuyển khoản", "vietcombank", "vietinbank", "qr", "vietqr",
+        "treo tien", "treo tiền", "gach no", "gạch nợ", "báo nợ", "chua vao cong", "chưa vào cổng",
+        "trừ tiền", "tru tien", "bi tru"
+    ]):
+        if any(k in text_lower for k in ["sai cu phap", "sai noi dung", "nhap nham", "nhầm nội dung"]):
+            return {
+                "situation_summary": "Sai cú pháp nội dung chuyển khoản học phí dẫn đến hệ thống đối soát tự động chưa gạch nợ.",
+                "direct_solution": (
+                    "Về việc chuyển khoản học phí sai cú pháp nội dung khiến hệ thống chưa gạch nợ:\n"
+                    "Bạn vui lòng mang ảnh chụp biên lai giao dịch ngân hàng (có hiển thị rõ Mã giao dịch FT/Ref và số tài khoản thụ hưởng) đến trực tiếp Phòng Kế toán (Tầng 1, Tòa A) hoặc gửi email minh chứng để cán bộ đối soát thủ công và cập nhật gạch nợ ngay trên hệ thống cho bạn."
+                ),
+                "actionable_guidance": (
+                    "  1. Chụp lại biên lai chuyển khoản / sao kê giao dịch ngân hàng có hiển thị rõ Mã giao dịch (FT/Ref) và số tài khoản thụ hưởng.\n"
+                    "  2. Mang biên lai đến trực tiếp Phòng Kế toán (Tầng 1, Tòa A) hoặc gửi email kèm minh chứng để cán bộ đối soát thủ công và gạch nợ trực tiếp trên hệ thống."
+                ),
+                "has_specific_match": True
+            }
+        return {
+            "situation_summary": "Đã chuyển khoản hoặc quét mã QR nộp học phí nhưng hệ thống cổng sinh viên chưa cập nhật gạch nợ sau 24 - 48 giờ làm việc.",
+            "direct_solution": (
+                "Về việc đã nộp học phí qua chuyển khoản/quét mã QR nhưng cổng sinh viên chưa cập nhật gạch nợ:\n"
+                "Hệ thống đối soát liên ngân hàng thường cập nhật sau 24 - 48 giờ làm việc (không tính Thứ Bảy, Chủ Nhật). Nếu sau 48 giờ cổng vẫn báo nợ, bạn vui lòng mang ảnh chụp biên lai chuyển tiền (hiển thị rõ Mã giao dịch FT/Ref) tới Phòng Tài chính - Kế toán (Tầng 1, Tòa A) để được kiểm tra và xử lý gạch nợ trực tiếp ngay trong ngày."
+            ),
+            "actionable_guidance": (
+                "  1. Kiểm tra lại biên lai giao dịch ngân hàng để đảm bảo đã trừ tiền thành công và có Mã giao dịch (Mã FT/Ref).\n"
+                "  2. Đối soát hệ thống liên ngân hàng thường mất 24 - 48 giờ làm việc (không tính Thứ Bảy, Chủ Nhật). Nếu sau 48 giờ cổng vẫn báo nợ, bạn vui lòng mang ảnh chụp biên lai tới Phòng Tài chính - Kế toán (Tầng 1, Tòa A) để được kiểm tra và xử lý gạch nợ ngay."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["gia han", "gia hạn", "chia dot", "chia đợt", "cam thi", "cấm thi", "kho khan", "khó khăn", "chua co tien", "chưa có tiền"]):
+        return {
+            "situation_summary": "Đề nghị gia hạn nộp học phí hoặc chia đợt đóng học phí do hoàn cảnh đột xuất để không bị cấm thi.",
+            "direct_solution": (
+                "Về việc xin gia hạn nộp học phí hoặc chia đợt đóng học phí:\n"
+                "Bạn vui lòng điền Đơn xin gia hạn nộp học phí (theo mẫu của Phòng Kế toán), ghi rõ cam kết thời hạn nộp và xin chữ ký xác nhận của phụ huynh. Sau đó, nộp đơn trực tiếp tại Phòng Tài chính - Kế toán (Tầng 1, Tòa A) trước ngày thi môn đầu tiên để được phê duyệt danh sách dự thi có điều kiện."
+            ),
+            "actionable_guidance": (
+                "  1. Làm Đơn xin gia hạn nộp học phí (Mẫu đơn Phòng Kế toán), ghi rõ cam kết thời hạn nộp và có chữ ký xác nhận của phụ huynh.\n"
+                "  2. Nộp đơn trực tiếp tại Phòng Tài chính - Kế toán (Tầng 1, Tòa A) trước ngày thi môn đầu tiên để được phê duyệt danh sách dự thi có điều kiện."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["mien giam", "miễn giảm", "nghi dinh 81", "nghị định 81", "ho ngheo", "hộ nghèo", "vung sau", "thương binh", "thuong binh", "chinh sach", "hoc bong", "học bổng"]):
+        return {
+            "situation_summary": "Thủ tục xin hưởng chính sách miễn giảm học phí, trợ cấp học tập theo Nghị định 81/2021/NĐ-CP hoặc xét học bổng.",
+            "direct_solution": (
+                "Về chính sách miễn giảm học phí và trợ cấp học tập theo Nghị định 81/2021/NĐ-CP:\n"
+                "Bạn vui lòng chuẩn bị Đơn đề nghị miễn giảm học phí (theo mẫu) kèm Bản sao công chứng Giấy chứng nhận hộ nghèo/thương binh có dấu đỏ của UBND cấp xã trong năm học hiện hành, nộp tại Bộ phận Một cửa - Phòng Công tác sinh viên (Tầng 1, Tòa A) trong thời hạn 30 ngày kể từ ngày khai giảng học kỳ."
+            ),
+            "actionable_guidance": (
+                "  1. Chuẩn bị hồ sơ chính sách gồm: Đơn đề nghị miễn giảm học phí (theo mẫu) kèm Bản sao công chứng Giấy chứng nhận hộ nghèo/thương binh có dấu đỏ của UBND cấp xã/Phòng LĐ-TB&XH trong năm học hiện hành.\n"
+                "  2. Nộp hồ sơ tại Bộ phận Một cửa - Phòng Công tác sinh viên (Tầng 1, Tòa A) trong thời hạn 30 ngày kể từ ngày khai giảng học kỳ."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["tin chi", "tín chỉ", "ky phu", "kỳ phụ", "ky he", "kỳ hè", "rut mon", "rút môn", "can tru", "cấn trừ", "hoa don", "hóa đơn", "thu quy", "thủ quỹ"]):
+        return {
+            "situation_summary": "Thắc mắc về định mức học phí học kỳ hè, xuất hóa đơn điện tử hoặc cấn trừ tiền học phí khi rút học phần.",
+            "direct_solution": (
+                "Về việc cấn trừ học phí hoặc rút học phần:\n"
+                "Đối với môn học đã rút hợp lệ trước tuần 2 của kỳ học, số tiền học phí sẽ được bảo lưu và cấn trừ tự động vào kỳ học tiếp theo. Để kiểm tra chi tiết công nợ hoặc nhận hóa đơn điện tử, bạn liên hệ Phòng Thủ quỹ - Kế toán (Tầng 1, Tòa A) trong khung giờ 08:00 - 16:30 từ Thứ Hai đến Thứ Sáu."
+            ),
+            "actionable_guidance": (
+                "  1. Đối với môn học đã rút hợp lệ trước tuần 2 của kỳ học, số tiền học phí sẽ được bảo lưu và cấn trừ tự động vào kỳ học tiếp theo.\n"
+                "  2. Để lấy hóa đơn điện tử hoặc nộp trực tiếp bằng tiền mặt, bạn liên hệ Phòng Thủ quỹ - Kế toán (Tầng 1, Tòa A) trong khung giờ 08:00 - 16:30 từ Thứ Hai đến Thứ Sáu."
+            ),
+            "has_specific_match": True
+        }
+
+    # 2. LỊCH HỌC & LỊCH THI (Lich_hoc_lich_thi / PROC_DT_04 / PROC_DT_03)
+    if any(k in text_lower for k in ["trung lich thi", "trùng lịch thi", "trung ca thi", "trùng ca thi", "trung gio", "trùng giờ"]):
+        return {
+            "situation_summary": "Trùng ca thi / giờ thi giữa hai hoặc nhiều môn học phần kết thúc kỳ.",
+            "direct_solution": (
+                "Về việc trùng ca thi / giờ thi giữa các môn học phần kết thúc kỳ:\n"
+                "Bạn vui lòng điền Đơn đề nghị chuyển ca thi / giải quyết trùng lịch thi (Mẫu Đào tạo) và nộp tại Bộ phận Một cửa - Phòng Quản lý Đào tạo & Khảo thí (Tầng 1, Tòa A) trước ngày thi ít nhất 03 ngày làm việc để được xếp chuyển sang ca thi dự phòng kịp thời."
+            ),
+            "actionable_guidance": (
+                "  1. Tải và điền Đơn đề nghị chuyển ca thi / giải quyết trùng lịch thi (Mẫu Đào tạo).\n"
+                "  2. Nộp đơn khẩn tại Bộ phận Một cửa - Phòng Quản lý Đào tạo & Khảo thí (Tầng 1, Tòa A) trước ngày thi ít nhất 03 ngày làm việc để được xếp ca thi dự phòng."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["hoan thi", "hoãn thi", "nhap vien", "nhập viện", "cap cuu", "cấp cứu", "benh vien", "bệnh viện", "bi om", "bị ốm"]):
+        return {
+            "situation_summary": "Xin hoãn thi kết thúc học phần vì lý do ốm đau, tai nạn hoặc nhập viện điều trị đột xuất.",
+            "direct_solution": (
+                "Về việc xin hoãn thi kết thúc học phần vì lý do sức khỏe hoặc điều trị y tế đột xuất:\n"
+                "Bạn vui lòng chuẩn bị Đơn xin hoãn thi kèm theo Giấy vào viện / Giấy ra viện hoặc Bệnh án có xác nhận của Bệnh viện từ cấp quận/huyện trở lên, nộp tại Phòng Quản lý Đào tạo trong vòng 48 giờ kể từ ca thi để được bảo lưu điểm quá trình sang đợt thi phụ."
+            ),
+            "actionable_guidance": (
+                "  1. Chuẩn bị Đơn xin hoãn thi kèm theo Giấy vào viện / Giấy ra viện hoặc Bệnh án có xác nhận của Bệnh viện từ cấp quận/huyện trở lên.\n"
+                "  2. Nộp hồ sơ trực tiếp hoặc nhờ người nhà nộp tại Phòng Quản lý Đào tạo trong vòng 48 giờ kể từ thời điểm diễn ra ca thi để được bảo lưu điểm quá trình sang đợt thi phụ."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["khoa cua", "khóa cửa", "dung ngoai hanh lang", "đứng ngoài hành lang", "chua mo cua", "chưa mở cửa"]):
+        return {
+            "situation_summary": "Phòng học bị khóa cửa giờ học chính khóa, giảng viên và sinh viên chưa vào được phòng.",
+            "direct_solution": (
+                "Về sự cố phòng học bị khóa cửa trong giờ học chính khóa:\n"
+                "Đại diện ban cán sự lớp liên hệ ngay Đội Bảo vệ - Trực ban Giảng đường tại Tầng 1 Tòa A hoặc Tòa B để mở khóa phòng ngay lập tức. Hotline Trực ban CSVC hỗ trợ khẩn cấp: (024) 6262-7797 (Nhánh 104)."
+            ),
+            "actionable_guidance": (
+                "  1. Đại diện ban cán sự lớp liên hệ ngay Đội Bảo vệ - Trực ban Giảng đường tại Tầng 1 Tòa A hoặc Tòa B để mở khóa phòng ngay lập tức.\n"
+                "  2. Số điện thoại Trực ban CSVC: (024) 6262-7797 (Nhánh 104) để được hỗ trợ khẩn cấp."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["hoc lai", "học lại", "cai thien", "cải thiện", "diem f", "điểm f", "huy lop", "hủy lớp", "nghi tet", "nghỉ tết"]):
+        return {
+            "situation_summary": "Thủ tục đăng ký học lại môn bị điểm F, học cải thiện điểm GPA hoặc tra cứu kế hoạch thời gian năm học.",
+            "direct_solution": (
+                "Về thủ tục đăng ký học lại môn điểm F hoặc học cải thiện điểm GPA:\n"
+                "Bạn theo dõi thông báo đăng ký tín chỉ đầu mỗi học kỳ trên cổng daotao.eaut.edu.vn để chọn lớp học phần phù hợp. Trường hợp lớp bị hủy do thiếu sĩ số hoặc cần mở lớp nguyện vọng (từ 20 sinh viên trở lên), bạn liên hệ trực tiếp Phòng Quản lý Đào tạo (Tầng 1, Tòa A) để làm đơn đề xuất."
+            ),
+            "actionable_guidance": (
+                "  1. Sinh viên theo dõi thông báo đăng ký tín chỉ đầu mỗi học kỳ trên cổng daotao.eaut.edu.vn để chọn lớp học phần.\n"
+                "  2. Trường hợp lớp bị hủy do thiếu sĩ số hoặc cần mở lớp nguyện vọng (từ 20 sinh viên trở lên), liên hệ trực tiếp Phòng Đào tạo (Tầng 1, Tòa A) để làm đơn đề xuất."
+            ),
+            "has_specific_match": True
+        }
+
+    # 3. ĐIỂM SỐ & KHẢO THÍ (Diem_khao_thi / PROC_DT_04 / PROC_DT_05 / PROC_CTSV_04)
+    if any(k in text_lower for k in ["phuc khao", "phúc khảo", "cham lai", "chấm lại", "xem lai bai thi", "xem lại bài thi", "tu cham", "tự chấm"]):
+        return {
+            "situation_summary": "Nộp đơn đề nghị phúc khảo bài thi kết thúc học phần do nghi vấn kết quả điểm số chưa chính xác.",
+            "direct_solution": (
+                "Về việc đề nghị phúc khảo bài thi kết thúc học phần:\n"
+                "Bạn vui lòng điền Đơn đề nghị phúc khảo bài thi kết thúc học phần theo mẫu chuẩn của Ban Khảo thí và nộp tại Bộ phận Một cửa - Ban Khảo thí (Tầng 1, Tòa A) trong thời hạn 15 ngày kể từ ngày công bố điểm thi trên hệ thống. Điểm phúc khảo sẽ được cập nhật trực tiếp sau khi chấm lại."
+            ),
+            "actionable_guidance": (
+                "  1. Điền Đơn đề nghị phúc khảo bài thi kết thúc học phần theo mẫu chuẩn của Ban Khảo thí.\n"
+                "  2. Nộp đơn và lệ phí phúc khảo tại Bộ phận Một cửa - Ban Khảo thí (Tầng 1, Tòa A) trong thời hạn 15 ngày kể từ ngày công bố điểm thi trên hệ thống."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["nhap nham", "nhập nhầm", "sai diem", "sai điểm", "lech diem", "lệch điểm", "chua len diem", "chưa lên điểm", "cham len diem", "chậm lên điểm", "chuyen can", "chuyên cần"]):
+        return {
+            "situation_summary": "Sai lệch điểm thi / điểm thành phần trên hệ thống so với bảng điểm của giảng viên hoặc bị tính nhầm điểm danh.",
+            "direct_solution": (
+                "Về việc sai lệch điểm thi hoặc chưa lên điểm trên cổng thông tin:\n"
+                "Bạn liên hệ trực tiếp Giảng viên phụ trách học phần để đối chiếu với Bảng điểm gốc và Sổ điểm danh có chữ ký của sinh viên. Giảng viên sẽ lập Giấy đề nghị điều chỉnh điểm gửi Ban Khảo thí & ĐBCL tại Tầng 1 Tòa A để đính chính chính thức trên cổng thông tin."
+            ),
+            "actionable_guidance": (
+                "  1. Liên hệ trực tiếp Giảng viên giảng dạy môn học để đối chiếu với Bảng điểm gốc và Sổ điểm danh có chữ ký của sinh viên.\n"
+                "  2. Giảng viên sẽ lập Giấy đề nghị điều chỉnh điểm gửi Ban Khảo thí & ĐBCL tại Tầng 1 Tòa A để đính chính chính thức trên cổng thông tin."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["diem ren luyen", "điểm rèn luyện", "drl", "tru diem", "trừ điểm rèn luyện", "xep loai drl"]):
+        return {
+            "situation_summary": "Khiếu nại kết quả đánh giá Điểm rèn luyện (ĐRL) học kỳ hoặc bị trừ điểm rèn luyện nhầm.",
+            "direct_solution": (
+                "Về việc rà soát và khiếu nại kết quả Điểm rèn luyện (ĐRL):\n"
+                "Bạn chuẩn bị các minh chứng tham gia hoạt động, giấy xin phép y tế hoặc chứng nhận tham gia phong trào của Khoa/Đoàn trường, sau đó nộp Đơn đề nghị rà soát Điểm rèn luyện tại Phòng Công tác sinh viên (Tầng 1, Tòa A) trong vòng 07 ngày làm việc kể từ ngày công bố kết quả dự kiến."
+            ),
+            "actionable_guidance": (
+                "  1. Chuẩn bị các minh chứng tham gia hoạt động, giấy xin phép y tế hoặc chứng nhận tham gia phong trào của Khoa/Đoàn trường.\n"
+                "  2. Nộp Đơn đề nghị rà soát Điểm rèn luyện tại Phòng Công tác sinh viên (Tầng 1, Tòa A) trong vòng 07 ngày làm việc kể từ ngày công bố kết quả dự kiến."
+            ),
+            "has_specific_match": True
+        }
+
+    # 4. THỦ TỤC HÀNH CHÍNH (Thu_tuc_hanh_chinh / PROC_CTSV_01 / PROC_CTSV_02 / PROC_DT_01 / PROC_DT_02 / PROC_DT_05)
+    if any(k in text_lower for k in [
+        "nghia vu quan su", "nghĩa vụ quân sự", "nvqs", "hoan nghia vu", "hoãn nghĩa vụ",
+        "vay von", "vay vốn", "ngan hang chinh sach", "ngân hàng chính sách", "bm02",
+        "ve xe buyt", "vé xe buýt", "visa", "giay xac nhan", "giấy xác nhận"
+    ]):
+        return {
+            "situation_summary": "Xin cấp Giấy xác nhận sinh viên (để tạm hoãn Nghĩa vụ quân sự, vay vốn NHCSXH BM02, làm vé xe buýt hoặc hồ sơ cá nhân).",
+            "direct_solution": (
+                "Về thủ tục cấp Giấy xác nhận sinh viên (tạm hoãn Nghĩa vụ quân sự, vay vốn ngân hàng chính sách BM02, làm vé xe buýt):\n"
+                "Bạn có thể đăng ký trực tuyến trên cổng sinh viên daotao.eaut.edu.vn hoặc đến trực tiếp Bàn tiếp nhận Một cửa - Phòng CTSV (Tầng 1, Tòa A). Thời gian xử lý từ 01 - 02 ngày làm việc. Khi đến nhận kết quả, bạn mang theo Thẻ sinh viên hoặc CCCD để đối chiếu."
+            ),
+            "actionable_guidance": (
+                "  1. Đăng ký trực tuyến trên cổng sinh viên daotao.eaut.edu.vn hoặc đến trực tiếp Bàn tiếp nhận Một cửa - Phòng CTSV (Tầng 1, Tòa A).\n"
+                "  2. Thời gian xử lý: 01 - 02 ngày làm việc. Khi nhận kết quả, mang theo Thẻ sinh viên hoặc CCCD để đối chiếu."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["mat the", "mất thẻ", "lam lai the", "làm lại thẻ", "the sinh vien", "thẻ sinh viên", "gay chip", "gãy chip", "the tam thoi", "thẻ tạm thời"]):
+        return {
+            "situation_summary": "Đề nghị cấp lại Thẻ sinh viên do bị mất, gãy chip hoặc xin cấp Thẻ sinh viên tạm thời có ảnh để dự thi.",
+            "direct_solution": (
+                "Về việc xin cấp lại Thẻ sinh viên do bị mất hoặc hỏng chip:\n"
+                "Bạn vui lòng đến Bộ phận Một cửa - Phòng CTSV (Tầng 1, Tòa A), chuẩn bị 01 ảnh thẻ 3x4 (nền xanh) và lệ phí cấp lại (50.000đ) để làm thủ tục. Cán bộ Một cửa sẽ cấp ngay Giấy chứng nhận sinh viên tạm thời có dán ảnh và đóng dấu giáp lai trong ngày để bạn sử dụng đi thi."
+            ),
+            "actionable_guidance": (
+                "  1. Nộp Đơn xin cấp lại thẻ sinh viên tại Bộ phận Một cửa - Phòng CTSV (Tầng 1, Tòa A), chuẩn bị 01 ảnh thẻ 3x4 (nền xanh) và lệ phí cấp lại (50.000đ).\n"
+                "  2. Cán bộ Một cửa sẽ cấp ngay Giấy chứng nhận sinh viên tạm thời có dán ảnh và đóng dấu giáp lai trong ngày để bạn sử dụng đi thi."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["chuyen nganh", "chuyển ngành", "bm_cn01", "bao luu", "bảo lưu", "nghi hoc tam thoi", "nghỉ học tạm thời", "bm01", "thoi hoc", "thôi học", "rut ho so", "rút hồ sơ"]):
+        return {
+            "situation_summary": "Thủ tục xin chuyển ngành đào tạo (BM_CN01), bảo lưu kết quả học tập (BM01) hoặc xin thôi học rút hồ sơ gốc.",
+            "direct_solution": (
+                "Về thủ tục xin chuyển ngành đào tạo (BM_CN01) hoặc bảo lưu kết quả học tập (BM01):\n"
+                "Bạn điền đơn theo mẫu quy định (BM_CN01 cho chuyển ngành, BM01 cho bảo lưu), xin xác nhận của Ban Chủ nhiệm Khoa, Thư viện (xác nhận không nợ sách) và Phòng Kế toán (không nợ học phí), sau đó nộp tại Phòng Quản lý Đào tạo (Tầng 1, Tòa A) để trình Ban Giám hiệu ra quyết định."
+            ),
+            "actionable_guidance": (
+                "  1. Điền đơn theo mẫu quy định (BM_CN01 cho chuyển ngành, BM01 cho bảo lưu) kèm theo minh chứng liên quan.\n"
+                "  2. Lấy xác nhận của Ban Chủ nhiệm Khoa, Thư viện (xác nhận không nợ sách) và Phòng Kế toán (không nợ học phí), sau đó nộp tại Phòng Đào tạo (Tầng 1, Tòa A) để trình Ban Giám hiệu ra quyết định."
+            ),
+            "has_specific_match": True
+        }
+
+    # 5. CƠ SỞ VẬT CHẤT (Co_so_vat_chat / PROC_CSVC_01 / PROC_CSVC_02 / PROC_CSVC_03)
+    # Ưu tiên nhận diện Mượn phòng / Mượn thiết bị ngoài giờ (PROC_CSVC_02)
+    is_borrowing_request = (
+        proc_id == "PROC_CSVC_02"
+        or any(k in text_lower for k in [
+            "muon mic", "mượn mic", "muon loa", "mượn loa", "muon thiet bi", "mượn thiết bị",
+            "muon dieu khien", "mượn điều khiển", "muon hoi truong", "mượn hội trường",
+            "muon phong", "mượn phòng", "ngoai gio", "ngoài giờ", "clb", "cau lac bo",
+            "dang ky muon", "đăng ký mượn", "xin muon", "xin mượn"
+        ])
+    ) and not any(k in text_lower for k in [
+        "hỏng", "hong", "bị hỏng", "chập", "cháy", "chảy nước", "sự cố", "liệt", "rè", "không lên", "mat dien", "mất điện"
+    ])
+
+    if is_borrowing_request:
+        return {
+            "situation_summary": "Đăng ký mượn phòng học, Hội trường hoặc mượn trang thiết bị (micro, điều khiển điều hòa, máy chiếu...) ngoài giờ / phục vụ học tập, sự kiện.",
+            "direct_solution": (
+                "Về việc đăng ký mượn micro, điều khiển điều hòa và trang thiết bị giảng đường:\n"
+                "Bạn vui lòng liên hệ trực tiếp Đội Kỹ thuật - Quản trị CSVC tại Tầng 1 Tòa B (hoặc Trực ban Bảo vệ giảng đường) trước giờ học để nhận thiết bị. Khi đến nhận, bạn chỉ cần xuất trình Thẻ sinh viên (hoặc CCCD) để ký nhận bàn giao và gửi trả lại thiết bị ngay sau khi kết thúc buổi học.\n"
+                "(Trường hợp cần mượn phòng học hoặc hội trường ngoài giờ cho câu lạc bộ hoặc hoạt động tập thể, vui lòng hoàn thiện Giấy đề xuất mượn phòng BMPH-01 có xác nhận của Cố vấn học tập/Đoàn trường nộp tại Phòng Quản trị CSVC trước ít nhất 02 ngày làm việc)."
+            ),
+            "actionable_guidance": (
+                "  1. Liên hệ Đội Kỹ thuật - Quản trị CSVC tại Tầng 1 Tòa B hoặc Trực ban Bảo vệ trước giờ học, xuất trình Thẻ sinh viên để nhận micro và điều khiển điều hòa.\n"
+                "  2. Bàn giao và gửi trả lại thiết bị nguyên vẹn ngay sau khi buổi học hoặc sự kiện kết thúc."
+            ),
+            "has_specific_match": True
+        }
+
+    # Thư viện trường (PROC_CSVC_03)
+    if proc_id == "PROC_CSVC_03" or any(k in text_lower for k in ["thu vien", "thư viện", "sach", "sách", "giao trinh", "giáo trình", "qua han", "quá hạn", "tien phat", "tiền phạt", "thu thu", "thủ thư"]):
+        return {
+            "situation_summary": "Tra cứu giáo trình, mượn trả tài liệu học tập, gia hạn và giải quyết việc mượn sách quá hạn tại Thư viện trường.",
+            "direct_solution": (
+                "Về việc tra cứu giáo trình và mượn trả tài liệu Thư viện:\n"
+                "Bạn có thể tra cứu sách trực tiếp tại cổng OPAC Thư viện hoặc đến Quầy Thủ thư tại Tầng 2, Tòa nhà B. Sinh viên được mượn tối đa 03 tài liệu trong 14 ngày, khi mượn chỉ cần xuất trình Thẻ sinh viên còn hiệu lực. Giờ mở cửa: 07:30 - 20:30 (Thứ Hai đến Thứ Bảy)."
+            ),
+            "actionable_guidance": (
+                "  1. Bạn có thể tra cứu sách trực tiếp tại cổng OPAC Thư viện hoặc đến Quầy Thủ thư - Tầng 2, Tòa nhà B.\n"
+                "  2. Sinh viên được mượn tối đa 03 tài liệu trong 14 ngày. Trường hợp quá hạn, phí nộp phạt theo quy định là 5.000đ/ngày/cuốn. Giờ mở cửa: 07:30 - 20:30 (Thứ Hai đến Thứ Bảy)."
+            ),
+            "has_specific_match": True
+        }
+
+    # Báo hỏng và sự cố kỹ thuật trang thiết bị (PROC_CSVC_01)
+    if proc_id == "PROC_CSVC_01" or any(k in text_lower for k in [
+        "dieu hoa", "điều hòa", "may chieu", "máy chiếu", "hdmi", "chay nuoc", "chảy nước",
+        "loa", "mic", "am thanh", "âm thanh", "o cam", "ổ cắm", "mat dien", "mất điện",
+        "bong den", "bóng đèn", "ban ghe", "bàn ghế", "ve sinh", "vệ sinh", "chập", "cháy", "hỏng", "hong", "sự cố"
+    ]):
+        return {
+            "situation_summary": "Báo hỏng và yêu cầu xử lý sự cố trang thiết bị giảng đường (điều hòa, máy chiếu, mic loa, điện nguồn, bàn ghế).",
+            "direct_solution": (
+                "Về sự cố trang thiết bị phòng học bạn phản ánh:\n"
+                "Bộ phận Kỹ thuật - Quản trị CSVC đã tiếp nhận thông tin và sẽ cử kỹ thuật viên đến kiểm tra, xử lý ngay trong vòng 30 - 60 phút. Bạn vui lòng phối hợp cung cấp chính xác vị trí giảng đường (Tòa nhà, số phòng học, thiết bị cụ thể) hoặc thông báo trực tiếp cho Trực ban Tầng 1 Tòa B (Hotline: (024) 6262-7797) để được hỗ trợ nhanh nhất."
+            ),
+            "actionable_guidance": (
+                "  1. Ghi rõ thông tin vị trí giảng đường (Tòa nhà, số phòng học, thiết bị cụ thể bị sự cố).\n"
+                "  2. Thông báo trực tiếp cho Đội Kỹ thuật - Quản trị CSVC tại Tầng 1 Tòa B hoặc Trực ban Bảo vệ. Theo quy trình PROC_CSVC_01, kỹ thuật viên sẽ có mặt kiểm tra xử lý trong vòng 30 - 60 phút."
+            ),
+            "has_specific_match": True
+        }
+
+    # 6. HỆ THỐNG CNTT (He_thong_CNTT / PROC_IT_01)
+    if any(k in text_lower for k in ["quen mat khau", "quên mật khẩu", "quen mk", "reset pass", "otp", "cong dao tao", "cổng đào tạo", "daotao.eaut"]):
+        return {
+            "situation_summary": "Quên mật khẩu cổng thông tin sinh viên daotao.eaut.edu.vn hoặc không nhận được mã xác thực OTP qua email/SĐT.",
+            "direct_solution": (
+                "Về việc đặt lại mật khẩu cổng thông tin sinh viên daotao.eaut.edu.vn:\n"
+                "Bạn truy cập daotao.eaut.edu.vn, chọn 'Quên mật khẩu' và kiểm tra mã xác thực gửi về hòm thư sinh viên (@eaut.edu.vn) bao gồm cả hòm thư Spam. Nếu số điện thoại hoặc email liên kết bị sai lệch, bạn mang theo Thẻ sinh viên hoặc CCCD đến Phòng Kỹ thuật CNTT (Tầng 4, Tòa A) để được cán bộ hỗ trợ đặt lại mật khẩu trực tiếp trong 5 - 10 phút."
+            ),
+            "actionable_guidance": (
+                "  1. Truy cập daotao.eaut.edu.vn, chọn 'Quên mật khẩu' và kiểm tra hòm thư sinh viên (@eaut.edu.vn) bao gồm cả hòm thư Spam.\n"
+                "  2. Nếu số điện thoại hoặc email liên kết bị sai lệch, bạn mang theo Thẻ sinh viên hoặc CCCD đến Phòng Kỹ thuật CNTT (Tầng 4, Tòa A) để được cán bộ hỗ trợ đặt lại mật khẩu trực tiếp."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["microsoft 365", "office 365", "teams", "khoa tai khoan", "khóa tài khoản", "locked", "email truong", "email trường"]):
+        return {
+            "situation_summary": "Tài khoản Microsoft 365 / Teams / Email sinh viên bị khóa do đăng nhập sai nhiều lần hoặc cảnh báo bảo mật.",
+            "direct_solution": (
+                "Về sự cố tài khoản Microsoft 365 / Teams / Email sinh viên bị khóa:\n"
+                "Bạn vui lòng gửi email từ hòm thư cá nhân kèm ảnh chụp 2 mặt Thẻ sinh viên và ảnh chụp thông báo lỗi tới: cntt@eaut.edu.vn, hoặc liên hệ trực tiếp Trung tâm CNTT tại Tầng 4, Tòa A trong giờ hành chính để cán bộ mở khóa tài khoản trong 15 - 30 phút."
+            ),
+            "actionable_guidance": (
+                "  1. Gửi email từ hòm thư cá nhân kèm ảnh chụp 2 mặt Thẻ sinh viên và ảnh chụp thông báo lỗi tới: cntt@eaut.edu.vn.\n"
+                "  2. Hoặc liên hệ trực tiếp Trung tâm CNTT tại Tầng 4, Tòa A trong giờ hành chính để cán bộ mở khóa tài khoản trong 15 - 30 phút."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["wifi", "mat mang", "mất mạng", "lms", "moodle", "app mobile", "nop bai", "nộp bài"]):
+        return {
+            "situation_summary": "Sự cố kết nối mạng Wifi sinh viên EAUT_Student hoặc lỗi nộp bài tập lớn trên hệ thống LMS Moodle.",
+            "direct_solution": (
+                "Về sự cố kết nối mạng Wifi sinh viên EAUT_Student hoặc lỗi nộp bài tập trên LMS Moodle:\n"
+                "Nếu dung lượng file bài tập vượt quá giới hạn LMS (trên 10MB), bạn tải tệp lên Google Drive bằng tài khoản trường, bật chế độ chia sẻ công khai và dán đường link vào ô nộp bài. Đối với lỗi mất kết nối Wifi giảng đường, kỹ thuật viên sẽ khởi động lại Access Point tại tầng tương ứng."
+            ),
+            "actionable_guidance": (
+                "  1. Nếu dung lượng file bài tập vượt quá giới hạn LMS (trên 10MB), tải tệp lên Google Drive bằng tài khoản trường, bật chế độ chia sẻ công khai và dán đường link vào ô nộp bài.\n"
+                "  2. Đối với lỗi mất kết nối Wifi giảng đường, kỹ thuật viên sẽ khởi động lại Access Point tại tầng tương ứng."
+            ),
+            "has_specific_match": True
+        }
+
+    # 7. KHÁC / BỘ PHẬN TIẾP NHẬN
+    if any(k in text_lower for k in ["roi do", "rơi đồ", "quen do", "quên đồ", "nhat duoc", "nhặt được", "camera", "tai san", "tài sản", "ba lo", "ba lô", "vi da", "ví da"]):
+        return {
+            "situation_summary": "Nhặt được tài sản của sinh viên để quên hoặc yêu cầu hỗ trợ trích xuất camera an ninh để tìm đồ thất lạc.",
+            "direct_solution": (
+                "Về việc tìm kiếm tài sản thất lạc hoặc nhặt được đồ rơi:\n"
+                "Bạn vui lòng liên hệ bàn giao hoặc tra cứu tài sản thất lạc tại Phòng Bảo vệ - Tầng 1 Tòa A hoặc Tòa B. Để đề nghị trích xuất camera an ninh, bạn điền Phiếu đề nghị trích xuất camera (ghi rõ khung giờ và vị trí nghi rơi đồ) nộp tại Ban Chỉ huy Bảo vệ."
+            ),
+            "actionable_guidance": (
+                "  1. Liên hệ bàn giao hoặc tra cứu tài sản thất lạc tại Phòng Bảo vệ - Tầng 1 Tòa A hoặc Tòa B.\n"
+                "  2. Để trích xuất camera an ninh, sinh viên điền Phiếu đề nghị trích xuất camera (ghi rõ khung giờ và vị trí nghi rơi đồ) nộp tại Ban Chỉ huy Bảo vệ."
+            ),
+            "has_specific_match": True
+        }
+
+    if any(k in text_lower for k in ["y te", "y tế", "so cuu", "sơ cứu", "dau bung", "đau bụng", "tut huyet ap", "tụt huyết áp", "cap cuu", "cấp cứu"]):
+        return {
+            "situation_summary": "Yêu cầu trợ giúp y tế khẩn cấp hoặc sơ cấp cứu ban đầu cho sinh viên tại trường.",
+            "direct_solution": (
+                "Về yêu cầu trợ giúp y tế khẩn cấp hoặc sơ cấp cứu ban đầu:\n"
+                "Bạn vui lòng đưa ngay sinh viên đến Phòng Y tế trường tại Tầng 1, Tòa A (cạnh sảnh tiếp nhận Một cửa). Trường hợp khẩn cấp cần hỗ trợ tại chỗ ngay lập tức, gọi ngay Hotline trực ban cấp cứu của trường: (024) 6262-7797."
+            ),
+            "actionable_guidance": (
+                "  1. Đưa ngay sinh viên đến Phòng Y tế trường tại Tầng 1, Tòa A (cạnh sảnh tiếp nhận Một cửa).\n"
+                "  2. Gọi ngay Hotline trực ban cấp cứu của trường: (024) 6262-7797 để cán bộ y tế có mặt hỗ trợ tại chỗ ngay lập tức."
+            ),
+            "has_specific_match": True
+        }
+
+    # Fallback mặc định theo chủ đề
+    dept_name = DEPT_MAP.get(topic, "Bộ phận Tiếp nhận")
+    return {
+        "situation_summary": f"Yêu cầu hướng dẫn giải quyết sự việc thuộc lĩnh vực {TOPICS.get(topic, topic)}.",
+        "direct_solution": (
+            f"Vấn đề bạn phản ánh đã được tiếp nhận và chuyển đến {dept_name}.\n"
+            f"Bạn vui lòng mang theo các giấy tờ hoặc minh chứng liên quan đến liên hệ trực tiếp tại {dept_name} trong giờ hành chính để được cán bộ chuyên trách kiểm tra hồ sơ và hướng dẫn giải quyết nhanh chóng."
+        ),
+        "actionable_guidance": (
+            f"  1. Chuẩn bị thông tin chi tiết sự việc, minh chứng hoặc các giấy tờ liên quan.\n"
+            f"  2. Liên hệ trực tiếp tại {dept_name} trong giờ hành chính để cán bộ chuyên trách kiểm tra hồ sơ và hướng dẫn xử lý cụ thể."
+        ),
+        "has_specific_match": False
+    }
 
 class LocalLearningMachine:
     def __init__(self, model_path: Optional[Path] = None, catalog_path: Optional[Path] = None):
@@ -123,6 +537,19 @@ class LocalLearningMachine:
                 texts.extend(df_train[col_text].dropna().tolist())
                 labels.extend(df_train[col_label].dropna().tolist())
 
+        # Bổ sung 122 mẫu phản ánh thực tế từ dataset_mau_phan_anh_sinh_vien_eaut.csv
+        sample_csv = ROOT_DIR / "data" / "dataset_mau_phan_anh_sinh_vien_eaut.csv"
+        if sample_csv.exists():
+            df_new = pd.read_csv(sample_csv)
+            for _, r in df_new.iterrows():
+                top = str(r.get('target_topic', '')).strip()
+                raw_t = str(r.get('raw_text', '')).strip()
+                if top in TOPICS and len(raw_t) >= 12:
+                    c_res = clean_text_single(raw_t, mask_pii_flag=True)
+                    if c_res.get('is_usable') and len(c_res['clean_text']) >= 12:
+                        texts.append(c_res['clean_text'])
+                        labels.append(top)
+
         # Bổ sung dữ liệu huấn luyện từ sample_queries trích xuất trong data-doc
         for p in self.procedures:
             topic = p["topic"]
@@ -136,7 +563,7 @@ class LocalLearningMachine:
         # Xây dựng pipeline trích xuất kép Word + Char n-grams
         features = FeatureUnion([
             ("word_tfidf", TfidfVectorizer(
-                ngram_range=(1, 2),
+                ngram_range=(1, 3),
                 min_df=1,
                 max_df=0.98,
                 sublinear_tf=True
@@ -150,7 +577,7 @@ class LocalLearningMachine:
         ])
 
         classifier = LogisticRegression(
-            C=1.5,
+            C=2.0,
             solver="lbfgs",
             class_weight="balanced",
             random_state=42,
@@ -236,18 +663,35 @@ class LocalLearningMachine:
         đúng thể thức hành chính, trích dẫn chuẩn xác văn bản từ data-doc.
         """
         dept = DEPT_MAP.get(topic, "Bộ phận Tiếp nhận")
+        proc_id = matched_procedure.get("proc_id", "") if matched_procedure else ""
+
+        # 1. Chẩn đoán bối cảnh chi tiết và sinh hướng dẫn trực diện
+        sit = analyze_specific_situation(clean_text, topic, proc_id)
+
+        target_dept_name = matched_procedure.get("department", dept) if matched_procedure else dept
+        contact_info = get_dept_contact(target_dept_name)
+        office_location = contact_info.get("office", "Bộ phận Một cửa - Tầng 1, Tòa nhà A, Trường ĐH Công nghệ Đông Á")
+        hotline = contact_info.get("hotline", "(024) 6262-7797")
+        dept_email = contact_info.get("email", "hotro.sinhvien@eaut.edu.vn")
+        hours = contact_info.get("hours", "08:00 - 17:00 (Thứ Hai đến Thứ Sáu)")
+
         reasoning_steps = []
+
+        if sit.get("has_specific_match"):
+            reasoning_steps.append(f"[Suy luận Chẩn đoán tình huống] Nhận diện sự việc: {sit['situation_summary']}. Đưa ra giải pháp trực diện.")
+
+        solution_text = sit.get("direct_solution") or sit.get("actionable_guidance", "")
+        solution_text = solution_text.strip()
 
         if not matched_procedure:
             reasoning_steps.append(f"[Suy luận 1: Nhận diện phản ánh] Sinh viên phản ánh vấn đề liên quan đến nhóm '{TOPICS.get(topic, topic)}'.")
             reasoning_steps.append("[Suy luận 2: Đối chiếu quy định] Chưa tìm thấy điều khoản quy trình cụ thể tương đồng trong kho tài liệu data-doc.")
-            reasoning_steps.append(f"[Suy luận 3: Thẩm quyền giải quyết] Chuyển tiếp tới {dept} để cán bộ tiếp nhận xác minh trực tiếp.")
+            reasoning_steps.append(f"[Suy luận 3: Thẩm quyền giải quyết] Chuyển tiếp tới {target_dept_name} để cán bộ tiếp nhận xác minh trực tiếp.")
             draft = (
                 f"Chào bạn,\n\n"
-                f"Hệ thống đã tiếp nhận phản ánh của bạn về lĩnh vực: {TOPICS.get(topic, topic)}.\n"
-                f"Hiện tại nội dung chưa đủ thông tin hoặc chưa khớp với quy trình giải quyết tự động sẵn có. "
-                f"Yêu cầu của bạn đã được chuyển đến {dept} để cán bộ chuyên trách kiểm tra hồ sơ và hướng dẫn cụ thể.\n\n"
-                f"Trân trọng cảm ơn bạn."
+                f"{solution_text}\n\n"
+                f"Nếu cần hỗ trợ thêm, bạn vui lòng liên hệ trực tiếp tại {target_dept_name} ({office_location} | Hotline: {hotline} | Giờ làm việc: {hours}) để được hướng dẫn chu đáo.\n\n"
+                f"Trân trọng."
             )
             return reasoning_steps, draft
 
@@ -259,27 +703,30 @@ class LocalLearningMachine:
 
         reasoning_steps.append(f"[Suy luận 1: Nhận diện phản ánh] Phát hiện sự việc tương thích với quy trình nghiệp vụ '{title}'.")
         reasoning_steps.append(f"[Suy luận 2: Đối chiếu căn cứ pháp lý] Căn cứ theo văn bản: {legal}.")
-        reasoning_steps.append(f"[Suy luận 3: Xác định thẩm quyền & Thời hạn] Thụ lý: {matched_procedure.get('department', dept)} | Thời gian xử lý: {p_time}.")
-        reasoning_steps.append(f"[Suy luận 4: Hướng dẫn biểu mẫu & Trình tự] Yêu cầu biểu mẫu [{forms}] và thực hiện theo {len(steps)} bước chuẩn hóa.")
-
-        # Định dạng văn bản giải đáp đầy đủ, rõ ràng và trang trọng
-        step_lines = []
-        for s in steps[:5]:  # Hiển thị tối đa 5 bước chính
-            step_lines.append(f"  • Bước {s.get('step', '')} ({s.get('actor', '')}): {s.get('action', '')}")
-
-        steps_formatted = "\n".join(step_lines) if step_lines else "  • Nộp hồ sơ và làm theo hướng dẫn tại bộ phận Một cửa."
+        reasoning_steps.append(f"[Suy luận 3: Xác định thẩm quyền & Thời hạn] Thụ lý: {target_dept_name} | Thời gian xử lý: {p_time}.")
+        reasoning_steps.append(f"[Suy luận 4: Giải pháp trọng tâm] Giải đáp trực diện yêu cầu của sinh viên theo quy định [{title}], không liệt kê rườm rà.")
 
         draft = (
             f"Chào bạn,\n\n"
-            f"Căn cứ theo quy định tại {legal}, vấn đề của bạn được giải quyết theo '{title}' như sau:\n\n"
-            f"1. Đơn vị tiếp nhận và xử lý: {matched_procedure.get('department', dept)}\n"
-            f"2. Thời hạn giải quyết: {p_time}\n"
-            f"3. Biểu mẫu / Hồ sơ cần chuẩn bị: {forms}\n\n"
-            f"4. Trình tự các bước thực hiện:\n"
-            f"{steps_formatted}\n\n"
-            f"Nếu cần hỗ trợ thêm, bạn vui lòng liên hệ trực tiếp tại {matched_procedure.get('department', dept)} trong giờ hành chính để được hướng dẫn chu đáo.\n\n"
+            f"{solution_text}\n\n"
+            f"Nếu cần hỗ trợ thêm, bạn vui lòng liên hệ trực tiếp tại {target_dept_name} ({office_location} | Hotline: {hotline} | Giờ làm việc: {hours}) để được giải quyết chu đáo.\n\n"
             f"Trân trọng."
         )
+
+        # Tích hợp tra cứu CSDL Thư viện thời gian thực (nếu câu hỏi liên quan đến Thư viện)
+        try:
+            from src.library_service import is_library_inquiry, query_library_data, augment_response_with_library_data
+            if proc_id == "PROC_CSVC_03" or is_library_inquiry(clean_text):
+                lib_data = query_library_data(clean_text)
+                if lib_data.get("has_live_data"):
+                    b_count = len(lib_data.get("books_found", []))
+                    br_count = len(lib_data.get("student_borrows", []))
+                    reasoning_steps.append(
+                        f"[Suy luận CSDL Thư viện EAUT] Đối soát CSDL thời gian thực: Phát hiện {b_count} đầu sách liên quan và {br_count} hồ sơ mượn trả."
+                    )
+                    draft = augment_response_with_library_data(draft, lib_data)
+        except Exception:
+            pass
 
         return reasoning_steps, draft
 
@@ -583,6 +1030,7 @@ class LocalLearningMachine:
             "reasoning_steps": reasoning_steps,
             "articles": articles,
             "draft_response": draft_response,
+            "procedure_draft_response": draft_response,
             "review_reasons": review_reasons,
             "needs_review": bool(review_reasons),
             "execution_trace": trace.to_dict(),

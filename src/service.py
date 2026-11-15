@@ -182,6 +182,14 @@ class RequestService:
             result['reasoning_steps'] = reasoning_steps
             result['procedure_draft_response'] = proc_draft
 
+            # Bổ sung tra cứu CSDL Thư viện có cấu trúc để hiển thị giao diện UI
+            try:
+                from src.library_service import query_library_data
+                lib_info = query_library_data(inquiry_text)
+                result['library_lookup'] = lib_info
+            except Exception:
+                result['library_lookup'] = None
+
             for r_s in reasoning_steps:
                 step4.add_log(r_s)
             step4.finish(

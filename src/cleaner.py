@@ -24,12 +24,52 @@ REGEX_CONTEXT_ID = re.compile(r'((?:mssv|mã\s*(?:sinh\s*viên|sv))\s*[:\-]?\s*)
 REGEX_URL = re.compile(r'(?:https?://|www\.)[^\s<>]+', re.I)
 
 def normalize_unicode_and_whitespace(text: str) -> str:
-    """Chuẩn hóa Unicode NFC và dọn dẹp khoảng trắng thừa."""
+    """Chuẩn hóa Unicode NFC và dọn dẹp khoảng trắng thừa, giữ lại ngắt dòng phân đoạn."""
     if not isinstance(text, str):
         return ""
     text = unicodedata.normalize('NFC', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    lines = [re.sub(r'[^\S\r\n]+', ' ', line).strip() for line in text.splitlines()]
+    clean_text = '\n'.join(lines).strip()
+    clean_text = re.sub(r'\n{3,}', '\n\n', clean_text)
+    return clean_text
+
+def parse_student_feedback(raw_text: str) -> dict:
+    """
+    Tách nội dung phản ánh thành 3 phần rõ ràng:
+    - student_message: Nội dung sinh viên trực tiếp nhập / phản ánh cốt lõi
+    - issue: Vấn đề phân loại đã chọn (nếu có tiền tố 'Vấn đề ghi nhận:')
+    - contacts: Thông tin liên hệ sinh viên (nếu có tiền tố 'Thông tin liên hệ:')
+    """
+    if not isinstance(raw_text, str) or not raw_text.strip():
+        return {"issue": "", "contacts": "", "student_message": ""}
+
+    content = raw_text.strip()
+    issue = ""
+    contacts = ""
+
+    # 1. Trích xuất Thông tin liên hệ (nếu có)
+    m_contact = re.search(r'Thông tin liên hệ:\s*(.+)$', content, re.IGNORECASE | re.DOTALL)
+    if m_contact:
+        contacts = m_contact.group(1).strip()
+        content = content[:m_contact.start()].strip()
+
+    # 2. Trích xuất Vấn đề ghi nhận (nếu có)
+    m_issue = re.search(r'Vấn đề ghi nhận:\s*([^.\n]+(?:\.[^.\n]+)*?)(?:\.\s*|\n|$)', content, re.IGNORECASE)
+    if m_issue:
+        issue = m_issue.group(1).strip()
+        content = content[m_issue.end():].strip()
+
+    student_msg = content.strip(' .;\n')
+    if not student_msg and issue:
+        student_msg = issue
+    elif not student_msg:
+        student_msg = raw_text.strip()
+
+    return {
+        "issue": issue,
+        "contacts": contacts,
+        "student_message": student_msg
+    }
 
 def mask_pii(text: str) -> tuple[str, list[str]]:
     """

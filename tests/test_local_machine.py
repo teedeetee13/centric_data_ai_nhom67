@@ -61,5 +61,30 @@ class LocalMachineTests(unittest.TestCase):
         self.assertIn("BƯỚC 1", term_log)
         self.assertIn("metric: 123", term_log)
 
+    def test_06_borrow_facilities_diagnosis_and_direct_email(self):
+        from src.cleaner import parse_student_feedback
+        sample_input = (
+            "Vấn đề ghi nhận: Đăng ký mượn phòng học, Hội trường và Thiết bị ngoài giờ. "
+            "em muốn đăng ký mượn mic và điều khiển điều hòa cho phòng học "
+            "Thông tin liên hệ: Mã sinh viên 1234234567, Số điện thoại 1234567823, Email a@mail.com."
+        )
+        parsed = parse_student_feedback(sample_input)
+        self.assertEqual(parsed["student_message"], "em muốn đăng ký mượn mic và điều khiển điều hòa cho phòng học")
+        self.assertIn("Đăng ký mượn phòng học", parsed["issue"])
+        self.assertIn("1234234567", parsed["contacts"])
+
+        matches = self.machine.retrieve_procedure(sample_input, predicted_topic="Co_so_vat_chat")
+        self.assertTrue(matches)
+        self.assertEqual(matches[0]["proc_id"], "PROC_CSVC_02")
+
+        steps, draft = self.machine.reason_and_synthesize(sample_input, "Co_so_vat_chat", matches[0])
+        # Đảm bảo email đi thẳng vào trọng tâm, không liệt kê quy trình rườm rà
+        self.assertNotIn("[CHẨN ĐOÁN VẤN ĐỀ", draft)
+        self.assertNotIn("Trình tự các bước thực hiện:", draft)
+        self.assertNotIn("Tình huống nhận diện: Báo hỏng", draft)
+        self.assertIn("mượn micro", draft.lower())
+        self.assertIn("Chào bạn,", draft)
+        self.assertIn("Trân trọng.", draft)
+
 if __name__ == "__main__":
     unittest.main()

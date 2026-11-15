@@ -26,6 +26,37 @@ try:
 except Exception:
     pass
 
+import src.cleaner as cleaner_mod
+try:
+    importlib.reload(cleaner_mod)
+except Exception:
+    pass
+
+try:
+    from src.cleaner import parse_student_feedback
+except ImportError:
+    def parse_student_feedback(raw_text: str) -> dict:
+        import re
+        if not isinstance(raw_text, str) or not raw_text.strip():
+            return {"issue": "", "contacts": "", "student_message": ""}
+        content = raw_text.strip()
+        issue = ""
+        contacts = ""
+        m_contact = re.search(r'Thông tin liên hệ:\s*(.+)$', content, re.IGNORECASE | re.DOTALL)
+        if m_contact:
+            contacts = m_contact.group(1).strip()
+            content = content[:m_contact.start()].strip()
+        m_issue = re.search(r'Vấn đề ghi nhận:\s*([^.\n]+(?:\.[^.\n]+)*?)(?:\.\s*|\n|$)', content, re.IGNORECASE)
+        if m_issue:
+            issue = m_issue.group(1).strip()
+            content = content[m_issue.end():].strip()
+        student_msg = content.strip(' .;\n')
+        if not student_msg and issue:
+            student_msg = issue
+        elif not student_msg:
+            student_msg = raw_text.strip()
+        return {"issue": issue, "contacts": contacts, "student_message": student_msg}
+
 import src.database as db_mod
 try:
     importlib.reload(db_mod)
@@ -44,7 +75,35 @@ AUTO_APPROVE_CONFIDENCE_THRESHOLD = getattr(config_mod, "AUTO_APPROVE_CONFIDENCE
 DEFAULT_TEST_EMAIL = getattr(config_mod, "DEFAULT_TEST_EMAIL", os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com"))
 
 from src.database import init_db, sync_kb_from_csv, sync_procedures_kb, save_request, get_request, save_draft, log_review_action
-from src.email_service import build_resolution_email, send_resolution_email
+import src.email_service as email_mod
+try:
+    importlib.reload(email_mod)
+except Exception:
+    pass
+
+try:
+    from src.email_service import (
+        build_resolution_email,
+        build_rich_resolution_email,
+        build_rejection_email,
+        build_intake_confirmation_email,
+        send_resolution_email,
+        get_smtp_config,
+        save_smtp_credentials,
+        test_smtp_connection
+    )
+except ImportError:
+    importlib.reload(email_mod)
+    from src.email_service import (
+        build_resolution_email,
+        build_rich_resolution_email,
+        build_rejection_email,
+        build_intake_confirmation_email,
+        send_resolution_email,
+        get_smtp_config,
+        save_smtp_credentials,
+        test_smtp_connection
+    )
 from src.service import RequestService
 import app.components.workbench as _wb_mod
 importlib.reload(_wb_mod)
@@ -285,6 +344,44 @@ st.markdown("""
 
 # Sidebar: Live Server & Web Console Logs
 with st.sidebar:
+    st.markdown("### ⚙️ Cấu Hình Gửi Mail Tự Động")
+    auto_conf_thresh = st.slider(
+        "Ngưỡng tin cậy gửi thẳng mail:",
+        min_value=0.50,
+        max_value=0.95,
+        value=float(st.session_state.get('auto_conf_thresh', AUTO_APPROVE_CONFIDENCE_THRESHOLD)),
+        step=0.05,
+        format="%.0f%%",
+        help="Khi độ tin cậy AI >= ngưỡng này, hệ thống sẽ tự động duyệt và gửi thẳng email giải quyết cho sinh viên mà không cần chờ cán bộ duyệt thủ công."
+    )
+    st.session_state['auto_conf_thresh'] = auto_conf_thresh
+    st.caption(f"Trạng thái: Khi AI đạt ≥ **{auto_conf_thresh:.0%}**, Model sẽ **gửi thẳng email** ngay lập tức.")
+    st.markdown("---")
+
+    # Phân hệ Cấu hình SMTP Gmail gửi thư thực tế
+    smtp_cfg = get_smtp_config()
+    is_smtp_active = bool(smtp_cfg.get("user") and smtp_cfg.get("password"))
+    with st.expander("📬 Máy chủ SMTP Gmail" + (" (🟢 Sẵn sàng)" if is_smtp_active else " (🟡 Cần thiết lập)"), expanded=False):
+        if is_smtp_active:
+            st.success(f"Tài khoản gửi: **{smtp_cfg.get('user')}**")
+            st.caption("Đã kích hoạt gửi thực tế qua `smtp.gmail.com:587`.")
+        else:
+            st.warning("Đang ở Chế độ mô phỏng (Mock). Nhập Mật khẩu ứng dụng 16 ký tự để gửi thực:")
+        sb_u = st.text_input("Gmail gửi:", value=smtp_cfg.get("user", ""), key="sb_smtp_user", placeholder="hotro@gmail.com")
+        sb_p = st.text_input("Mật khẩu ứng dụng (16 ký tự):", value=smtp_cfg.get("password", ""), type="password", key="sb_smtp_pass", placeholder="xxxx yyyy zzzz wwww", help="Google App Password 16 chữ cái tạo tại myaccount.google.com/apppasswords")
+        if st.button("💾 Lưu cấu hình & Kiểm tra SMTP", key="sb_btn_save_smtp", width="stretch"):
+            if not sb_u.strip() or not sb_p.strip():
+                st.error("Cần nhập cả Gmail và Mật khẩu ứng dụng.")
+            else:
+                with st.spinner("Đang kết nối thử tới máy chủ Gmail..."):
+                    ok_sb, msg_sb = test_smtp_connection(sb_u, sb_p)
+                    if ok_sb:
+                        save_smtp_credentials(sb_u, sb_p)
+                        st.success("Đã kết nối thành công! Đã kích hoạt chế độ gửi thư thực tế.")
+                        st.rerun()
+                    else:
+                        st.error(msg_sb)
+    st.markdown("---")
     st.markdown("### 🖥️ Console Nhật Ký Web & Server")
     st.caption("Ghi nhận thời gian thực: gọi hàm gì, làm những gì, kết quả ra sao.")
 
@@ -334,11 +431,13 @@ with tabs[0]:
             'Cấp giấy xác nhận SV hoãn NVQS': 'Em cần xin Giấy xác nhận sinh viên tại Bộ phận Một cửa để nộp cho ban chỉ huy quân sự phường xin tạm hoãn nghĩa vụ quân sự năm 2026.',
             'Làm lại thẻ sinh viên bị mất': 'Em bị rơi mất thẻ sinh viên trên xe buýt, em muốn làm thủ tục cấp lại thẻ sinh viên và xin giấy xác nhận tạm thời để đi thi.',
             'Đơn đề nghị phúc khảo bài thi': 'Em làm đơn đề nghị phúc khảo bài thi kết thúc học phần môn Toán cao cấp 2, điểm hiện tại báo 4.0 em thấy không chính xác.',
-            'Thủ tục xin chuyển ngành học': 'Em muốn làm thủ tục chuyển ngành đào tạo từ Quản trị kinh doanh sang CNTT theo mẫu BM_CN01, mã sinh viên 2023605678.'
+            'Thủ tục xin chuyển ngành học': 'Em muốn làm thủ tục chuyển ngành đào tạo từ Quản trị kinh doanh sang CNTT theo mẫu BM_CN01, mã sinh viên 2023605678.',
+            'Tra cứu sách Thư viện & Vị trí kệ': 'Cho em hỏi cuốn Giáo trình Kỹ thuật phần mềm còn sách ở thư viện trường không ạ và ở kệ nào?',
+            'Kiểm tra sách mượn & Hạn trả (MSSV)': 'Em mã sinh viên 2021600123 muốn kiểm tra xem đang mượn sách gì và có bị phạt quá hạn không ạ?'
         }
-        sc_cols = st.columns(3)
+        sc_cols = st.columns(4)
         for idx, (label, text) in enumerate(scenarios.items()):
-            with sc_cols[idx % 3]:
+            with sc_cols[idx % 4]:
                 if st.button(f"Mẫu: {label}", key=f"quick_sc_{idx}", width="stretch"):
                     app_log("INTAKE", "Người dùng chọn tình huống mẫu chuẩn hóa", f"Mẫu: [{label}]")
                     st.session_state["request_text"] = text
@@ -492,56 +591,118 @@ with tabs[0]:
                         match_mail = re.search(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', combined_input)
                         target_email = match_mail.group(1) if match_mail else DEFAULT_TEST_EMAIL
 
-                    # Kiểm tra điều kiện tự động phê duyệt và lưu trữ:
+                    # Kiểm tra điều kiện tự động phê duyệt và gửi thẳng email:
+                    thresh = float(st.session_state.get('auto_conf_thresh', AUTO_APPROVE_CONFIDENCE_THRESHOLD))
                     is_auto_approved = (
-                        result['confidence_score'] >= AUTO_APPROVE_CONFIDENCE_THRESHOLD
+                        result['confidence_score'] >= thresh
                         and bool(result.get('is_usable'))
                         and (bool(result.get('matched_kb_id')) or bool(result.get('matched_procedure')))
                         and result.get('priority_level') != 'Khẩn cấp'
                     )
 
-                    # Gửi toàn bộ phản hồi giải quyết về email người nhận (kể cả khi không đủ độ tin cậy)
-                    subj, body = build_resolution_email(
-                        record_id=rid,
-                        topic=result['predicted_topic'],
-                        department=result['department'],
-                        resolution_text=result['draft_response'],
-                        confidence_score=result['confidence_score'],
-                        is_auto_approved=is_auto_approved
-                    )
-                    mail_ok, mail_msg = send_resolution_email(
-                        recipient_email=target_email,
-                        subject=subj,
-                        body_text=body,
-                        record_id=rid
-                    )
-                    app_log("EMAIL", "Gọi send_resolution_email()", f"Mã: [{rid}], Gửi tới: [{target_email}], Kết quả: {'Thành công' if mail_ok else 'Thất bại'}")
-
                     if is_auto_approved:
+                        # ĐỦ ĐỘ TIN CẬY: Model gửi thẳng email giải quyết ngay cho người nhận (định dạng HTML + Plain Text)
+                        best_response = result.get('procedure_draft_response') or result.get('draft_response', '')
+                        subj, body_plain, body_html = build_rich_resolution_email(
+                            record_id=rid,
+                            topic=result['predicted_topic'],
+                            department=result['department'],
+                            resolution_text=best_response,
+                            confidence_score=result['confidence_score'],
+                            is_auto_approved=True,
+                            student_id=in_mssv.strip() or None,
+                            procedure_info=result.get('matched_procedure'),
+                            library_info=result.get('library_lookup')
+                        )
+                        mail_ok, mail_msg = send_resolution_email(
+                            recipient_email=target_email,
+                            subject=subj,
+                            body_text=body_plain,
+                            body_html=body_html,
+                            record_id=rid
+                        )
+                        st.session_state['last_sent_email'] = {
+                            "subject": subj,
+                            "body_plain": body_plain,
+                            "body_html": body_html,
+                            "recipient": target_email,
+                            "status": f"Tự động gửi thẳng văn bản giải quyết (Độ tin cậy: {result['confidence_score']:.1%} >= {thresh:.0%})"
+                        }
+                        app_log("EMAIL", "Model gửi thẳng email giải quyết tự động", f"Mã: [{rid}], Gửi tới: [{target_email}], Độ tin cậy: {result['confidence_score']:.1%} >= {thresh:.0%}, Kết quả: {'Thành công' if mail_ok else 'Thất bại'}")
+
                         log_review_action(
                             record_id=rid,
                             officer_action='approve',
                             original_topic=result['predicted_topic'],
                             final_topic=result['predicted_topic'],
-                            final_response=result['draft_response'],
-                            notes=f"AI tự động phê duyệt theo quy trình chuẩn hóa (Độ tự tin: {result['confidence_score']:.1%})"
+                            final_response=best_response,
+                            notes=f"Model AI tự động gửi thẳng email khi đủ độ tin cậy ({result['confidence_score']:.1%} >= {thresh:.0%})"
                         )
-                        app_log("DISPATCH", f"Tự động phê duyệt hồ sơ [{rid}]", f"Độ tự tin {result['confidence_score']:.1%} >= 70% chuẩn hóa theo {result['department']}", level="SUCCESS")
+                        app_log("DISPATCH", f"Tự động phê duyệt hồ sơ [{rid}]", f"Độ tin cậy {result['confidence_score']:.1%} >= {thresh:.0%} chuẩn hóa theo {result['department']}", level="SUCCESS")
                         st.success(
-                            f"TIẾP NHẬN & TỰ ĐỘNG XỬ LÝ THÀNH CÔNG: Yêu cầu {rid} đã được hệ thống AI đối soát theo đúng quy trình chuẩn của {result['department']}. "
-                            f"Hướng dẫn giải quyết đã được gửi tự động về email: {target_email}!"
+                            f"TIẾP NHẬN & TỰ ĐỘNG GỬI EMAIL THÀNH CÔNG: Độ tin cậy của AI đạt {result['confidence_score']:.1%} (Đạt chuẩn tự động ≥ {thresh:.0%}). "
+                            f"Model đã gửi thẳng văn bản giải quyết chi tiết tới email: **{target_email}** mà không cần qua cán bộ duyệt thủ công!"
                         )
                     elif result.get('priority_level') == 'Khẩn cấp':
-                        app_log("DISPATCH", f"Chuyển ưu tiên khẩn cấp hồ sơ [{rid}]", f"Đơn vị thụ lý: [{result['department']}]", level="WARN")
+                        # KHẨN CẤP: Gửi email biên nhận tiếp nhận ưu tiên và chuyển ngay Bàn duyệt cán bộ
+                        conf_subj, conf_plain, conf_html = build_intake_confirmation_email(
+                            record_id=rid,
+                            topic=result['predicted_topic'],
+                            department=result['department'],
+                            clean_text=combined_input,
+                            priority_level='Khẩn cấp',
+                            student_id=in_mssv.strip() or None,
+                            estimated_sla="Xử lý ưu tiên trong 04 - 12 giờ làm việc"
+                        )
+                        send_resolution_email(
+                            recipient_email=target_email,
+                            subject=conf_subj,
+                            body_text=conf_plain,
+                            body_html=conf_html,
+                            record_id=rid
+                        )
+                        st.session_state['last_sent_email'] = {
+                            "subject": conf_subj,
+                            "body_plain": conf_plain,
+                            "body_html": conf_html,
+                            "recipient": target_email,
+                            "status": "Đã gửi email biên nhận tiếp nhận hồ sơ ưu tiên khẩn cấp"
+                        }
+                        app_log("DISPATCH", f"Chuyển ưu tiên khẩn cấp hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]", level="WARN")
                         st.warning(
-                            f"ĐÃ TIẾP NHẬN ƯU TIÊN KHẨN CẤP: Yêu cầu {rid} thuộc diện khẩn cấp. Phản hồi giải quyết đã được gửi về email: {target_email}. "
-                            f"Hồ sơ đã được ưu tiên chuyển trực tiếp tới Bàn duyệt cán bộ ({result['department']}) để theo dõi và xử lý ngay."
+                            f"ĐÃ TIẾP NHẬN ƯU TIÊN KHẨN CẤP: Yêu cầu {rid} thuộc diện khẩn cấp. Email xác nhận tiếp nhận hồ sơ đã được gửi tới **{target_email}**. "
+                            f"Hồ sơ đã được ưu tiên chuyển trực tiếp tới Bàn duyệt cán bộ ({result['department']}) để thụ lý và phản hồi giải pháp ngay."
                         )
                     else:
-                        app_log("DISPATCH", f"Chuyển hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]")
-                        st.success(
-                            f"TIẾP NHẬN & GỬI PHẢN HỒI THÀNH CÔNG: Yêu cầu {rid} đã được hệ thống AI xử lý và gửi phản hồi giải quyết về email: {target_email}. "
-                            f"Hồ sơ đã được đồng bộ tới Bàn duyệt cán bộ ({result['department']})."
+                        # CHƯA ĐỦ ĐỘ TIN CẬY: Gửi email biên nhận tiếp nhận hồ sơ, chuyển sang Bàn duyệt cán bộ
+                        conf_subj, conf_plain, conf_html = build_intake_confirmation_email(
+                            record_id=rid,
+                            topic=result['predicted_topic'],
+                            department=result['department'],
+                            clean_text=combined_input,
+                            priority_level=result.get('priority_level', 'Bình thường'),
+                            student_id=in_mssv.strip() or None,
+                            estimated_sla="Trong 24 - 48 giờ làm việc theo quy định"
+                        )
+                        send_resolution_email(
+                            recipient_email=target_email,
+                            subject=conf_subj,
+                            body_text=conf_plain,
+                            body_html=conf_html,
+                            record_id=rid
+                        )
+                        st.session_state['last_sent_email'] = {
+                            "subject": conf_subj,
+                            "body_plain": conf_plain,
+                            "body_html": conf_html,
+                            "recipient": target_email,
+                            "status": f"Đã gửi email biên nhận tiếp nhận hồ sơ (Độ tin cậy: {result['confidence_score']:.1%} < {thresh:.0%})"
+                        }
+                        app_log("DISPATCH", f"Chưa đủ độ tin cậy ({result['confidence_score']:.1%} < {thresh:.0%}), chuyển hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]")
+                        st.info(
+                            f"ĐÃ TIẾP NHẬN YÊU CẦU: Độ tin cậy của mô hình đạt {result['confidence_score']:.1%} (chưa đủ ngưỡng tự động gửi thẳng ≥ {thresh:.0%}). "
+                            f"Email xác nhận tiếp nhận mã số **{rid}** đã gửi về **{target_email}**. "
+                            f"Hồ sơ đã được chuyển an toàn sang Bàn duyệt cán bộ ({result['department']}) để thẩm định trước khi gửi kết quả hoàn tất."
                         )
                 except ValueError as exc:
                     st.error(str(exc))
@@ -589,13 +750,18 @@ with tabs[0]:
 
         st.caption(f"Căn cứ phân cấp ưu tiên: {row['priority_reason']}")
 
+        parsed_f = parse_student_feedback(row['clean_text'])
+        student_display_msg = parsed_f['student_message']
+
         st.text_area(
             'Nội dung phản ánh chi tiết',
-            value=row['clean_text'],
+            value=student_display_msg,
             disabled=True,
             key='clean_' + rid,
             height=90
         )
+        if parsed_f['issue'] and parsed_f['issue'] != student_display_msg:
+            st.caption(f"📌 **Vấn đề đã chọn:** {parsed_f['issue']}")
         st.caption('Chất lượng dữ liệu: ' + describe_flags(row['quality_flags']))
 
         matched_proc = result.get('matched_procedure')
@@ -612,9 +778,63 @@ with tabs[0]:
             </div>
             """, unsafe_allow_html=True)
 
-        if result.get('draft_response'):
+        # Thẻ hiển thị tra cứu CSDL Thư viện thời gian thực (nếu có dữ liệu)
+        lib_data = result.get('library_lookup')
+        if lib_data and lib_data.get('has_live_data'):
+            with st.expander("📚 Dữ Liệu Tra Cứu Thời Gian Thực Từ CSDL Thư Viện EAUT (OPAC & Sổ Mượn Trả)", expanded=True):
+                b_list = lib_data.get('books_found', [])
+                if b_list:
+                    st.markdown("##### 📖 Danh mục sách tìm thấy trong kho:")
+                    b_cols = st.columns(min(len(b_list), 3))
+                    for b_idx, book in enumerate(b_list[:3]):
+                        with b_cols[b_idx % 3]:
+                            avail_badge = "<span style='color:#16a34a; font-weight:700;'>🟢 Còn sách</span>" if book['available_copies'] > 0 else "<span style='color:#dc2626; font-weight:700;'>🔴 Hết sách</span>"
+                            dig_link = f"<div style='font-size: 0.78rem; margin-top: 5px;'><a href='{book.get('digital_url', 'https://lib.cndonga.edu.vn')}' target='_blank'>🔗 Đọc bản điện tử</a></div>" if book.get('is_digital') else ""
+                            st.markdown(f"""
+                            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                                <div style="font-size: 0.8rem; font-weight: 700; color: #1e40af;">[{book['book_id']}] &nbsp; {avail_badge}</div>
+                                <div style="font-weight: 600; font-size: 0.95rem; color: #0f172a; margin: 4px 0;">{book['title']}</div>
+                                <div style="font-size: 0.8rem; color: #475569;">Tác giả: {book['author']} ({book['publish_year']})</div>
+                                <div style="font-size: 0.8rem; color: #047857; margin-top: 4px;">📍 <strong>{book['location']}</strong></div>
+                                <div style="font-size: 0.8rem; color: #334155;">Số lượng: <strong>{book['available_copies']}/{book['total_copies']}</strong> cuốn</div>
+                                {dig_link}
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                br_list = lib_data.get('student_borrows', [])
+                if br_list:
+                    sid_display = lib_data.get('student_id') or 'N/A'
+                    st.markdown(f"##### 👤 Hồ sơ mượn trả tài liệu sinh viên [MSSV: {sid_display}]:")
+                    for br in br_list:
+                        status_color = "#dc2626" if br['status'] == 'Quá hạn' else ("#16a34a" if br['status'] == 'Đã trả' else "#2563eb")
+                        fine_note = f" &nbsp;|&nbsp; Phí phạt quá hạn: <strong style='color:#dc2626;'>{br.get('fine_amount', 0):,} VNĐ</strong>" if br['status'] == 'Quá hạn' else ""
+                        st.markdown(f"""
+                        <div style="background: #ffffff; border-left: 4px solid {status_color}; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; margin-bottom: 6px;">
+                            <div style="font-weight: 600; color: #0f172a;">📘 {br['book_title']}</div>
+                            <div style="font-size: 0.83rem; color: #475569; margin-top: 3px;">
+                                Mã mượn: <strong>{br['borrow_id']}</strong> &nbsp;|&nbsp;
+                                Trạng thái: <span style="font-weight: 700; color: {status_color};">{br['status']}</span> &nbsp;|&nbsp;
+                                Ngày mượn: {br['borrow_date']} &nbsp;|&nbsp;
+                                Hạn trả: <strong>{br['due_date']}</strong>{fine_note}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+        resp_to_show = result.get('procedure_draft_response') or result.get('draft_response')
+        if resp_to_show:
             with st.expander("Hướng Dẫn Giải Quyết Chuẩn Nghiệp Vụ (Theo Quy Trình EAUT)", expanded=True):
-                st.write(result['draft_response'])
+                st.write(resp_to_show)
+
+        # Xem trước Email thực tế gửi cho sinh viên
+        last_mail = st.session_state.get('last_sent_email')
+        if last_mail:
+            with st.expander("📧 Xem Trước Hộp Thư Email Đã Gửi Tới Sinh Viên (HTML & Plain Text)", expanded=True):
+                st.caption(f"Trạng thái: **{last_mail['status']}** &nbsp;|&nbsp; Người nhận: **{last_mail['recipient']}** &nbsp;|&nbsp; Tiêu đề: **{last_mail['subject']}**")
+                mail_tabs = st.tabs(["📱 Giao diện Email HTML (Trực quan)", "📄 Định dạng Văn bản thuần (Plain Text)"])
+                with mail_tabs[0]:
+                    st.components.v1.html(last_mail['body_html'], height=560, scrolling=True)
+                with mail_tabs[1]:
+                    st.text_area("Nội dung text gửi qua email:", value=last_mail['body_plain'], height=280, disabled=True, key=f"preview_plain_{rid}")
 
         with st.expander('Tài liệu quy chế tham chiếu (FAQ)', expanded=False):
             for article in result['articles']:
@@ -753,29 +973,39 @@ with tabs[0]:
             with st.spinner('Đang tiến hành gửi email thử nghiệm...'):
                 from app.components.workbench import DEPT_MAPPING
                 t_dept = DEPT_MAPPING.get(t_topic_sample, 'Bộ phận Tiếp nhận')
-                subj, body = build_resolution_email(
+                subj, body_plain, body_html = build_rich_resolution_email(
                     record_id='DEMO_TEST_EMAIL',
                     topic=t_topic_sample,
                     department=t_dept,
                     resolution_text=chosen_sample_sol,
                     confidence_score=0.92,
-                    is_auto_approved=True
+                    is_auto_approved=True,
+                    student_name='Sinh viên Thử nghiệm',
+                    student_id='2024609999'
                 )
                 ok, send_info = send_resolution_email(
                     recipient_email=t_email_dest,
                     subject=subj,
-                    body_text=body,
+                    body_text=body_plain,
+                    body_html=body_html,
                     record_id='DEMO_TEST_EMAIL'
                 )
                 if ok:
-                    st.success(send_info)
-                    st.markdown(f"""
-                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-top: 8px;">
-                        <div style="font-size: 0.82rem; color: #475569; font-weight: 600;">TIÊU ĐỀ: {subj}</div>
-                        <div style="font-size: 0.82rem; color: #475569; margin-top: 4px;">NGƯỜI NHẬN: <strong>{t_email_dest}</strong> | PHƯƠNG THỨC: Tự động phê duyệt bởi AI</div>
-                        <pre style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin-top: 8px; font-size: 0.8rem; white-space: pre-wrap;">{body}</pre>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    if is_smtp_active:
+                        st.success(f"🎉 **Đã gửi thư thực tế thành công!** {send_info} Vui lòng kiểm tra hộp thư đến (hoặc hòm thư Rác/Quảng cáo) của **{t_email_dest}**.")
+                    else:
+                        st.warning(f"{send_info}\n\n👉 **Lưu ý:** Thư vừa được ghi nhận ở chế độ mô phỏng. Để thực sự nhận email trong hộp thư đến, vui lòng cấu hình Mật khẩu ứng dụng tại thanh Sidebar bên trái.")
+                    t_mail_tabs = st.tabs(["📱 Xem trước giao diện HTML", "📄 Văn bản thuần (Plain Text)"])
+                    with t_mail_tabs[0]:
+                        st.components.v1.html(body_html, height=520, scrolling=True)
+                    with t_mail_tabs[1]:
+                        st.markdown(f"""
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-top: 8px;">
+                            <div style="font-size: 0.82rem; color: #475569; font-weight: 600;">TIÊU ĐỀ: {subj}</div>
+                            <div style="font-size: 0.82rem; color: #475569; margin-top: 4px;">NGƯỜI NHẬN: <strong>{t_email_dest}</strong> | PHƯƠNG THỨC: Tự động phê duyệt bởi AI</div>
+                            <pre style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin-top: 8px; font-size: 0.8rem; white-space: pre-wrap;">{body_plain}</pre>
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
                     st.error(send_info)
 

@@ -300,3 +300,72 @@ def render_knowledge_center():
                 st.markdown("**Mẫu câu hỏi sinh viên thường thắc mắc:**")
                 for q in queries:
                     st.markdown(f"- *\"{q}\"*")
+
+    # 6. PHÂN HỆ CSDL THƯ VIỆN EAUT (KHO SÁCH & SỔ MƯỢN TRẢ THỜI GIAN THỰC)
+    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+    st.markdown("### 📚 3. Phân hệ Tra cứu CSDL Thư viện EAUT (Kho Sách & Sổ Mượn Trả)")
+    st.caption("Dữ liệu được truy vấn trực tiếp từ bảng `library_books` và `library_borrows` trong CSDL SQLite cục bộ.")
+
+    from src.database import search_library_books, get_student_library_borrows, list_library_categories
+
+    lib_tabs = st.tabs(["🔍 Tra cứu kho sách (OPAC)", "👤 Tra cứu sổ mượn trả sinh viên"])
+
+    with lib_tabs[0]:
+        c_lb1, c_lb2 = st.columns([1, 2])
+        with c_lb1:
+            cats = ["Tất cả"] + list_library_categories()
+            sel_cat = st.selectbox("Lọc theo chuyên ngành:", options=cats, key="lib_cat_filter")
+        with c_lb2:
+            lib_kw = st.text_input("Từ khóa tên sách, tác giả hoặc mã xếp giá:", placeholder="Ví dụ: Kỹ thuật phần mềm, Python, Kế toán, Cơ sở dữ liệu...", key="lib_kw_search")
+
+        found_books = search_library_books(query=lib_kw, category=sel_cat if sel_cat != "Tất cả" else None, limit=20)
+        st.caption(f"Tìm thấy **{len(found_books)}** đầu sách trong kho thư viện:")
+
+        if found_books:
+            b_display = []
+            for b in found_books:
+                b_display.append({
+                    "Mã sách": b["book_id"],
+                    "Tên tài liệu / Giáo trình": b["title"],
+                    "Tác giả": b["author"],
+                    "Chuyên ngành": b["category"],
+                    "Năm XB": b["publish_year"],
+                    "Vị trí giá sách": b["location"],
+                    "Mã xếp giá": b["call_number"],
+                    "Còn sẵn / Tổng": f"{b['available_copies']} / {b['total_copies']}",
+                    "Tình trạng": "🟢 Sẵn sàng" if b["available_copies"] > 0 else "🔴 Hết sách",
+                    "Số hóa": "Có" if b.get("is_digital") else "Chưa"
+                })
+            st.dataframe(pd.DataFrame(b_display), width="stretch", hide_index=True)
+        else:
+            st.info("Không tìm thấy đầu sách nào phù hợp với từ khóa tra cứu.")
+
+    with lib_tabs[1]:
+        c_sid1, c_sid2 = st.columns([1, 2])
+        with c_sid1:
+            check_sid = st.text_input("Nhập Mã sinh viên (MSSV):", value="2021600123", key="lib_check_sid_input", placeholder="Ví dụ: 2022601234, 2021600123...")
+        with c_sid2:
+            st.caption("Các MSSV mẫu thử nghiệm trong hệ thống:")
+            st.markdown("- `2022601234`: Mượn đúng hạn (2 cuốn: *Kỹ thuật phần mềm*, *Python AI*)\n- `2021600123`: Quá hạn (1 cuốn: *Nguyên lý Kế toán*, phạt 90.000đ)\n- `2023602111`: Đã hoàn trả đầy đủ (*Toán Giải tích 1 & 2*)")
+
+        if check_sid.strip():
+            borrows = get_student_library_borrows(check_sid.strip())
+            if borrows:
+                st.markdown(f"**Kết quả mượn trả của sinh viên: {borrows[0]['student_name']} (MSSV: {check_sid.strip()}):**")
+                br_display = []
+                for br in borrows:
+                    fine_str = f"{br.get('fine_amount', 0):,} VNĐ" if br.get('fine_amount', 0) > 0 else "0 VNĐ"
+                    br_display.append({
+                        "Mã mượn": br["borrow_id"],
+                        "Tên sách": br["book_title"],
+                        "Ngày mượn": br["borrow_date"],
+                        "Hạn trả": br["due_date"],
+                        "Ngày trả": br.get("return_date") or "-",
+                        "Trạng thái": br["status"],
+                        "Số lần gia hạn": f"{br.get('renew_count', 0)} / 2",
+                        "Phí phạt quá hạn (5k/ngày)": fine_str,
+                        "Ghi chú thủ thư": br.get("notes", "")
+                    })
+                st.dataframe(pd.DataFrame(br_display), width="stretch", hide_index=True)
+            else:
+                st.info(f"Sinh viên MSSV {check_sid.strip()} hiện không có lịch sử mượn trả tài liệu nào trong CSDL Thư viện.")

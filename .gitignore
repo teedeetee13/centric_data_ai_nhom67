@@ -67,6 +67,9 @@ Thumbs.db
 
 # 6. Streamlit Cache & Thông tin bảo mật nội bộ
 .streamlit/secrets.toml
+.env
+.env.*
+!.env.example
 
 # 7. Jupyter Notebook & Bộ đệm kiểm thử
 .ipynb_checkpoints/

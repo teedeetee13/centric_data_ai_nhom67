@@ -64,12 +64,12 @@ class EduSupportClassifier:
         self.classes_ = []
 
     def _build_pipeline(self):
-        # Trích xuất kết hợp cấp từ và cấp ký tự
+        # Trích xuất đặc trưng kết hợp cấp từ (n-gram 1-3) và cấp ký tự (3-5)
         features = FeatureUnion([
             ("word_tfidf", TfidfVectorizer(
-                ngram_range=(1, 2),
+                ngram_range=(1, 3),
                 min_df=1,
-                max_df=0.95,
+                max_df=0.98,
                 sublinear_tf=True
             )),
             ("char_tfidf", TfidfVectorizer(
@@ -151,18 +151,72 @@ class EduSupportClassifier:
         return self
 
 def train_and_save_production_model(train_path="data/splits/train.csv", model_path="models/best_classifier.joblib"):
-    """Huấn luyện mô hình chuẩn triển khai sản phẩm."""
+    """
+    Huấn luyện mô hình chuẩn triển khai sản phẩm với Dữ liệu Tăng cường Toàn diện (Data-Centric AI):
+    - Dữ liệu gốc: data/splits/train.csv (136 mẫu)
+    - Dữ liệu chuyên sâu EAUT: data/dataset_mau_phan_anh_sinh_vien_eaut.csv (122 mẫu phản ánh thực tế)
+    - Dữ liệu truy vấn quy trình DOCX: data/kb/eaut_procedures_kb.json (60 mẫu)
+    - Dữ liệu kiểm toán cán bộ duyệt (Active Learning): từ review_logs trong SQLite nếu có
+    """
+    import json
+    from src.cleaner import clean_text_single
+    from src.database import get_connection
+
     if not os.path.exists(train_path):
         from src.cleaner import run_cleaning_pipeline
         run_cleaning_pipeline()
 
     train_df = pd.read_csv(train_path)
-    X_train = train_df["clean_text"]
-    y_train = train_df["target_label_gold"]
+    X_train = list(train_df["clean_text"].dropna())
+    y_train = list(train_df["target_label_gold"].dropna())
+    valid_topics = set(y_train)
 
-    clf = EduSupportClassifier(c_val=1.5, class_weight="balanced")
+    # 1. Bổ sung tập dữ liệu mẫu phản ánh thực tế chuyên sâu (122 ca)
+    sample_csv = ROOT_DIR / "data" / "dataset_mau_phan_anh_sinh_vien_eaut.csv"
+    if sample_csv.exists():
+        df_new = pd.read_csv(sample_csv)
+        for _, r in df_new.iterrows():
+            top = str(r.get('target_topic', '')).strip()
+            raw_t = str(r.get('raw_text', '')).strip()
+            if top in valid_topics and len(raw_t) >= 12:
+                c_res = clean_text_single(raw_t, mask_pii_flag=True)
+                if c_res.get('is_usable') and len(c_res['clean_text']) >= 12:
+                    X_train.append(c_res['clean_text'])
+                    y_train.append(top)
+
+    # 2. Bổ sung các câu hỏi mẫu chuẩn hóa từ 15 quy trình DOCX
+    proc_json = ROOT_DIR / "data" / "kb" / "eaut_procedures_kb.json"
+    if proc_json.exists():
+        try:
+            with open(proc_json, "r", encoding="utf-8") as f:
+                procs = json.load(f)
+            for p in procs:
+                top = p.get('topic')
+                if top in valid_topics:
+                    for q in p.get('sample_queries', []):
+                        X_train.append(q)
+                        y_train.append(top)
+                    X_train.append(p.get('title', ''))
+                    y_train.append(top)
+        except Exception:
+            pass
+
+    # 3. Bổ sung dữ liệu Active Learning từ các yêu cầu cán bộ đã phê duyệt trong SQLite
+    try:
+        with get_connection() as conn:
+            logs = conn.execute("SELECT final_topic, final_response FROM review_logs WHERE officer_action != 'reject'").fetchall()
+            for r in logs:
+                f_top, f_resp = r[0], r[1]
+                if f_top in valid_topics and len(f_resp) >= 12:
+                    X_train.append(f_resp[:200])
+                    y_train.append(f_top)
+    except Exception:
+        pass
+
+    clf = EduSupportClassifier(c_val=2.0, class_weight="balanced")
     clf.train(X_train, y_train)
     clf.save(model_path)
+    print(f"[*] Đã hoàn tất huấn luyện mô hình sản xuất với {len(X_train)} mẫu dữ liệu tăng cường chất lượng cao.")
     return clf
 
 if __name__ == "__main__":

@@ -41,7 +41,66 @@ except ImportError:
                 return val[:19]
         except Exception:
             return val.replace('T', ' ')[:19]
-from src.email_service import build_resolution_email, send_resolution_email
+import importlib
+import src.email_service as email_mod
+try:
+    importlib.reload(email_mod)
+except Exception:
+    pass
+
+try:
+    from src.email_service import (
+        build_resolution_email,
+        build_rich_resolution_email,
+        build_rejection_email,
+        send_resolution_email,
+        get_smtp_config,
+        save_smtp_credentials,
+        test_smtp_connection
+    )
+except ImportError:
+    importlib.reload(email_mod)
+    from src.email_service import (
+        build_resolution_email,
+        build_rich_resolution_email,
+        build_rejection_email,
+        send_resolution_email,
+        get_smtp_config,
+        save_smtp_credentials,
+        test_smtp_connection
+    )
+from src.library_service import extract_student_id_from_text
+
+try:
+    from src.cleaner import parse_student_feedback
+except ImportError:
+    try:
+        import importlib
+        import src.cleaner
+        importlib.reload(src.cleaner)
+        from src.cleaner import parse_student_feedback
+    except Exception:
+        def parse_student_feedback(raw_text: str) -> dict:
+            import re
+            if not isinstance(raw_text, str) or not raw_text.strip():
+                return {"issue": "", "contacts": "", "student_message": ""}
+            content = raw_text.strip()
+            issue = ""
+            contacts = ""
+            m_contact = re.search(r'Thông tin liên hệ:\s*(.+)$', content, re.IGNORECASE | re.DOTALL)
+            if m_contact:
+                contacts = m_contact.group(1).strip()
+                content = content[:m_contact.start()].strip()
+            m_issue = re.search(r'Vấn đề ghi nhận:\s*([^.\n]+(?:\.[^.\n]+)*?)(?:\.\s*|\n|$)', content, re.IGNORECASE)
+            if m_issue:
+                issue = m_issue.group(1).strip()
+                content = content[m_issue.end():].strip()
+            student_msg = content.strip(' .;\n')
+            if not student_msg and issue:
+                student_msg = issue
+            elif not student_msg:
+                student_msg = raw_text.strip()
+            return {"issue": issue, "contacts": contacts, "student_message": student_msg}
 try:
     from src.app_logger import app_log
 except ImportError:
@@ -214,7 +273,8 @@ def render_workbench(faq_engine=None):
             status_label = "Khẩn cấp (Ưu tiên)"
         else:
             status_label = "Chờ cán bộ duyệt"
-        preview_text = (r['clean_text'][:60] + "...") if len(r['clean_text']) > 60 else r['clean_text']
+        parsed_preview = parse_student_feedback(r['clean_text'])['student_message']
+        preview_text = (parsed_preview[:60] + "...") if len(parsed_preview) > 60 else parsed_preview
         date_str = format_datetime_vn(r.get('processed_at'))
         df_rows.append({
             'Mã yêu cầu': r['record_id'],
@@ -304,7 +364,21 @@ def render_workbench(faq_engine=None):
     c_detail1, c_detail2 = st.columns([1, 1], gap="medium")
     with c_detail1:
         st.caption('Nội dung phản ánh chi tiết từ sinh viên:')
-        st.text_area('Nội dung phản ánh', value=item['clean_text'], disabled=True, key='review_clean_' + rid, height=120)
+        parsed_f = parse_student_feedback(item['clean_text'])
+        student_msg = parsed_f['student_message']
+        issue_recorded = parsed_f['issue']
+        contacts_recorded = parsed_f['contacts']
+
+        st.text_area('Nội dung phản ánh', value=student_msg, disabled=True, key='review_clean_' + rid, height=110)
+
+        meta_badges = []
+        if issue_recorded and issue_recorded != student_msg:
+            meta_badges.append(f"<span style='background:#f1f5f9; color:#0f172a; padding:3px 8px; border-radius:4px; font-size:0.78rem; font-weight:600;'>📌 Vấn đề: {issue_recorded}</span>")
+        if contacts_recorded:
+            meta_badges.append(f"<span style='background:#eff6ff; color:#1e40af; padding:3px 8px; border-radius:4px; font-size:0.78rem;'>👤 {contacts_recorded}</span>")
+        if meta_badges:
+            st.markdown(f"<div style='margin-top: -4px; margin-bottom: 6px; display:flex; flex-wrap:wrap; gap:6px;'>{''.join(meta_badges)}</div>", unsafe_allow_html=True)
+
         st.caption('Chất lượng dữ liệu: ' + describe_flags(item['quality_flags']))
 
     with c_detail2:
@@ -406,8 +480,18 @@ def render_workbench(faq_engine=None):
     all_known_topics = list(TOPICS.keys())
     topics = docx_topics if item['predicted_topic'] in docx_topics else all_known_topics
     response_key = 'response_' + rid
-    if response_key not in st.session_state:
-        st.session_state[response_key] = item['draft_response']
+    saved_draft = item.get('procedure_draft_response') or item.get('draft_response', '')
+    if (
+        response_key not in st.session_state
+        or "[CHẨN ĐOÁN VẤN ĐỀ" in str(st.session_state.get(response_key, ''))
+        or "Trình tự các bước thực hiện:" in str(st.session_state.get(response_key, ''))
+    ):
+        if not saved_draft or "[CHẨN ĐOÁN VẤN ĐỀ" in saved_draft or "Trình tự các bước thực hiện:" in saved_draft:
+            matched_p = matched_procs[0] if matched_procs else None
+            _, fresh_draft = lm.reason_and_synthesize(item['clean_text'], item['predicted_topic'], matched_p)
+            st.session_state[response_key] = fresh_draft
+        else:
+            st.session_state[response_key] = saved_draft
 
     # Trích xuất hoặc định danh email người gửi để phản hồi
     email_match = re.search(r'email[:\s]*([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', item['clean_text'], re.IGNORECASE)
@@ -425,7 +509,25 @@ def render_workbench(faq_engine=None):
         response = st.text_area('Nội dung giải quyết gửi về email người gửi:', key=response_key, height=170)
         notes = st.text_input('Ghi chú xử lý nội bộ:', key='notes_' + rid, placeholder='Nhập ghi chú xử lý hoặc căn cứ giải quyết...')
 
-        st.caption(f"Khi bấm duyệt, kết quả giải quyết sẽ tự động gửi thông báo về email: **{recipient_email}**.")
+        # Trường cấu hình email nhận kết quả linh hoạt
+        c_rf_m1, c_rf_m2 = st.columns([3, 2])
+        with c_rf_m1:
+            send_to_email = st.text_input(
+                'Email nhận kết quả giải quyết:',
+                value=recipient_email,
+                key='send_to_email_' + rid,
+                help='Có thể sửa trực tiếp sang email của bạn (ví dụ: kennysk114239@gmail.com) để nhận thư thực tế khi bấm Duyệt.'
+            )
+        with c_rf_m2:
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+            cc_test_mail = st.checkbox(
+                f'Gửi kèm bản sao tới {DEFAULT_TEST_EMAIL}',
+                value=True,
+                key='cc_test_' + rid,
+                help=f'Tự động gửi thêm 1 bản sao tới {DEFAULT_TEST_EMAIL} khi duyệt.'
+            )
+
+        st.caption(f"Khi bấm duyệt, kết quả giải quyết sẽ tự động gửi thông báo về email: **{send_to_email}**.")
         c1, c2, c3 = st.columns(3)
         draft_button = c1.form_submit_button('Lưu nháp', width='stretch')
         approve = c2.form_submit_button('Duyệt và lưu', type='primary', width='stretch')
@@ -441,62 +543,191 @@ def render_workbench(faq_engine=None):
                 action = 'reject' if reject else ('edit_label' if final_topic != item['predicted_topic'] else 'approve')
                 final_resp = 'Yêu cầu bị từ chối.' if reject else response
                 log_review_action(rid, action, item['predicted_topic'], final_topic, final_resp, notes)
+                target_dest = send_to_email.strip() if send_to_email and send_to_email.strip() else recipient_email
+
                 if reject:
-                    send_resolution_email(
-                        recipient_email=recipient_email,
-                        subject=f"[EduSupportAI] Thông báo kết quả rà soát yêu cầu - {rid}",
-                        body_text=f"Kính gửi Sinh viên,\n\nYêu cầu {rid} của bạn đã bị từ chối với lý do: {notes or 'Không phù hợp quy định đào tạo'}.\n\nTrân trọng,\n{item_dept}",
+                    r_subj, r_plain, r_html = build_rejection_email(
+                        record_id=rid,
+                        topic=item['predicted_topic'],
+                        department=item_dept,
+                        reason_notes=notes or 'Chưa đủ điều kiện thụ lý hoặc không phù hợp quy định đào tạo.',
+                        student_id=extract_student_id_from_text(item['clean_text'])
+                    )
+                    ok_send, send_msg = send_resolution_email(
+                        recipient_email=target_dest,
+                        subject=r_subj,
+                        body_text=r_plain,
+                        body_html=r_html,
                         record_id=rid
                     )
-                    message = f'Đã từ chối yêu cầu {rid}. Thông báo từ chối đã gửi về email: {recipient_email}.'
+                    if cc_test_mail and target_dest != DEFAULT_TEST_EMAIL:
+                        send_resolution_email(
+                            recipient_email=DEFAULT_TEST_EMAIL,
+                            subject=f"[Bản sao kiểm thử] {r_subj}",
+                            body_text=r_plain,
+                            body_html=r_html,
+                            record_id=rid
+                        )
+                    message = f'Đã từ chối yêu cầu {rid}. {send_msg}'
                 else:
-                    subj, body = build_resolution_email(
+                    s_subj, s_plain, s_html = build_rich_resolution_email(
                         record_id=rid,
                         topic=final_topic,
                         department=item_dept,
                         resolution_text=final_resp,
                         confidence_score=conf,
-                        is_auto_approved=False
+                        is_auto_approved=False,
+                        student_id=extract_student_id_from_text(item['clean_text']),
+                        officer_notes=notes or None
                     )
-                    send_resolution_email(
-                        recipient_email=recipient_email,
-                        subject=subj,
-                        body_text=body,
+                    ok_send, send_msg = send_resolution_email(
+                        recipient_email=target_dest,
+                        subject=s_subj,
+                        body_text=s_plain,
+                        body_html=s_html,
                         record_id=rid
                     )
-                    message = f'Đã phê duyệt và gửi giải pháp thành công về email: {recipient_email}. Bản ghi đã rời khỏi hàng đợi.'
+                    if cc_test_mail and target_dest != DEFAULT_TEST_EMAIL:
+                        send_resolution_email(
+                            recipient_email=DEFAULT_TEST_EMAIL,
+                            subject=f"[Bản sao kiểm thử] {s_subj}",
+                            body_text=s_plain,
+                            body_html=s_html,
+                            record_id=rid
+                        )
+                    message = f'Đã phê duyệt và lưu hồ sơ {rid}. {send_msg}'
             st.session_state['notice'] = message
             st.rerun()
         except ValueError as exc:
             st.error(str(exc))
 
-    # Tùy chọn gửi bản sao kiểm thử tới kennysk114239@gmail.com
-    with st.expander('Thử nghiệm: Gửi bản sao hướng giải quyết tới kennysk114239@gmail.com', expanded=False):
-        st.caption('Gửi bản sao nội dung giải quyết của yêu cầu này tới email thử nghiệm.')
+    # Xem trước giao diện Email sẽ gửi cho sinh viên (Live Preview)
+    with st.expander('👁️ Xem trước giao diện Email sẽ gửi tới sinh viên (HTML & Plain Text)', expanded=False):
+        pv_subj, pv_plain, pv_html = build_rich_resolution_email(
+            record_id=rid,
+            topic=st.session_state.get('topic_' + rid, item['predicted_topic']),
+            department=item_dept,
+            resolution_text=st.session_state.get(response_key, item['draft_response']),
+            confidence_score=conf,
+            is_auto_approved=False,
+            student_id=extract_student_id_from_text(item['clean_text']),
+            officer_notes=st.session_state.get('notes_' + rid, '')
+        )
+        st.caption(f"Tiêu đề email: **{pv_subj}** &nbsp;|&nbsp; Người nhận: **{recipient_email}**")
+        wb_pv_tabs = st.tabs(["📱 Giao diện Email HTML (Trực quan)", "📄 Định dạng Văn bản thuần (Plain Text)"])
+        with wb_pv_tabs[0]:
+            st.components.v1.html(pv_html, height=520, scrolling=True)
+        with wb_pv_tabs[1]:
+            st.text_area("Bản text gửi dự phòng:", value=pv_plain, height=260, disabled=True, key=f"wb_pv_text_{rid}")
+
+    # Phân hệ Thử nghiệm gửi email thực tế & Cấu hình SMTP Gmail
+    smtp_cfg = get_smtp_config()
+    is_smtp_active = bool(smtp_cfg.get("user") and smtp_cfg.get("password"))
+
+    expander_title = (
+        f"📧 Thử nghiệm gửi email thực tế tới {DEFAULT_TEST_EMAIL} "
+        + ("(🟢 Máy chủ SMTP sẵn sàng)" if is_smtp_active else "(🟡 Cần cấu hình SMTP để gửi thật)")
+    )
+    with st.expander(expander_title, expanded=not is_smtp_active):
+        if is_smtp_active:
+            st.success(
+                f"🟢 **Máy chủ SMTP Gmail đã kích hoạt:** Sẵn sàng gửi thư thực tế qua tài khoản "
+                f"**{smtp_cfg.get('user')}** (Cổng {smtp_cfg.get('port', 587)})."
+            )
+        else:
+            st.warning(
+                "⚠️ **Hệ thống đang ở Chế độ mô phỏng (Mock Dispatch).** "
+                "Để thư thực sự chuyển đến hộp thư đến của bạn, vui lòng nhập thông tin tài khoản Gmail gửi bên dưới."
+            )
+
+        with st.expander("⚙️ Thiết lập / Thay đổi tài khoản Gmail gửi (SMTP Config)", expanded=not is_smtp_active):
+            st.markdown(
+                "Hệ thống EduSupportAI sử dụng giao thức bảo mật Google SMTP (TLS cổng 587) để gửi thư giải quyết phản ánh học vụ. "
+                "Để gửi thật, Google yêu cầu sử dụng **Mật khẩu ứng dụng (16 ký tự)** thay vì mật khẩu thông thường."
+            )
+            c_u1, c_u2 = st.columns(2)
+            with c_u1:
+                smtp_user_in = st.text_input(
+                    "Tài khoản Gmail gửi (Sender Gmail):",
+                    value=smtp_cfg.get("user", ""),
+                    placeholder="ví dụ: hotro.eaut@gmail.com",
+                    key=f"smtp_user_in_{rid}"
+                )
+            with c_u2:
+                smtp_pass_in = st.text_input(
+                    "Mật khẩu ứng dụng (16 ký tự Google App Password):",
+                    value=smtp_cfg.get("password", ""),
+                    type="password",
+                    placeholder="xxxx yyyy zzzz wwww",
+                    key=f"smtp_pass_in_{rid}",
+                    help="Chuỗi 16 chữ cái do Google cấp tại trang myaccount.google.com/apppasswords"
+                )
+
+            st.info(
+                "📌 **Cách lấy Mật khẩu ứng dụng 16 ký tự từ Google (1 phút):**\n\n"
+                "1. Bật **Xác minh 2 bước** cho tài khoản Google tại: [myaccount.google.com/security](https://myaccount.google.com/security)\n"
+                "2. Truy cập: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)\n"
+                "3. Đặt tên ứng dụng là `EduSupportAI` và bấm **Tạo (Create)**.\n"
+                "4. Sao chép chuỗi 16 ký tự (ví dụ: `abcd efgh ijkl mnop`), dán vào ô trên rồi bấm nút **Lưu cấu hình & Kiểm tra kết nối SMTP**."
+            )
+
+            c_btn_save, _ = st.columns([2, 1])
+            with c_btn_save:
+                if st.button("💾 Lưu cấu hình & Kiểm tra kết nối SMTP", key=f"btn_save_smtp_{rid}", type="primary", width="stretch"):
+                    if not smtp_user_in.strip() or not smtp_pass_in.strip():
+                        st.error("Vui lòng nhập đầy đủ cả Tài khoản Gmail gửi và Mật khẩu ứng dụng.")
+                    else:
+                        with st.spinner("Đang xác thực với máy chủ smtp.gmail.com:587..."):
+                            ok_smtp, msg_smtp = test_smtp_connection(smtp_user_in, smtp_pass_in)
+                            if ok_smtp:
+                                save_smtp_credentials(smtp_user_in, smtp_pass_in)
+                                st.session_state['notice'] = f"Đã lưu và xác thực SMTP thành công: {msg_smtp}"
+                                st.rerun()
+                            else:
+                                st.error(f"Xác thực không thành công: {msg_smtp}")
+
+        st.markdown("##### 🚀 Gửi thử nghiệm nội dung giải quyết hồ sơ này:")
         c_wb_m1, c_wb_m2 = st.columns([3, 1])
         with c_wb_m1:
-            wb_test_mail = st.text_input('Email nhận bản sao kiểm thử:', value=DEFAULT_TEST_EMAIL, key='wb_test_mail_input')
+            wb_test_mail = st.text_input(
+                'Email nhận thư kiểm thử:',
+                value=DEFAULT_TEST_EMAIL,
+                key='wb_test_mail_input',
+                placeholder="kennysk114239@gmail.com"
+            )
         with c_wb_m2:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-            if st.button('Gửi email test', type='secondary', key='btn_wb_send_test', width='stretch'):
-                t_subj, t_body = build_resolution_email(
-                    record_id=rid,
-                    topic=item['predicted_topic'],
-                    department=item_dept,
-                    resolution_text=st.session_state.get(response_key, item['draft_response']),
-                    confidence_score=conf,
-                    is_auto_approved=False
-                )
-                t_ok, t_msg = send_resolution_email(
-                    recipient_email=wb_test_mail,
-                    subject=t_subj,
-                    body_text=t_body,
-                    record_id=rid
-                )
-                if t_ok:
-                    st.success(t_msg)
-                else:
-                    st.error(t_msg)
+            send_btn_label = "🚀 Gửi email thực tế ngay" if is_smtp_active else "🧪 Gửi thử nghiệm (Mô phỏng)"
+            if st.button(send_btn_label, type='primary' if is_smtp_active else 'secondary', key='btn_wb_send_test', width='stretch'):
+                with st.spinner(f"Đang tiến hành gửi email tới {wb_test_mail}..."):
+                    t_subj, t_plain, t_html = build_rich_resolution_email(
+                        record_id=rid,
+                        topic=st.session_state.get('topic_' + rid, item['predicted_topic']),
+                        department=item_dept,
+                        resolution_text=st.session_state.get(response_key, item['draft_response']),
+                        confidence_score=conf,
+                        is_auto_approved=False,
+                        student_id=extract_student_id_from_text(item['clean_text']),
+                        officer_notes=st.session_state.get('notes_' + rid, '')
+                    )
+                    t_ok, t_msg = send_resolution_email(
+                        recipient_email=wb_test_mail,
+                        subject=t_subj,
+                        body_text=t_plain,
+                        body_html=t_html,
+                        record_id=rid
+                    )
+                    if t_ok:
+                        if is_smtp_active:
+                            st.success(f"🎉 **Đã gửi thư thực tế thành công!** {t_msg} Vui lòng kiểm tra hộp thư đến (hoặc hòm thư Rác/Quảng cáo) của **{wb_test_mail}**.")
+                        else:
+                            st.warning(
+                                f"{t_msg}\n\n"
+                                "👉 **Lưu ý:** Thư vừa được ghi nhận ở chế độ mô phỏng. "
+                                "Để thư thực sự bay về hộp thư Gmail của bạn, vui lòng mở mục **Thiết lập / Thay đổi tài khoản Gmail gửi (SMTP Config)** phía trên để nhập Mật khẩu ứng dụng 16 ký tự."
+                            )
+                    else:
+                        st.error(t_msg)
 
     # Phân hệ Huấn luyện AI từ dữ liệu cán bộ đã duyệt (Active Learning & Automation)
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)

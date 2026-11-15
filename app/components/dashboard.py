@@ -13,6 +13,37 @@ import plotly.express as px
 import streamlit as st
 
 from src.cleaner import clean_dataframe, clean_text_single
+
+try:
+    from src.cleaner import parse_student_feedback
+except ImportError:
+    try:
+        import importlib
+        import src.cleaner
+        importlib.reload(src.cleaner)
+        from src.cleaner import parse_student_feedback
+    except Exception:
+        def parse_student_feedback(raw_text: str) -> dict:
+            import re
+            if not isinstance(raw_text, str) or not raw_text.strip():
+                return {"issue": "", "contacts": "", "student_message": ""}
+            content = raw_text.strip()
+            issue = ""
+            contacts = ""
+            m_contact = re.search(r'Thông tin liên hệ:\s*(.+)$', content, re.IGNORECASE | re.DOTALL)
+            if m_contact:
+                contacts = m_contact.group(1).strip()
+                content = content[:m_contact.start()].strip()
+            m_issue = re.search(r'Vấn đề ghi nhận:\s*([^.\n]+(?:\.[^.\n]+)*?)(?:\.\s*|\n|$)', content, re.IGNORECASE)
+            if m_issue:
+                issue = m_issue.group(1).strip()
+                content = content[m_issue.end():].strip()
+            student_msg = content.strip(' .;\n')
+            if not student_msg and issue:
+                student_msg = issue
+            elif not student_msg:
+                student_msg = raw_text.strip()
+            return {"issue": issue, "contacts": contacts, "student_message": student_msg}
 from src.config import RAW_DEMO_PATH, TOPICS, describe_flags
 from src.database import list_requests, review_history, save_request, get_request
 try:
@@ -110,6 +141,7 @@ def render_dashboard(service=None, clf_model=None):
 
         view = pd.DataFrame(sorted_rows)[['record_id', 'processed_at', 'clean_text', 'predicted_topic', 'confidence_score', 'priority_level', 'source_type', 'status']]
         display = view.copy()
+        display['clean_text'] = display['clean_text'].apply(lambda s: parse_student_feedback(str(s))['student_message'] if pd.notna(s) else '')
         display['predicted_topic'] = display['predicted_topic'].map(TOPICS)
         display['status'] = display['status'].map({
             'pending_review': 'Chờ duyệt',
