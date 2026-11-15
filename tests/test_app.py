@@ -103,5 +103,23 @@ class AppFlowTests(unittest.TestCase):
         self.assertGreaterEqual(high_req['confidence_score'], 0.70)
         self.assertEqual(len(list_requests(pending_only=True)), 0)
 
+    def test_workbench_trace_visibility_and_ai_copilot_removed(self):
+        # Nạp dữ liệu demo để hiển thị chi tiết hồ sơ
+        self.open_admin()
+        self.button('Nạp 3 yêu cầu demo').click().run()
+        self.assertFalse(self.app.exception)
+
+        # 1. Trên màn hình chính: Không có vết thực thi, không có chữ AI COPILOT
+        self.open_workbench()
+        main_expanders = [e.label for e in self.app.expander]
+        self.assertFalse(any('Vết thực thi' in exp for exp in main_expanders))
+        self.assertFalse(any('AI COPILOT' in m.value for m in self.app.markdown))
+
+        # 2. Trong bánh răng (Admin view): Có bàn duyệt tương tự và CÓ vết thực thi
+        self.open_admin()
+        admin_expanders = [e.label for e in self.app.expander]
+        self.assertTrue(any('Vết thực thi' in exp for exp in admin_expanders))
+        self.assertFalse(any('AI COPILOT' in m.value for m in self.app.markdown))
+
 if __name__=='__main__':
     unittest.main()

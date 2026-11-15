@@ -138,7 +138,7 @@ def get_dept_name(topic: str, explicit_dept: str = None) -> str:
         return explicit_dept
     return DEPT_DOCX_MAPPING.get(topic, "Phòng Quản lý Đào tạo & Khảo thí")
 
-def render_workbench(faq_engine=None):
+def render_workbench(faq_engine=None, show_trace=True):
     recent_rid = st.session_state.get('last_record_id') or st.session_state.get('focus_review_id')
 
     st.markdown("""
@@ -364,8 +364,7 @@ def render_workbench(faq_engine=None):
                 '<div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">'
                 '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">'
                 '<div style="display: flex; align-items: center; gap: 8px;">'
-                '<span style="background: linear-gradient(135deg, #4338ca, #6366f1); color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">AI COPILOT</span>'
-                '<span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Căn cứ quy chế EAUT chính thức:</span>'
+                '<span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">📜 Căn cứ quy chế EAUT chính thức:</span>'
                 '</div>'
                 f'<span style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">⏱️ SLA: {proc.get("processing_time", "24 - 48 giờ")}</span>'
                 '</div>'
@@ -510,22 +509,23 @@ def render_workbench(faq_engine=None):
             st.caption(f"Tiêu đề: **{pv_subj}** | Người nhận: **{send_to_email}**")
             st.components.v1.html(pv_html, height=420, scrolling=True)
 
-        with st.expander("🔬 Vết thực thi & Nhật ký suy luận AI", expanded=False):
-            from src.database import get_execution_trace
-            from app.components.trace_viewer import render_trace_view
-            trace_rec = get_execution_trace(rid)
-            t_data = None
-            t_log = ""
-            if trace_rec and trace_rec.get('steps_json'):
-                try:
-                    t_data = json.loads(trace_rec['steps_json']) if isinstance(trace_rec['steps_json'], str) else trace_rec['steps_json']
-                    t_log = trace_rec.get('terminal_log', '')
-                except Exception:
-                    t_data = None
-            if not t_data:
-                res_t = lm.process_request_with_trace(item['clean_text'], record_id=rid)
-                t_data = res_t.get('execution_trace', {})
-                t_log = res_t.get('terminal_log', '')
-            render_trace_view(t_data, t_log, rid)
+        if show_trace:
+            with st.expander("🔬 Vết thực thi & Nhật ký suy luận AI", expanded=False):
+                from src.database import get_execution_trace
+                from app.components.trace_viewer import render_trace_view
+                trace_rec = get_execution_trace(rid)
+                t_data = None
+                t_log = ""
+                if trace_rec and trace_rec.get('steps_json'):
+                    try:
+                        t_data = json.loads(trace_rec['steps_json']) if isinstance(trace_rec['steps_json'], str) else trace_rec['steps_json']
+                        t_log = trace_rec.get('terminal_log', '')
+                    except Exception:
+                        t_data = None
+                if not t_data:
+                    res_t = lm.process_request_with_trace(item['clean_text'], record_id=rid)
+                    t_data = res_t.get('execution_trace', {})
+                    t_log = res_t.get('terminal_log', '')
+                render_trace_view(t_data, t_log, rid)
 
 

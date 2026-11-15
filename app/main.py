@@ -492,12 +492,12 @@ samples = {
 
 if not is_admin_mode:
     # -------------------------------------------------------------
-    # MÀN HÌNH CHÍNH: CHỈ GIỮ LẠI BÀN DUYỆT HỒ SƠ
+    # MÀN HÌNH CHÍNH: CHỈ GIỮ LẠI BÀN DUYỆT HỒ SƠ (ĐÃ BỎ VẾT THỰC THI)
     # -------------------------------------------------------------
-    render_workbench()
+    render_workbench(show_trace=False)
 else:
     # -------------------------------------------------------------
-    # TRANG QUẢN TRỊ & TIỆN ÍCH: ĐẦY ĐỦ CÁC PHẦN CÒN LẠI
+    # TRANG QUẢN TRỊ & TIỆN ÍCH: ĐẦY ĐỦ CÁC PHẦN (KÈM BÀN DUYỆT CÓ VẾT THỰC THI)
     # -------------------------------------------------------------
     c_back, c_title = st.columns([0.24, 0.76], vertical_alignment="center")
     with c_back:
@@ -513,6 +513,7 @@ else:
         """, unsafe_allow_html=True)
 
     admin_tabs = st.tabs([
+        '📥 Bàn duyệt hồ sơ',
         '📝 Tiếp nhận phản ánh',
         '📚 Quy chế & Tri thức',
         '📊 Thống kê & Báo cáo',
@@ -520,6 +521,9 @@ else:
     ])
 
     with admin_tabs[0]:
+        render_workbench(show_trace=True)
+
+    with admin_tabs[1]:
         st.markdown("""
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
             <div style="font-size: 1.15rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">📝 Cổng Tiếp Nhận & Hỗ Trợ Học Vụ Sinh Viên EAUT</div>
@@ -928,13 +932,13 @@ else:
                     for article in result['articles'][:2]:
                         st.markdown(f"- **{article['kb_id']}**: {article['question_standard']}")
 
-    with admin_tabs[1]:
+    with admin_tabs[2]:
         render_knowledge_center()
 
-    with admin_tabs[2]:
+    with admin_tabs[3]:
         render_dashboard(service=service)
 
-    with admin_tabs[3]:
+    with admin_tabs[4]:
         st.markdown("""
         <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
             <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b;">Cài Đặt Hệ Thống & Quản Trị Hạ Tầng EAUT</div>
