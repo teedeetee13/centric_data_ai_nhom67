@@ -487,9 +487,9 @@ samples = {
 
 if not is_admin_mode:
     # -------------------------------------------------------------
-    # MÀN HÌNH CHÍNH: CHỈ GIỮ LẠI BÀN DUYỆT HỒ SƠ (ĐÃ BỎ VẾT THỰC THI)
+    # MÀN HÌNH CHÍNH: BÀN DUYỆT TINH GỌN (CHỈ HIỂN THỊ NỘI DUNG EMAIL ĐÃ GỬI)
     # -------------------------------------------------------------
-    render_workbench(show_trace=False)
+    render_workbench(show_trace=False, show_review_form=False)
 else:
     # -------------------------------------------------------------
     # TRANG QUẢN TRỊ & TIỆN ÍCH: ĐẦY ĐỦ CÁC PHẦN (KÈM BÀN DUYỆT CÓ VẾT THỰC THI)
@@ -516,7 +516,7 @@ else:
     ])
 
     with admin_tabs[0]:
-        render_workbench(show_trace=True)
+        render_workbench(show_trace=True, show_review_form=True)
 
     with admin_tabs[1]:
         st.markdown("""

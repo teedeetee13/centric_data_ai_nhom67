@@ -138,7 +138,7 @@ def get_dept_name(topic: str, explicit_dept: str = None) -> str:
         return explicit_dept
     return DEPT_DOCX_MAPPING.get(topic, "Phòng Quản lý Đào tạo & Khảo thí")
 
-def render_workbench(faq_engine=None, show_trace=True):
+def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
     recent_rid = st.session_state.get('last_record_id') or st.session_state.get('focus_review_id')
 
     st.markdown("""
@@ -396,118 +396,119 @@ def render_workbench(faq_engine=None, show_trace=True):
         email_match = re.search(r'email[:\s]*([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', item['clean_text'], re.IGNORECASE)
         recipient_email = email_match.group(1) if email_match else ("sinhvien.eaut@student.edu.vn" if "[EMAIL]" in item['clean_text'] else "sinhvien@eaut.edu.vn")
 
-        with st.form('review_form_' + rid):
-            st.markdown("""
-            <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                <span>✍️ Soạn thảo văn bản giải đáp gửi người phản ánh</span>
-            </div>
-            """, unsafe_allow_html=True)
-            curr_topic = item['predicted_topic'] if item['predicted_topic'] in topics else topics[0]
-            final_topic = st.selectbox(
-                'Nhóm phân loại cuối cùng:',
-                options=topics,
-                index=topics.index(curr_topic),
-                format_func=lambda t: f"{TOPICS.get(t, t)} — [{get_dept_name(t)}]",
-                key='topic_' + rid
-            )
-            response = st.text_area('Văn bản giải quyết gửi sinh viên:', key=response_key, height=140)
-            notes = st.text_input('Ghi chú nội bộ:', key='notes_' + rid, placeholder='Nhập căn cứ xử lý hoặc lý do nếu từ chối...')
+        if show_review_form:
+            with st.form('review_form_' + rid):
+                st.markdown("""
+                <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <span>✍️ Soạn thảo văn bản giải đáp gửi người phản ánh</span>
+                </div>
+                """, unsafe_allow_html=True)
+                curr_topic = item['predicted_topic'] if item['predicted_topic'] in topics else topics[0]
+                final_topic = st.selectbox(
+                    'Nhóm phân loại cuối cùng:',
+                    options=topics,
+                    index=topics.index(curr_topic),
+                    format_func=lambda t: f"{TOPICS.get(t, t)} — [{get_dept_name(t)}]",
+                    key='topic_' + rid
+                )
+                response = st.text_area('Văn bản giải quyết gửi sinh viên:', key=response_key, height=140)
+                notes = st.text_input('Ghi chú nội bộ:', key='notes_' + rid, placeholder='Nhập căn cứ xử lý hoặc lý do nếu từ chối...')
 
-            c_rf_m1, c_rf_m2 = st.columns([3, 2])
-            with c_rf_m1:
-                send_to_email = st.text_input('Email người nhận:', value=recipient_email, key='send_to_email_' + rid)
-            with c_rf_m2:
-                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                cc_test_mail = st.checkbox(f'Bản sao CC tới {DEFAULT_TEST_EMAIL}', value=True, key='cc_test_' + rid)
+                c_rf_m1, c_rf_m2 = st.columns([3, 2])
+                with c_rf_m1:
+                    send_to_email = st.text_input('Email người nhận:', value=recipient_email, key='send_to_email_' + rid)
+                with c_rf_m2:
+                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                    cc_test_mail = st.checkbox(f'Bản sao CC tới {DEFAULT_TEST_EMAIL}', value=True, key='cc_test_' + rid)
 
-            c1, c2, c3 = st.columns([2, 1, 1])
-            approve = c1.form_submit_button('Duyệt và lưu', type='primary', width='stretch')
-            draft_button = c2.form_submit_button('Lưu nháp', width='stretch')
-            reject = c3.form_submit_button('Từ chối', width='stretch')
+                c1, c2, c3 = st.columns([2, 1, 1])
+                approve = c1.form_submit_button('Duyệt và lưu', type='primary', width='stretch')
+                draft_button = c2.form_submit_button('Lưu nháp', width='stretch')
+                reject = c3.form_submit_button('Từ chối', width='stretch')
 
-        if draft_button or approve or reject:
-            try:
-                if draft_button:
-                    save_draft(rid, response)
-                    st.session_state.pop('intake_draft_' + rid, None)
-                    message = f'Đã lưu nháp cho hồ sơ {rid}.'
-                else:
-                    action = 'reject' if reject else ('edit_label' if final_topic != item['predicted_topic'] else 'approve')
-                    final_resp = 'Yêu cầu bị từ chối.' if reject else response
-                    log_review_action(rid, action, item['predicted_topic'], final_topic, final_resp, notes)
-                    target_dest = send_to_email.strip() if send_to_email and send_to_email.strip() else recipient_email
+            if draft_button or approve or reject:
+                try:
+                    if draft_button:
+                        save_draft(rid, response)
+                        st.session_state.pop('intake_draft_' + rid, None)
+                        message = f'Đã lưu nháp cho hồ sơ {rid}.'
+                    else:
+                        action = 'reject' if reject else ('edit_label' if final_topic != item['predicted_topic'] else 'approve')
+                        final_resp = 'Yêu cầu bị từ chối.' if reject else response
+                        log_review_action(rid, action, item['predicted_topic'], final_topic, final_resp, notes)
+                        target_dest = send_to_email.strip() if send_to_email and send_to_email.strip() else recipient_email
 
-                    if reject:
-                        r_subj, r_plain, r_html = build_rejection_email(
-                            record_id=rid,
-                            topic=item['predicted_topic'],
-                            department=item_dept,
-                            reason_notes=notes or 'Chưa đủ điều kiện thụ lý hoặc không phù hợp quy định đào tạo.',
-                            student_id=extract_student_id_from_text(item['clean_text'])
-                        )
-                        ok_send, send_msg = send_resolution_email(
-                            recipient_email=target_dest,
-                            subject=r_subj,
-                            body_text=r_plain,
-                            body_html=r_html,
-                            record_id=rid
-                        )
-                        if cc_test_mail and target_dest != DEFAULT_TEST_EMAIL:
-                            send_resolution_email(
-                                recipient_email=DEFAULT_TEST_EMAIL,
-                                subject=f"[Bản sao kiểm thử] {r_subj}",
+                        if reject:
+                            r_subj, r_plain, r_html = build_rejection_email(
+                                record_id=rid,
+                                topic=item['predicted_topic'],
+                                department=item_dept,
+                                reason_notes=notes or 'Chưa đủ điều kiện thụ lý hoặc không phù hợp quy định đào tạo.',
+                                student_id=extract_student_id_from_text(item['clean_text'])
+                            )
+                            ok_send, send_msg = send_resolution_email(
+                                recipient_email=target_dest,
+                                subject=r_subj,
                                 body_text=r_plain,
                                 body_html=r_html,
                                 record_id=rid
                             )
-                        message = f'Đã từ chối yêu cầu {rid}. {send_msg}'
-                    else:
-                        s_subj, s_plain, s_html = build_rich_resolution_email(
-                            record_id=rid,
-                            topic=final_topic,
-                            department=item_dept,
-                            resolution_text=final_resp,
-                            confidence_score=conf,
-                            is_auto_approved=False,
-                            student_id=extract_student_id_from_text(item['clean_text']),
-                            officer_notes=notes or None
-                        )
-                        ok_send, send_msg = send_resolution_email(
-                            recipient_email=target_dest,
-                            subject=s_subj,
-                            body_text=s_plain,
-                            body_html=s_html,
-                            record_id=rid
-                        )
-                        if cc_test_mail and target_dest != DEFAULT_TEST_EMAIL:
-                            send_resolution_email(
-                                recipient_email=DEFAULT_TEST_EMAIL,
-                                subject=f"[Bản sao kiểm thử] {s_subj}",
+                            if cc_test_mail and target_dest != DEFAULT_TEST_EMAIL:
+                                send_resolution_email(
+                                    recipient_email=DEFAULT_TEST_EMAIL,
+                                    subject=f"[Bản sao kiểm thử] {r_subj}",
+                                    body_text=r_plain,
+                                    body_html=r_html,
+                                    record_id=rid
+                                )
+                            message = f'Đã từ chối yêu cầu {rid}. {send_msg}'
+                        else:
+                            s_subj, s_plain, s_html = build_rich_resolution_email(
+                                record_id=rid,
+                                topic=final_topic,
+                                department=item_dept,
+                                resolution_text=final_resp,
+                                confidence_score=conf,
+                                is_auto_approved=False,
+                                student_id=extract_student_id_from_text(item['clean_text']),
+                                officer_notes=notes or None
+                            )
+                            ok_send, send_msg = send_resolution_email(
+                                recipient_email=target_dest,
+                                subject=s_subj,
                                 body_text=s_plain,
                                 body_html=s_html,
                                 record_id=rid
                             )
-                        message = f'Đã phê duyệt và lưu hồ sơ {rid}. {send_msg}'
+                            if cc_test_mail and target_dest != DEFAULT_TEST_EMAIL:
+                                send_resolution_email(
+                                    recipient_email=DEFAULT_TEST_EMAIL,
+                                    subject=f"[Bản sao kiểm thử] {s_subj}",
+                                    body_text=s_plain,
+                                    body_html=s_html,
+                                    record_id=rid
+                                )
+                            message = f'Đã phê duyệt và lưu hồ sơ {rid}. {send_msg}'
 
-                st.session_state['notice'] = message
-                st.rerun()
-            except ValueError as exc:
-                st.error(str(exc))
+                    st.session_state['notice'] = message
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
 
-        # 5. Tiện ích bổ trợ (gọn gàng, ẩn mặc định)
-        with st.expander("👁️ Xem trước giao diện Email sẽ gửi (HTML)", expanded=False):
+        # 5. Nội dung email đã gửi
+        with st.expander("📧 Nội dung email đã gửi", expanded=True if not show_review_form else False):
             pv_subj, pv_plain, pv_html = build_rich_resolution_email(
                 record_id=rid,
-                topic=st.session_state.get('topic_' + rid, item['predicted_topic']),
+                topic=st.session_state.get('topic_' + rid, item.get('final_topic') or item['predicted_topic']),
                 department=item_dept,
-                resolution_text=st.session_state.get(response_key, item['draft_response']),
+                resolution_text=st.session_state.get(response_key, item.get('final_response') or item.get('draft_response') or fresh_draft),
                 confidence_score=conf,
-                is_auto_approved=False,
+                is_auto_approved=(item.get('status') == 'reviewed_approve'),
                 student_id=extract_student_id_from_text(item['clean_text']),
-                officer_notes=st.session_state.get('notes_' + rid, '')
+                officer_notes=st.session_state.get('notes_' + rid, item.get('review_notes') or '')
             )
-            st.caption(f"Tiêu đề: **{pv_subj}** | Người nhận: **{send_to_email}**")
-            st.components.v1.html(pv_html, height=420, scrolling=True)
+            st.caption(f"Tiêu đề: **{pv_subj}** | Người nhận: **{recipient_email}**")
+            st.components.v1.html(pv_html, height=450, scrolling=True)
 
         if show_trace:
             with st.expander("🔬 Vết thực thi & Nhật ký suy luận AI", expanded=False):

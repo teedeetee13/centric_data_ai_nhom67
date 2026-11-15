@@ -51,8 +51,8 @@ class AppFlowTests(unittest.TestCase):
         self.assertFalse(self.app.exception)
         self.assertIn('Cán bộ đã kiểm tra',get_request(rid)['draft_response'])
         
-        # Quay về Bàn duyệt hồ sơ để cán bộ kiểm tra và duyệt
-        self.open_workbench()
+        # Kiểm tra và duyệt trên Bàn duyệt quản trị (Admin workbench)
+        self.open_admin()
         self.assertEqual(self.app.text_area(key='response_'+rid).value,get_request(rid)['draft_response'])
         self.app.text_area(key='response_'+rid).input('Nội dung cán bộ đã duyệt.')
         self.button('Duyệt và lưu').click().run()
@@ -67,7 +67,7 @@ class AppFlowTests(unittest.TestCase):
         self.button('Nạp 3 yêu cầu demo').click().run()
         self.assertFalse(self.app.exception)
         self.assertEqual(len(list_requests()),3)
-        self.open_workbench()
+        self.open_admin()
         rid=self.app.selectbox(key='review_id').value
         self.button('Duyệt và lưu').click().run()
         self.assertFalse(self.app.exception)
@@ -109,17 +109,21 @@ class AppFlowTests(unittest.TestCase):
         self.button('Nạp 3 yêu cầu demo').click().run()
         self.assertFalse(self.app.exception)
 
-        # 1. Trên màn hình chính: Không có vết thực thi, không có chữ AI COPILOT
+        # 1. Trên màn hình chính: Không có vết thực thi, không có form soạn thảo, có mục Nội dung email đã gửi
         self.open_workbench()
         main_expanders = [e.label for e in self.app.expander]
+        self.assertTrue(any('Nội dung email đã gửi' in exp for exp in main_expanders))
         self.assertFalse(any('Vết thực thi' in exp for exp in main_expanders))
         self.assertFalse(any('AI COPILOT' in m.value for m in self.app.markdown))
+        self.assertFalse(any(b.label == 'Duyệt và lưu' for b in self.app.button))
 
-        # 2. Trong bánh răng (Admin view): Có bàn duyệt tương tự và CÓ vết thực thi
+        # 2. Trong bánh răng (Admin view): Có bàn duyệt đầy đủ (form soạn thảo + vết thực thi)
         self.open_admin()
         admin_expanders = [e.label for e in self.app.expander]
         self.assertTrue(any('Vết thực thi' in exp for exp in admin_expanders))
+        self.assertTrue(any('Nội dung email đã gửi' in exp for exp in admin_expanders))
         self.assertFalse(any('AI COPILOT' in m.value for m in self.app.markdown))
+        self.assertTrue(any(b.label == 'Duyệt và lưu' for b in self.app.button))
 
 if __name__=='__main__':
     unittest.main()
