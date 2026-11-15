@@ -147,321 +147,286 @@ def render_dashboard(service=None, clf_model=None):
         </div>
         """, unsafe_allow_html=True)
 
-    # Bảng yêu cầu đã lưu
-    if rows:
-        st.subheader('Danh sách yêu cầu trong hệ thống')
-        c_ds1, c_ds2 = st.columns([3, 1])
-        with c_ds2:
-            dash_sort = st.selectbox(
-                "Sắp xếp ngày đăng:",
-                options=["Mới nhất trước", "Cũ nhất trước"],
-                key="dash_sort_date"
+    d_tabs = st.tabs([
+        "📊 Chỉ số Vận hành & Phân bổ",
+        "📑 Danh sách Hồ sơ & Lịch sử Duyệt",
+        "🔍 Kiểm toán Chất lượng & Thử nghiệm"
+    ])
+
+    with d_tabs[0]:
+        if rows:
+            # Trực quan hóa phân bổ yêu cầu
+            view = pd.DataFrame(rows)[['record_id', 'processed_at', 'clean_text', 'predicted_topic', 'confidence_score', 'priority_level', 'source_type', 'status']]
+            c_pie, c_bar = st.columns(2)
+            with c_pie:
+                st.markdown('##### Phân bổ theo Đơn vị chuyên môn')
+                topic_df = view['predicted_topic'].map(TOPICS).value_counts().reset_index()
+                topic_df.columns = ['Chuyên môn', 'Số lượng']
+                fig_pie = px.pie(topic_df, names='Chuyên môn', values='Số lượng', hole=0.45,
+                                 color_discrete_sequence=['#1d4ed8', '#0284c7', '#0f766e', '#6366f1', '#d97706', '#059669', '#64748b'])
+                fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+                fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), showlegend=False, height=260,
+                                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig_pie, width='stretch')
+
+            with c_bar:
+                st.markdown('##### Phân bổ theo Mức độ ưu tiên')
+                prio_df = view['priority_level'].value_counts().reset_index()
+                prio_df.columns = ['Mức ưu tiên', 'Số lượng']
+                prio_colors = {'Khẩn cấp': '#dc2626', 'Cao': '#ea580c', 'Bình thường': '#0284c7', 'Thấp': '#94a3b8'}
+                fig_bar = px.bar(prio_df, x='Mức ưu tiên', y='Số lượng', color='Mức ưu tiên', color_discrete_map=prio_colors)
+                fig_bar.update_layout(xaxis_title='', yaxis_title='', margin=dict(t=10, b=10, l=10, r=10), height=260,
+                                      showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig_bar, width='stretch')
+        else:
+            st.info("Chưa có dữ liệu hồ sơ để hiển thị biểu đồ thống kê.")
+
+    with d_tabs[1]:
+        # Bảng yêu cầu đã lưu
+        if rows:
+            st.markdown('##### Danh sách yêu cầu trong hệ thống')
+            c_ds1, c_ds2 = st.columns([3, 1])
+            with c_ds2:
+                dash_sort = st.selectbox(
+                    "Sắp xếp ngày đăng:",
+                    options=["Mới nhất trước", "Cũ nhất trước"],
+                    key="dash_sort_date"
+                )
+
+            sorted_rows = sorted(
+                rows,
+                key=lambda x: (x.get('processed_at') or '', x.get('id', 0)),
+                reverse=(dash_sort == "Mới nhất trước")
             )
 
-        sorted_rows = sorted(
-            rows,
-            key=lambda x: (x.get('processed_at') or '', x.get('id', 0)),
-            reverse=(dash_sort == "Mới nhất trước")
-        )
-
-        view = pd.DataFrame(sorted_rows)[['record_id', 'processed_at', 'clean_text', 'predicted_topic', 'confidence_score', 'priority_level', 'source_type', 'status']]
-        display = view.copy()
-        display['clean_text'] = display['clean_text'].apply(lambda s: parse_student_feedback(str(s))['student_message'] if pd.notna(s) else '')
-        display['predicted_topic'] = display['predicted_topic'].map(TOPICS)
-        display['status'] = display['status'].map({
-            'pending_review': 'Chờ duyệt',
-            'reviewed_approve': 'Đã duyệt',
-            'reviewed_edit_label': 'Đã duyệt và đổi nhãn',
-            'reviewed_reject': 'Đã từ chối'
-        })
-        display['source_type'] = display['source_type'].map({
-            'manual_demo': 'Nhập thủ công',
-            'controlled_demo': 'Mẫu kiểm thử',
-            'portal_student': 'Cổng sinh viên'
-        }).fillna('Cổng sinh viên')
-        display['processed_at'] = display['processed_at'].apply(lambda t: format_datetime_vn(t) if pd.notna(t) else '')
-        display = display.rename(columns={
-            'record_id': 'Mã yêu cầu',
-            'processed_at': 'Ngày đăng',
-            'clean_text': 'Nội dung phản ánh',
-            'predicted_topic': 'Nhóm dự đoán',
-            'confidence_score': 'Độ tự tin',
-            'priority_level': 'Ưu tiên',
-            'source_type': 'Nguồn',
-            'status': 'Trạng thái'
-        })
-        st.caption("👆 **Mẹo:** Bấm chọn trực tiếp một dòng trong bảng để xem vết thực thi & nhật ký suy luận của yêu cầu đó bên dưới.")
-        dash_tbl_event = st.dataframe(
-            display,
-            width='stretch',
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="single-row",
-            key="dash_table_select"
-        )
-
-        if dash_tbl_event and hasattr(dash_tbl_event, 'selection') and dash_tbl_event.selection:
-            dash_sel = dash_tbl_event.selection.get('rows', []) if isinstance(dash_tbl_event.selection, dict) else getattr(dash_tbl_event.selection, 'rows', [])
-            last_dash_row = st.session_state.get('_last_dash_tbl_row')
-            if dash_sel:
-                d_idx = dash_sel[0]
-                if d_idx != last_dash_row:
-                    st.session_state['_last_dash_tbl_row'] = d_idx
-                    if 0 <= d_idx < len(sorted_rows):
-                        sel_d_rid = sorted_rows[d_idx]['record_id']
-                        if sel_d_rid != st.session_state.get('dash_select_trace_rid'):
-                            st.session_state['dash_select_trace_rid'] = sel_d_rid
-                            st.rerun()
-
-        st.download_button(
-            'Tải danh sách yêu cầu (CSV)',
-            data=export_csv(view),
-            file_name='danh_sach_yeu_cau.csv',
-            mime='text/csv'
-        )
-
-        # Trực quan hóa phân bổ yêu cầu
-        c_pie, c_bar = st.columns(2)
-        with c_pie:
-            st.markdown('##### Phân bổ theo Đơn vị chuyên môn')
-            topic_df = view['predicted_topic'].map(TOPICS).value_counts().reset_index()
-            topic_df.columns = ['Chuyên môn', 'Số lượng']
-            fig_pie = px.pie(topic_df, names='Chuyên môn', values='Số lượng', hole=0.45,
-                             color_discrete_sequence=['#1d4ed8', '#0284c7', '#0f766e', '#6366f1', '#d97706', '#059669', '#64748b'])
-            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-            fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), showlegend=False, height=250,
-                                  paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_pie, width='stretch')
-
-        with c_bar:
-            st.markdown('##### Phân bổ theo Mức độ ưu tiên')
-            prio_df = view['priority_level'].value_counts().reset_index()
-            prio_df.columns = ['Mức ưu tiên', 'Số lượng']
-            prio_colors = {'Khẩn cấp': '#dc2626', 'Cao': '#ea580c', 'Bình thường': '#0284c7', 'Thấp': '#94a3b8'}
-            fig_bar = px.bar(prio_df, x='Mức ưu tiên', y='Số lượng', color='Mức ưu tiên', color_discrete_map=prio_colors)
-            fig_bar.update_layout(xaxis_title='', yaxis_title='', margin=dict(t=10, b=10, l=10, r=10), height=250,
-                                  showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_bar, width='stretch')
-
-    # Bảng nhật ký duyệt
-    if logs:
-        st.subheader('Nhật ký duyệt của cán bộ')
-        history = pd.DataFrame(logs)
-        visible = history.drop(columns=['id']).copy()
-        visible['original_predicted_topic'] = visible['original_predicted_topic'].map(TOPICS)
-        visible['final_topic'] = visible['final_topic'].map(TOPICS)
-        visible['officer_action'] = visible['officer_action'].map({
-            'approve': 'Duyệt',
-            'edit_label': 'Đổi nhãn và duyệt',
-            'reject': 'Từ chối'
-        })
-        visible = visible.rename(columns={
-            'record_id': 'Mã yêu cầu',
-            'officer_action': 'Thao tác',
-            'original_predicted_topic': 'Nhãn dự đoán',
-            'final_topic': 'Nhãn cuối',
-            'final_response': 'Trả lời đã lưu',
-            'officer_notes': 'Ghi chú',
-            'reviewed_at': 'Thời điểm UTC'
-        })
-        st.dataframe(visible, width='stretch', hide_index=True)
-        st.download_button(
-            'Tải nhật ký duyệt',
-            data=export_csv(history),
-            file_name='nhat_ky_duyet.csv',
-            mime='text/csv'
-        )
-
-    # Nhật ký gửi email thông báo giải quyết
-    from src.email_service import list_email_dispatches
-    email_logs = list_email_dispatches()
-    if email_logs:
-        st.subheader('Nhật ký gửi email thông báo giải quyết')
-        df_emails = pd.DataFrame(email_logs)[['sent_at', 'record_id', 'recipient_email', 'dispatch_mode', 'status', 'subject']]
-        df_emails['dispatch_mode'] = df_emails['dispatch_mode'].map({
-            'smtp_real': 'Máy chủ SMTP',
-            'simulated': 'Mô phỏng (Mock)'
-        }).fillna(df_emails['dispatch_mode'])
-        df_emails['status'] = df_emails['status'].map({
-            'success': 'Thành công',
-            'failed': 'Thất bại'
-        }).fillna(df_emails['status'])
-        df_emails = df_emails.rename(columns={
-            'sent_at': 'Thời điểm gửi (UTC)',
-            'record_id': 'Mã yêu cầu',
-            'recipient_email': 'Email người nhận',
-            'dispatch_mode': 'Kênh gửi',
-            'status': 'Trạng thái',
-            'subject': 'Tiêu đề thông báo'
-        })
-        st.dataframe(df_emails, width='stretch', hide_index=True)
-
-    # Phân hệ Tra cứu Vết Thực Thi & Nhật Ký Suy Luận của Model
-    if rows:
-        st.subheader('Tra cứu Vết Thực Thi & Nhật Ký Suy Luận Của Model')
-        st.caption('Kiểm toán toàn bộ quá trình xử lý, phân phối xác suất và chuỗi suy luận của Local Learning Machine cho từng yêu cầu lịch sử.')
-        from src.database import get_execution_trace
-        from app.components.trace_viewer import render_trace_view
-        from src.local_machine import get_local_machine
-
-        trace_rids = [r['record_id'] for r in rows]
-        if st.session_state.get('dash_select_trace_rid') not in trace_rids and trace_rids:
-            st.session_state['dash_select_trace_rid'] = trace_rids[0]
-
-        curr_t_rid = st.session_state.get('dash_select_trace_rid')
-        curr_t_idx = trace_rids.index(curr_t_rid) if curr_t_rid in trace_rids else 0
-
-        selected_trace_rid = st.selectbox(
-            "Yêu cầu đang kiểm tra chi tiết quá trình xử lý (Bấm dòng trên bảng hoặc chọn tại đây):",
-            options=trace_rids,
-            index=curr_t_idx,
-            format_func=lambda k: f"{k} — [{next((r['predicted_topic'] for r in rows if r['record_id'] == k), '')}] {next((r['clean_text'][:50] for r in rows if r['record_id'] == k), '')}...",
-            key="dash_select_trace_rid"
-        )
-        st.session_state['_last_dash_tbl_row'] = trace_rids.index(selected_trace_rid) if selected_trace_rid in trace_rids else None
-        if selected_trace_rid:
-            t_row = get_execution_trace(selected_trace_rid)
-            t_data = None
-            t_log = ""
-            if t_row and t_row.get('steps_json'):
-                try:
-                    t_data = json.loads(t_row['steps_json']) if isinstance(t_row['steps_json'], str) else t_row['steps_json']
-                    t_log = t_row.get('terminal_log', '')
-                except Exception:
-                    t_data = None
-            if not t_data:
-                target_r = next((r for r in rows if r['record_id'] == selected_trace_rid), None)
-                if target_r:
-                    lm = get_local_machine()
-                    res_lm = lm.process_request_with_trace(target_r['clean_text'], record_id=selected_trace_rid)
-                    t_data = res_lm.get('execution_trace', {})
-                    t_log = res_lm.get('terminal_log', '')
-
-            render_trace_view(
-                trace_data=t_data,
-                terminal_log=t_log,
-                title=f"Vết Thực Thi Của Model Cho Yêu Cầu [{selected_trace_rid}]",
-                expanded=False,
-                key_prefix=f"dash_trace_{selected_trace_rid}"
-            )
-
-    # Phân hệ Kiểm tra chất lượng dữ liệu
-    st.subheader('Kiểm tra chất lượng dữ liệu')
-    source = st.radio('Nguồn kiểm tra', ['Bộ mô phỏng 424 dòng', 'Tải CSV hoặc XLSX'], horizontal=True)
-    target = None
-    text_col = 'raw_text'
-
-    if source == 'Bộ mô phỏng 424 dòng':
-        target = pd.read_csv(RAW_DEMO_PATH)
-        text_col = 'raw_text'
-        st.caption('Đây là dữ liệu mô phỏng. Các số liệu được tính toán thời gian thực bằng bộ xử lý thống nhất.')
-    else:
-        uploaded = st.file_uploader('Chọn tệp dữ liệu', type=['csv', 'xlsx'])
-        if uploaded is not None:
-            if uploaded.size > 5_000_000:
-                st.warning('Hệ thống nhận tệp tối đa 5 MB.')
-                return
-            try:
-                target = pd.read_csv(uploaded) if uploaded.name.lower().endswith('.csv') else pd.read_excel(uploaded)
-            except Exception as exc:
-                st.error('Không đọc được tệp. Kiểm tra định dạng và mã hóa UTF-8. ' + str(exc))
-                return
-            if not len(target.columns):
-                st.warning('Tệp chưa có cột.')
-                return
-            if len(target) > 500:
-                st.warning('Giới hạn kiểm tra tối đa 500 dòng mỗi tệp.')
-                return
-            preferred = next((c for c in ('raw_text', 'clean_text', 'noi_dung', 'content') if c in target.columns), target.columns[0])
-            text_col = st.selectbox('Cột chứa nội dung', list(target.columns), index=list(target.columns).index(preferred))
-
-    if target is not None:
-        if target.empty:
-            st.info('Tệp không có dòng dữ liệu.')
-            return
-
-        signature = (source, hashlib_bytes(target, text_col))
-        if st.session_state.get('_profile_signature') != signature:
-            st.session_state.pop('profile_result', None)
-            st.session_state['_profile_signature'] = signature
-
-        if st.button('Kiểm tra và che thông tin', key='profile_data', width='stretch'):
-            st.session_state['profile_result'] = analyze_dataframe_realtime(target, text_col)
-
-        stats = st.session_state.get('profile_result')
-        if stats:
-            x, y, z = st.columns(3)
-            x.metric('Dòng hợp lệ để dùng', f"{stats['usable_count']}/{stats['total']}")
-            y.metric('Dòng rỗng', stats['empty_count'])
-            z.metric('Dòng có thông tin cá nhân', stats['pii_total'])
-            st.caption(f"Trùng hoàn toàn: {stats['duplicate_count']} | Gần trùng: {stats['near_duplicate_count']} | Ngắn: {stats['short_count']}.")
-            display = stats['df_processed'].copy()
-            display['quality_flags'] = display['quality_flags'].map(describe_flags)
-            display = display.rename(columns={
-                'row_number': 'Dòng',
-                'clean_text': 'Nội dung đã che',
-                'quality_flags': 'Chất lượng',
-                'is_usable': 'Dùng được',
-                'char_length': 'Số ký tự'
+            view = pd.DataFrame(sorted_rows)[['record_id', 'processed_at', 'clean_text', 'predicted_topic', 'confidence_score', 'priority_level', 'source_type', 'status']]
+            display = view.copy()
+            display['clean_text'] = display['clean_text'].apply(lambda s: parse_student_feedback(str(s))['student_message'] if pd.notna(s) else '')
+            display['predicted_topic'] = display['predicted_topic'].map(TOPICS)
+            display['status'] = display['status'].map({
+                'pending_review': 'Chờ duyệt',
+                'reviewed_approve': 'Đã duyệt',
+                'reviewed_edit_label': 'Đã duyệt và đổi nhãn',
+                'reviewed_reject': 'Đã từ chối'
             })
-            st.dataframe(display, width='stretch', hide_index=True)
+            display['source_type'] = display['source_type'].map({
+                'manual_demo': 'Nhập thủ công',
+                'controlled_demo': 'Mẫu kiểm thử',
+                'portal_student': 'Cổng sinh viên'
+            }).fillna('Cổng sinh viên')
+            display['processed_at'] = display['processed_at'].apply(lambda t: format_datetime_vn(t) if pd.notna(t) else '')
+            display = display.rename(columns={
+                'record_id': 'Mã yêu cầu',
+                'processed_at': 'Ngày đăng',
+                'clean_text': 'Nội dung phản ánh',
+                'predicted_topic': 'Nhóm dự đoán',
+                'confidence_score': 'Độ tự tin',
+                'priority_level': 'Ưu tiên',
+                'source_type': 'Nguồn',
+                'status': 'Trạng thái'
+            })
+            st.dataframe(
+                display,
+                width='stretch',
+                hide_index=True,
+                key="dash_table_select"
+            )
+
             st.download_button(
-                'Tải dữ liệu đã che',
-                data=export_csv(stats['df_processed']),
-                file_name='du_lieu_da_che.csv',
+                'Tải danh sách yêu cầu (CSV)',
+                data=export_csv(view),
+                file_name='danh_sach_yeu_cau.csv',
                 mime='text/csv'
             )
 
-    # Nạp dữ liệu mẫu vào bàn duyệt
-    st.subheader('Nạp ba yêu cầu mẫu vào bàn duyệt')
-    st.caption('Nạp lại không tạo bản ghi trùng và bảo toàn trạng thái đã duyệt trước đó.')
-    if st.button('Nạp 3 yêu cầu demo', width='stretch') and service:
-        for index, text in enumerate([
-            'Em đã chuyển học phí hôm qua nhưng cổng vẫn báo còn nợ, mã sinh viên 20991234.',
-            'Em không đăng nhập được cổng sinh viên, số điện thoại 0912 345 678.',
-            'Hai môn của em bị trùng lịch thi sáng thứ Hai.',
-        ], start=1):
-            rid = 'DEMO_' + str(index).zfill(3)
-            if not get_request(rid):
-                save_request(service.process(text), record_id=rid, source_type='controlled_demo')
-        st.session_state['notice'] = 'Đã nạp các mẫu còn thiếu. Kết quả duyệt trước đó được giữ nguyên.'
-        st.rerun()
-
-    # Nhật ký hoạt động Web / App theo thời gian thực
-    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-    st.subheader('Nhật ký hoạt động ứng dụng (Live Server & Web Console Logs)')
-    st.caption('Ghi nhận mọi lời gọi hàm, xử lý máy học, truy vấn CSDL và gửi email theo thời gian thực như một Web Server chuẩn.')
-
-    try:
-        from src.app_logger import get_recent_logs, render_log_terminal_html, clear_logs, export_logs_text
-        c_l1, c_l2 = st.columns([3, 1])
-        with c_l1:
-            comp_filter = st.selectbox("Lọc thành phần gọi:", ["TẤT CẢ", "INTAKE", "CLEANER", "AI-MODEL", "RAG-DOCX", "SYNTHESIS", "GUARDRAILS", "DATABASE", "EMAIL", "WORKBENCH"], key="dash_log_filter")
-        with c_l2:
-            st.write("")
-            st.write("")
-            if st.button("🔄 Làm mới log", key="dash_btn_ref_log"):
-                st.rerun()
-
-        logs_data = get_recent_logs(limit=50, component_filter=comp_filter)
-        st.markdown(render_log_terminal_html(logs_data, height_px=300), unsafe_allow_html=True)
-
-        c_d1, c_d2 = st.columns(2)
-        with c_d1:
+        # Bảng nhật ký duyệt
+        if logs:
+            st.markdown("<div style='margin-top: 1.2rem;'></div>", unsafe_allow_html=True)
+            st.markdown('##### Nhật ký phê duyệt của cán bộ')
+            history = pd.DataFrame(logs)
+            visible = history.drop(columns=['id']).copy()
+            visible['original_predicted_topic'] = visible['original_predicted_topic'].map(TOPICS)
+            visible['final_topic'] = visible['final_topic'].map(TOPICS)
+            visible['officer_action'] = visible['officer_action'].map({
+                'approve': 'Duyệt',
+                'edit_label': 'Đổi nhãn và duyệt',
+                'reject': 'Từ chối'
+            })
+            visible = visible.rename(columns={
+                'record_id': 'Mã yêu cầu',
+                'officer_action': 'Thao tác',
+                'original_predicted_topic': 'Nhãn dự đoán',
+                'final_topic': 'Nhãn cuối',
+                'final_response': 'Trả lời đã lưu',
+                'officer_notes': 'Ghi chú',
+                'reviewed_at': 'Thời điểm UTC'
+            })
+            st.dataframe(visible, width='stretch', hide_index=True)
             st.download_button(
-                "📥 Tải toàn bộ nhật ký (TXT)",
-                data=export_logs_text(),
-                file_name="app_server_logs.txt",
-                mime="text/plain",
-                key="dash_btn_dl_logs",
-                width="stretch"
+                'Tải nhật ký duyệt (CSV)',
+                data=export_csv(history),
+                file_name='nhat_ky_duyet.csv',
+                mime='text/csv'
             )
-        with c_d2:
-            if st.button("🗑️ Xóa nhật ký phiên", key="dash_btn_clr_logs", width="stretch"):
-                clear_logs()
-                st.rerun()
-    except Exception:
-        pass
+
+        # Nhật ký gửi email thông báo giải quyết
+        from src.email_service import list_email_dispatches
+        email_logs = list_email_dispatches()
+        if email_logs:
+            st.markdown("<div style='margin-top: 1.2rem;'></div>", unsafe_allow_html=True)
+            st.markdown('##### Nhật ký gửi email giải quyết')
+            df_emails = pd.DataFrame(email_logs)[['sent_at', 'record_id', 'recipient_email', 'dispatch_mode', 'status', 'subject']]
+            df_emails['dispatch_mode'] = df_emails['dispatch_mode'].map({
+                'smtp_real': 'Máy chủ SMTP',
+                'simulated': 'Mô phỏng (Mock)'
+            }).fillna(df_emails['dispatch_mode'])
+            df_emails['status'] = df_emails['status'].map({
+                'success': 'Thành công',
+                'failed': 'Thất bại'
+            }).fillna(df_emails['status'])
+            df_emails = df_emails.rename(columns={
+                'sent_at': 'Thời điểm gửi (UTC)',
+                'record_id': 'Mã yêu cầu',
+                'recipient_email': 'Email người nhận',
+                'dispatch_mode': 'Kênh gửi',
+                'status': 'Trạng thái',
+                'subject': 'Tiêu đề thông báo'
+            })
+            st.dataframe(df_emails, width='stretch', hide_index=True)
+
+    with d_tabs[2]:
+        # Nạp dữ liệu mẫu vào bàn duyệt (Dành cho kiểm thử)
+        st.markdown('##### 🧪 Nạp dữ liệu mẫu thử nghiệm')
+        st.caption('Nạp 3 yêu cầu mẫu vào Bàn duyệt cán bộ (bảo toàn trạng thái đã duyệt trước đó).')
+        if st.button('Nạp 3 yêu cầu demo', width='stretch') and service:
+            for index, text in enumerate([
+                'Em đã chuyển học phí hôm qua nhưng cổng vẫn báo còn nợ, mã sinh viên 20991234.',
+                'Em không đăng nhập được cổng sinh viên, số điện thoại 0912 345 678.',
+                'Hai môn của em bị trùng lịch thi sáng thứ Hai.',
+            ], start=1):
+                rid = 'DEMO_' + str(index).zfill(3)
+                if not get_request(rid):
+                    save_request(service.process(text), record_id=rid, source_type='controlled_demo')
+            st.session_state['notice'] = 'Đã nạp các mẫu còn thiếu. Kết quả duyệt trước đó được giữ nguyên.'
+            st.rerun()
+
+        st.markdown("---")
+        # Phân hệ Kiểm tra chất lượng dữ liệu
+        st.markdown('##### 🛡️ Kiểm tra chất lượng & Che giấu PII dữ liệu hàng loạt')
+        source = st.radio('Nguồn kiểm tra', ['Bộ mô phỏng 424 dòng', 'Tải CSV hoặc XLSX'], horizontal=True)
+        target = None
+        text_col = 'raw_text'
+
+        if source == 'Bộ mô phỏng 424 dòng':
+            target = pd.read_csv(RAW_DEMO_PATH)
+            text_col = 'raw_text'
+            st.caption('Dữ liệu mô phỏng 424 dòng thực tế, chuẩn hóa NFC và che giấu PII tự động.')
+        else:
+            uploaded = st.file_uploader('Chọn tệp dữ liệu', type=['csv', 'xlsx'])
+            if uploaded is not None:
+                if uploaded.size > 5_000_000:
+                    st.warning('Hệ thống nhận tệp tối đa 5 MB.')
+                    return
+                try:
+                    target = pd.read_csv(uploaded) if uploaded.name.lower().endswith('.csv') else pd.read_excel(uploaded)
+                except Exception as exc:
+                    st.error('Không đọc được tệp. Kiểm tra định dạng và mã hóa UTF-8. ' + str(exc))
+                    return
+                if not len(target.columns):
+                    st.warning('Tệp chưa có cột.')
+                    return
+                if len(target) > 500:
+                    st.warning('Giới hạn kiểm tra tối đa 500 dòng mỗi tệp.')
+                    return
+                preferred = next((c for c in ('raw_text', 'clean_text', 'noi_dung', 'content') if c in target.columns), target.columns[0])
+                text_col = st.selectbox('Cột chứa nội dung', list(target.columns), index=list(target.columns).index(preferred))
+
+        if target is not None:
+            if target.empty:
+                st.info('Tệp không có dòng dữ liệu.')
+                return
+
+            signature = (source, hashlib_bytes(target, text_col))
+            if st.session_state.get('_profile_signature') != signature:
+                st.session_state.pop('profile_result', None)
+                st.session_state['_profile_signature'] = signature
+
+            if st.button('Kiểm tra và che thông tin', key='profile_data', width='stretch'):
+                st.session_state['profile_result'] = analyze_dataframe_realtime(target, text_col)
+
+            stats = st.session_state.get('profile_result')
+            if stats:
+                x, y, z = st.columns(3)
+                x.metric('Dòng hợp lệ để dùng', f"{stats['usable_count']}/{stats['total']}")
+                y.metric('Dòng rỗng', stats['empty_count'])
+                z.metric('Dòng có thông tin cá nhân', stats['pii_total'])
+                st.caption(f"Trùng hoàn toàn: {stats['duplicate_count']} | Gần trùng: {stats['near_duplicate_count']} | Ngắn: {stats['short_count']}.")
+                display = stats['df_processed'].copy()
+                display['quality_flags'] = display['quality_flags'].map(describe_flags)
+                display = display.rename(columns={
+                    'row_number': 'Dòng',
+                    'clean_text': 'Nội dung đã che',
+                    'quality_flags': 'Chất lượng',
+                    'is_usable': 'Dùng được',
+                    'char_length': 'Số ký tự'
+                })
+                st.dataframe(display, width='stretch', hide_index=True)
+                st.download_button(
+                    'Tải dữ liệu đã che',
+                    data=export_csv(stats['df_processed']),
+                    file_name='du_lieu_da_che.csv',
+                    mime='text/csv'
+                )
+
+        st.markdown("---")
+        # Phân hệ Tra cứu Vết Thực Thi & Nhật Ký Suy Luận của Model
+        if rows:
+            st.markdown('##### 🔎 Tra cứu Vết thực thi & Nhật ký suy luận của Model')
+            st.caption('Kiểm toán toàn bộ quá trình xử lý, phân phối xác suất và chuỗi suy luận của Local Learning Machine cho từng yêu cầu.')
+            from src.database import get_execution_trace
+            from app.components.trace_viewer import render_trace_view
+            from src.local_machine import get_local_machine
+
+            trace_rids = [r['record_id'] for r in rows]
+            if st.session_state.get('dash_select_trace_rid') not in trace_rids and trace_rids:
+                st.session_state['dash_select_trace_rid'] = trace_rids[0]
+
+            curr_t_rid = st.session_state.get('dash_select_trace_rid')
+            curr_t_idx = trace_rids.index(curr_t_rid) if curr_t_rid in trace_rids else 0
+
+            selected_trace_rid = st.selectbox(
+                "Chọn mã yêu cầu cần kiểm toán chi tiết:",
+                options=trace_rids,
+                index=curr_t_idx,
+                format_func=lambda k: f"{k} — [{next((r['predicted_topic'] for r in rows if r['record_id'] == k), '')}] {next((r['clean_text'][:50] for r in rows if r['record_id'] == k), '')}...",
+                key="dash_select_trace_rid"
+            )
+            if selected_trace_rid:
+                t_row = get_execution_trace(selected_trace_rid)
+                t_data = None
+                t_log = ""
+                if t_row and t_row.get('steps_json'):
+                    try:
+                        t_data = json.loads(t_row['steps_json']) if isinstance(t_row['steps_json'], str) else t_row['steps_json']
+                        t_log = t_row.get('terminal_log', '')
+                    except Exception:
+                        t_data = None
+                if not t_data:
+                    target_r = next((r for r in rows if r['record_id'] == selected_trace_rid), None)
+                    if target_r:
+                        lm = get_local_machine()
+                        res_lm = lm.process_request_with_trace(target_r['clean_text'], record_id=selected_trace_rid)
+                        t_data = res_lm.get('execution_trace', {})
+                        t_log = res_lm.get('terminal_log', '')
+
+                render_trace_view(
+                    trace_data=t_data,
+                    terminal_log=t_log,
+                    title=f"Vết Thực Thi Của Model Cho Yêu Cầu [{selected_trace_rid}]",
+                    expanded=False,
+                    key_prefix=f"dash_trace_{selected_trace_rid}"
+                )
+
 
     st.markdown("""
     <div style="margin-top: 28px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 18px;">

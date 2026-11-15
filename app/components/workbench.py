@@ -285,7 +285,7 @@ def render_workbench(faq_engine=None):
             key="wb_queue_table"
         )
 
-        st.caption(f"💡 Đang chọn xem: **{rid}** (Bấm trực tiếp dòng trong bảng hoặc dùng menu trên để chuyển hồ sơ).")
+        st.caption(f"📌 Đang xem hồ sơ: **{rid}**")
 
     # =========================================================================
     # CỘT PHẢI: BÀN LÀM VIỆC TẬP TRUNG (FOCUS WORKSPACE)
@@ -349,10 +349,7 @@ def render_workbench(faq_engine=None):
             f'<div style="display: flex; gap: 6px;">{contacts_badge}</div>'
             '</div>'
             f'<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 12px 14px; font-size: 0.92rem; color: #1e293b; line-height: 1.55; white-space: pre-wrap; font-weight: 500;">{safe_msg}</div>'
-            '<div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.74rem;">'
-            f'{issue_badge}'
-            '<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 4px;">🛡️ Đã làm sạch chuẩn NFC & bảo mật PII</span>'
-            '</div>'
+            + (f'<div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.74rem;">{issue_badge}</div>' if issue_badge else '') +
             '</div>'
         )
         st.markdown(card_student_html, unsafe_allow_html=True)

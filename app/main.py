@@ -75,7 +75,7 @@ from src.config import KB_PATH, MODEL_PATH, TOPICS, describe_flags
 AUTO_APPROVE_CONFIDENCE_THRESHOLD = getattr(config_mod, "AUTO_APPROVE_CONFIDENCE_THRESHOLD", float(os.environ.get("AUTO_APPROVE_CONFIDENCE_THRESHOLD", "0.70")))
 DEFAULT_TEST_EMAIL = getattr(config_mod, "DEFAULT_TEST_EMAIL", os.environ.get("DEFAULT_TEST_EMAIL", "kennysk114239@gmail.com"))
 
-from src.database import init_db, sync_kb_from_csv, sync_procedures_kb, save_request, get_request, save_draft, log_review_action
+from src.database import init_db, sync_kb_from_csv, sync_procedures_kb, save_request, get_request, save_draft, log_review_action, format_datetime_vn
 import src.email_service as email_mod
 try:
     importlib.reload(email_mod)
@@ -459,13 +459,13 @@ with tabs[0]:
 with tabs[1]:
     st.markdown("""
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-        <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">📝 Tiếp nhận & Khởi tạo Hồ sơ Phản ánh Học vụ</div>
-        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Mô hình AI tự động làm sạch Unicode NFC, bảo vệ PII và đối soát thời gian thực với quy trình đại học chính thức</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">📝 Cổng Tiếp Nhận & Hỗ Trợ Học Vụ Sinh Viên EAUT</div>
+        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Điền thông tin và phản ánh của bạn để được hỗ trợ giải quyết nhanh chóng theo đúng quy trình quy chế Nhà trường</div>
     </div>
     """, unsafe_allow_html=True)
 
     # Chọn nhanh tình huống thực tế theo quy trình EAUT
-    with st.expander('Chọn nhanh tình huống mẫu chuẩn hóa', expanded=False):
+    with st.expander('💡 Điền nhanh tình huống mẫu (Học phí, Phúc khảo, CSVC, Giấy tờ...)', expanded=False):
         scenarios = {
             'Hỏng điều hòa / Vệ sinh CSVC': 'Điều hòa phòng học 402 nhà B bị hỏng chảy nước lênh láng không mát, phòng học có rác chưa được dọn dẹp, đề nghị tổ CSVC kiểm tra.',
             'Mượn phòng học / Hội trường': 'Câu lạc bộ sinh viên muốn làm thủ tục nộp giấy đề xuất BMPH-01 mượn Hội trường lớn để tổ chức tọa đàm khoa học ngoài giờ.',
@@ -479,13 +479,13 @@ with tabs[1]:
         sc_cols = st.columns(4)
         for idx, (label, text) in enumerate(scenarios.items()):
             with sc_cols[idx % 4]:
-                if st.button(f"Mẫu: {label}", key=f"quick_sc_{idx}", width="stretch"):
+                if st.button(f"{label}", key=f"quick_sc_{idx}", width="stretch"):
                     app_log("INTAKE", "Người dùng chọn tình huống mẫu chuẩn hóa", f"Mẫu: [{label}]")
                     st.session_state["request_text"] = text
                     st.rerun()
 
     # Bố cục 2 cột chuẩn Cổng Hỗ trợ Sinh viên mis.eaut.edu.vn/ho-tro
-    col_form, col_guide = st.columns([5.2, 6.8], gap="large")
+    col_form, col_guide = st.columns([5.5, 4.5], gap="large")
 
     with col_form:
         st.markdown("""
@@ -512,11 +512,19 @@ with tabs[1]:
         service_options = ['-- Chọn dịch vụ hỗ trợ (tùy chọn) --'] + list(service_topic_map.keys())
 
         with st.form('intake_form', clear_on_submit=False):
-            in_fullname = st.text_input('Họ và tên *', placeholder='Nhập đầy đủ họ và tên...', key='in_fullname')
+            f_c1, f_c2 = st.columns(2)
+            with f_c1:
+                in_fullname = st.text_input('Họ và tên *', placeholder='Nhập họ và tên...', key='in_fullname')
+            with f_c2:
+                in_mssv = st.text_input('Mã sinh viên *', placeholder='Ví dụ: 2022601234', key='in_mssv')
+
+            f_c3, f_c4 = st.columns(2)
+            with f_c3:
+                in_phone = st.text_input('Số điện thoại *', placeholder='Ví dụ: 0987654321', key='in_phone')
+            with f_c4:
+                in_email = st.text_input('Email *', placeholder='Ví dụ: sinhvien@eaut.edu.vn', key='in_email')
+
             in_service = st.selectbox('Dịch vụ *', options=service_options, key='in_service')
-            in_mssv = st.text_input('Mã sinh viên *', placeholder='Ví dụ: 2022601234', key='in_mssv')
-            in_phone = st.text_input('Số điện thoại *', placeholder='Ví dụ: 0987654321', key='in_phone')
-            in_email = st.text_input('Email *', placeholder='Ví dụ: sinhvien@eaut.edu.vn', key='in_email')
             in_issue = st.text_input('Vấn đề đang gặp *', placeholder='Tóm tắt vấn đề (Vd: Mượn phòng học, Phúc khảo điểm...)', key='in_issue')
             
             user_text = st.text_area(
@@ -529,75 +537,63 @@ with tabs[1]:
 
             in_file = st.file_uploader('Tệp đính kèm', type=['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'], key='in_file')
 
-            c_btn1, c_btn2 = st.columns([1, 1])
-            with c_btn2:
-                submitted = st.form_submit_button('Gửi phiếu hỗ trợ', type='primary', width='stretch')
+            submitted = st.form_submit_button('Gửi phiếu hỗ trợ', type='primary', width='stretch')
 
     with col_guide:
         st.markdown("""
-        <div style="font-size: 1.15rem; font-weight: 700; color: #1a508b; text-align: center; margin-bottom: 12px;">
-            Hướng dẫn chọn dịch vụ hỗ trợ sinh viên
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 12px;">
+            <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; margin-bottom: 10px;">
+                ℹ️ Đầu Mối & Cam Kết Hỗ Trợ Sinh Viên EAUT
+            </div>
+            <div style="font-size: 0.85rem; color: #334155; line-height: 1.6;">
+                <p style="margin-bottom: 6px;">🏛️ <strong>Bộ phận Một cửa Sinh viên:</strong> Tầng 1 Tòa nhà Hiệu bộ (Cơ sở Hà Nội & Cơ sở Bắc Ninh)</p>
+                <p style="margin-bottom: 6px;">📞 <strong>Tổng đài hỗ trợ:</strong> <code>024.3768.9999</code> &nbsp;|&nbsp; ✉️ <strong>Email:</strong> <code>hotro@eaut.edu.vn</code></p>
+                <p style="margin-bottom: 6px;">⏱️ <strong>Giờ làm việc:</strong> Thứ 2 - Thứ 6 (08:00 - 17:00), Thứ 7 (08:00 - 12:00)</p>
+                <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 6px; margin: 10px 0;">
+                    <strong style="color: #1e40af;">⚡ Cam kết thời hạn xử lý (SLA):</strong>
+                    <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 0.82rem; color: #1e3a8a;">
+                        <li>Tiếp nhận & đối soát quy chế: <strong>Tức thì qua AI</strong></li>
+                        <li>Giải quyết thủ tục hành chính, điểm thi: <strong>24 - 48 giờ làm việc</strong></li>
+                        <li>Hồ sơ khẩn cấp (sự cố CSVC, y tế): <strong>Ưu tiên xử lý trong 04 - 12 giờ</strong></li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #cbd5e1;">
-            <thead>
-                <tr style="background: #1a508b; color: #ffffff; text-align: left;">
-                    <th style="padding: 10px 14px; width: 36%; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">DỊCH VỤ</th>
-                    <th style="padding: 10px 14px; width: 64%; font-weight: 700;">PHẠM VI NỘI DUNG</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Học tập, học vụ và cảnh báo</td>
-                    <td style="padding: 8px 12px; color: #334155;">Lịch học, lịch thi, học phần, kết quả học tập, cảnh báo học vụ; tư vấn và kết nối đầu mối giải quyết</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Hồ sơ và thủ tục sinh viên</td>
-                    <td style="padding: 8px 12px; color: #334155;">Hồ sơ sinh viên, xác nhận, điều chỉnh thông tin, giấy tờ và thủ tục hành chính</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Học bổng, chế độ và chính sách</td>
-                    <td style="padding: 8px 12px; color: #334155;">Điều kiện, hồ sơ, tiến độ xét duyệt, kết quả thực hiện chế độ, chính sách</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Rèn luyện, khen thưởng và kỷ luật</td>
-                    <td style="padding: 8px 12px; color: #334155;">Tiêu chí, hồ sơ, quy trình, kết quả đánh giá rèn luyện; khen thưởng, kỷ luật</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Dịch vụ phục vụ sinh viên</td>
-                    <td style="padding: 8px 12px; color: #334155;">Thẻ sinh viên, đồng phục, bảo hiểm y tế, tiện ích và dịch vụ phục vụ sinh viên</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Ký túc xá và cư trú</td>
-                    <td style="padding: 8px 12px; color: #334155;">Đăng ký nội trú, điều kiện sinh hoạt, phản ánh ký túc xá, hướng dẫn cư trú</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Hoạt động và phát triển sinh viên</td>
-                    <td style="padding: 8px 12px; color: #334155;">Hoạt động ngoại khóa, câu lạc bộ, phong trào, chương trình phát triển sinh viên</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Khó khăn cá nhân và hỗ trợ đặc biệt</td>
-                    <td style="padding: 8px 12px; color: #334155;">Trường hợp cần hỗ trợ về sức khỏe, tâm lý, hoàn cảnh hoặc nguy cơ mất an toàn</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Phản ánh, kiến nghị và khiếu nại</td>
-                    <td style="padding: 8px 12px; color: #334155;">Tiếp nhận, xác minh, chuyển xử lý, theo dõi và thông tin kết quả phản ánh</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-                    <td style="padding: 8px 12px; font-weight: 600; color: #0f172a; border-right: 1px solid #e2e8f0;">Khác</td>
-                    <td style="padding: 8px 12px; color: #334155;">Nội dung không thuộc các loại dịch vụ trên</td>
-                </tr>
-            </tbody>
-        </table>
+        """, unsafe_allow_html=True)
 
-        <div style="margin-top: 22px; text-align: center;">
-            <div style="font-size: 0.95rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
+        with st.expander("📋 Xem phạm vi 10 nhóm dịch vụ sinh viên", expanded=False):
+            st.markdown("""
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
+                <thead>
+                    <tr style="background: #1a508b; color: #ffffff; text-align: left;">
+                        <th style="padding: 8px 10px; width: 40%;">DỊCH VỤ</th>
+                        <th style="padding: 8px 10px; width: 60%;">PHẠM VI NỘI DUNG</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Học tập, học vụ và cảnh báo</td><td style="padding: 6px 10px;">Lịch học, lịch thi, học phần, kết quả học tập</td></tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Hồ sơ và thủ tục sinh viên</td><td style="padding: 6px 10px;">Xác nhận sinh viên, giấy tờ hành chính</td></tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Cơ sở vật chất & Giảng đường</td><td style="padding: 6px 10px;">Báo hỏng thiết bị, mượn phòng học, hội trường</td></tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Học bổng & Chế độ chính sách</td><td style="padding: 6px 10px;">Học phí, miễn giảm, học bổng khuyến khích</td></tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Rèn luyện & Khen thưởng</td><td style="padding: 6px 10px;">Điểm rèn luyện, khen thưởng, kỷ luật</td></tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Dịch vụ phục vụ sinh viên</td><td style="padding: 6px 10px;">Thẻ sinh viên, bảo hiểm y tế, đồng phục</td></tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Ký túc xá & Cư trú</td><td style="padding: 6px 10px;">Đăng ký nội trú, sinh hoạt KTX</td></tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><td style="padding: 6px 10px; font-weight: 600;">Khó khăn & Hỗ trợ đặc biệt</td><td style="padding: 6px 10px;">Tư vấn sức khỏe, tâm lý, hoàn cảnh</td></tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;"><td style="padding: 6px 10px; font-weight: 600;">Phản ánh, kiến nghị & khiếu nại</td><td style="padding: 6px 10px;">Tiếp nhận và giải quyết khiếu nại học vụ</td></tr>
+                </tbody>
+            </table>
+            """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="margin-top: 14px; text-align: center;">
+            <div style="font-size: 0.92rem; font-weight: 800; color: #1a508b; text-transform: uppercase; letter-spacing: 0.04em;">
                 ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á
             </div>
-            <div style="font-size: 0.8rem; color: #2563eb; margin-top: 6px;">
-                📍 <strong>Cơ sở Hà Nội:</strong> Trường Đại học Công nghệ Đông Á, Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
+            <div style="font-size: 0.78rem; color: #2563eb; margin-top: 4px;">
+                📍 <strong>Cơ sở Hà Nội:</strong> Đường Trịnh Văn Bô, Nam Từ Liêm, Hà Nội.
             </div>
-            <div style="font-size: 0.8rem; color: #2563eb; margin-top: 3px;">
-                📍 <strong>Cơ sở Bắc Ninh:</strong> Trường Đại học Công nghệ Đông Á, Làng Đại học, Phường Võ Cường, Bắc Ninh.
+            <div style="font-size: 0.78rem; color: #2563eb; margin-top: 2px;">
+                📍 <strong>Cơ sở Bắc Ninh:</strong> Làng Đại học, Phường Võ Cường, Bắc Ninh.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -782,165 +778,89 @@ with tabs[1]:
     row = get_request(rid) if rid else None
 
     if result and row:
-        st.markdown("<div style='margin-top: 1.2rem;'></div>", unsafe_allow_html=True)
-        st.subheader('Kết quả phân tích & Phân luồng')
+        st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+        
+        # 1. Thẻ Biên Nhận Tiếp Nhận Học Vụ Trang Nhã (Student Receipt Card)
+        prio = row.get('priority_level', 'Bình thường')
+        is_auto = (row.get('status') == 'reviewed_approve' or 'tự động' in (str(row.get('final_response', '')) + str(row.get('reviewed_at', ''))).lower())
+        
+        status_label = "🟢 ĐÃ PHÊ DUYỆT TỰ ĐỘNG & GỬI EMAIL" if is_auto else ("🔴 TIẾP NHẬN ƯU TIÊN KHẨN CẤP" if prio == "Khẩn cấp" else "🔵 TIẾP NHẬN THÀNH CÔNG")
+        status_bg = "#f0fdf4" if is_auto else ("#fef2f2" if prio == "Khẩn cấp" else "#eff6ff")
+        status_color = "#15803d" if is_auto else ("#dc2626" if prio == "Khẩn cấp" else "#1e40af")
+        sla_est = "Trong 04 - 12 giờ làm việc" if prio == "Khẩn cấp" else "Trong 24 - 48 giờ làm việc"
 
-        # Thẻ thông số kết quả nghiệp vụ
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Đơn vị chuyên môn phụ trách</div>
-                <div class="metric-val">{row['department']} <span style="font-size: 0.85rem; font-weight: normal; color: #64748b;">({TOPICS.get(row['predicted_topic'], row['predicted_topic'])})</span></div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with c2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Độ tự tin phân loại</div>
-                <div class="metric-val">{row['confidence_score']:.1%}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with c3:
-            prio = row['priority_level']
-            prio_class = {
-                "Khẩn cấp": "badge-urgent",
-                "Cao": "badge-high",
-                "Bình thường": "badge-normal",
-                "Thấp": "badge-low"
-            }.get(prio, "badge-normal")
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Mức độ ưu tiên</div>
-                <div class="metric-val"><span class="{prio_class}">{prio}</span></div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.caption(f"Căn cứ phân cấp ưu tiên: {row['priority_reason']}")
-
-        parsed_f = parse_student_feedback(row['clean_text'])
-        student_display_msg = parsed_f['student_message']
-
-        st.text_area(
-            'Nội dung phản ánh chi tiết',
-            value=student_display_msg,
-            disabled=True,
-            key='clean_' + rid,
-            height=90
+        receipt_html = (
+            f'<div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-top: 5px solid {status_color}; border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">'
+            f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">'
+            f'<div style="display: flex; align-items: center; gap: 8px;">'
+            f'<span style="background: {status_bg}; color: {status_color}; font-weight: 800; font-size: 0.76rem; padding: 3px 10px; border-radius: 6px; letter-spacing: 0.03em;">{status_label}</span>'
+            f'<span style="font-size: 1.1rem; font-weight: 800; color: #1a508b; font-family: monospace;">{rid}</span>'
+            f'</div>'
+            f'<span style="font-size: 0.8rem; color: #64748b;">Thời gian: {format_datetime_vn(row.get("processed_at"), fmt="%d/%m/%Y %H:%M")}</span>'
+            f'</div>'
+            f'<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-top: 10px;">'
+            f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">ĐƠN VỊ PHỤ TRÁCH</div><div style="font-weight: 700; color: #1a508b; font-size: 0.88rem; margin-top: 2px;">{row["department"]}</div></div>'
+            f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">CHUYÊN MÔN / THỦ TỤC</div><div style="font-weight: 700; color: #0f172a; font-size: 0.88rem; margin-top: 2px;">{TOPICS.get(row["predicted_topic"], row["predicted_topic"])}</div></div>'
+            f'<div><div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">THỜI HẠN XỬ LÝ (SLA)</div><div style="font-weight: 700; color: #15803d; font-size: 0.88rem; margin-top: 2px;">⏱️ {sla_est}</div></div>'
+            f'</div>'
+            f'</div>'
         )
-        if parsed_f['issue'] and parsed_f['issue'] != student_display_msg:
-            st.caption(f"📌 **Vấn đề đã chọn:** {parsed_f['issue']}")
-        st.caption('Chất lượng dữ liệu: ' + describe_flags(row['quality_flags']))
+        st.markdown(receipt_html, unsafe_allow_html=True)
 
-        matched_proc = result.get('matched_procedure')
-        if matched_proc:
+        # 2. Hướng dẫn giải quyết chuẩn hóa & Văn bản phản hồi
+        resp_to_show = row.get('final_response') or result.get('procedure_draft_response') or result.get('draft_response')
+        if resp_to_show:
+            matched_p = result.get('matched_procedure')
+            p_title = f"[{matched_p['proc_id']}] {matched_p['title']}" if matched_p else "Hướng dẫn xử lý học vụ EAUT"
             st.markdown(f"""
-            <div class="procedure-box">
-                <div style="font-size: 0.74rem; font-weight: 700; color: #047857; text-transform: uppercase;">Quy trình nghiệp vụ giải quyết chuẩn hóa</div>
-                <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-top: 3px;">[{matched_proc.get('proc_id')}] {matched_proc.get('title')}</div>
-                <div style="font-size: 0.83rem; color: #475569; margin-top: 5px;">
-                    <strong>Căn cứ:</strong> {matched_proc.get('legal_basis')} &nbsp;|&nbsp; 
-                    <strong>Thời hạn giải quyết:</strong> {matched_proc.get('processing_time')} &nbsp;|&nbsp; 
-                    <strong>Biểu mẫu:</strong> {matched_proc.get('forms_required')}
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <div style="font-size: 0.95rem; font-weight: 700; color: #1a508b; margin-bottom: 6px;">
+                    📋 {p_title}
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; color: #1e293b; line-height: 1.6; white-space: pre-wrap;">
+{resp_to_show}
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-        # Thẻ hiển thị tra cứu CSDL Thư viện thời gian thực (nếu có dữ liệu)
+        # 3. Tra cứu thư viện (nếu có dữ liệu)
         lib_data = result.get('library_lookup')
         if lib_data and lib_data.get('has_live_data'):
-            with st.expander("📚 Dữ Liệu Tra Cứu Thời Gian Thực Từ CSDL Thư Viện EAUT (OPAC & Sổ Mượn Trả)", expanded=True):
-                b_list = lib_data.get('books_found', [])
-                if b_list:
-                    st.markdown("##### 📖 Danh mục sách tìm thấy trong kho:")
-                    b_cols = st.columns(min(len(b_list), 3))
-                    for b_idx, book in enumerate(b_list[:3]):
-                        with b_cols[b_idx % 3]:
-                            avail_badge = "<span style='color:#16a34a; font-weight:700;'>🟢 Còn sách</span>" if book['available_copies'] > 0 else "<span style='color:#dc2626; font-weight:700;'>🔴 Hết sách</span>"
-                            dig_link = f"<div style='font-size: 0.78rem; margin-top: 5px;'><a href='{book.get('digital_url', 'https://lib.cndonga.edu.vn')}' target='_blank'>🔗 Đọc bản điện tử</a></div>" if book.get('is_digital') else ""
-                            st.markdown(f"""
-                            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                                <div style="font-size: 0.8rem; font-weight: 700; color: #1e40af;">[{book['book_id']}] &nbsp; {avail_badge}</div>
-                                <div style="font-weight: 600; font-size: 0.95rem; color: #0f172a; margin: 4px 0;">{book['title']}</div>
-                                <div style="font-size: 0.8rem; color: #475569;">Tác giả: {book['author']} ({book['publish_year']})</div>
-                                <div style="font-size: 0.8rem; color: #047857; margin-top: 4px;">📍 <strong>{book['location']}</strong></div>
-                                <div style="font-size: 0.8rem; color: #334155;">Số lượng: <strong>{book['available_copies']}/{book['total_copies']}</strong> cuốn</div>
-                                {dig_link}
-                            </div>
-                            """, unsafe_allow_html=True)
+            b_list = lib_data.get('books_found', [])
+            br_list = lib_data.get('student_borrows', [])
+            if b_list or br_list:
+                with st.expander("📚 Dữ liệu tra cứu Thư viện EAUT thời gian thực", expanded=True):
+                    if b_list:
+                        b_cols = st.columns(min(len(b_list), 3))
+                        for b_idx, book in enumerate(b_list[:3]):
+                            with b_cols[b_idx % 3]:
+                                avail_badge = "<span style='color:#16a34a; font-weight:700;'>🟢 Còn sách</span>" if book['available_copies'] > 0 else "<span style='color:#dc2626; font-weight:700;'>🔴 Hết</span>"
+                                st.markdown(f"""
+                                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 0.82rem;">
+                                    <strong>{book['title']}</strong><br/>
+                                    <span style="color:#64748b;">Vị trí: {book['location']}</span> · {avail_badge}
+                                </div>
+                                """, unsafe_allow_html=True)
+                    if br_list:
+                        for br in br_list:
+                            st.caption(f"📘 **{br['book_title']}** · Hạn trả: **{br['due_date']}** · Trạng thái: **{br['status']}**")
 
-                br_list = lib_data.get('student_borrows', [])
-                if br_list:
-                    sid_display = lib_data.get('student_id') or 'N/A'
-                    st.markdown(f"##### 👤 Hồ sơ mượn trả tài liệu sinh viên [MSSV: {sid_display}]:")
-                    for br in br_list:
-                        status_color = "#dc2626" if br['status'] == 'Quá hạn' else ("#16a34a" if br['status'] == 'Đã trả' else "#2563eb")
-                        fine_note = f" &nbsp;|&nbsp; Phí phạt quá hạn: <strong style='color:#dc2626;'>{br.get('fine_amount', 0):,} VNĐ</strong>" if br['status'] == 'Quá hạn' else ""
-                        st.markdown(f"""
-                        <div style="background: #ffffff; border-left: 4px solid {status_color}; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; margin-bottom: 6px;">
-                            <div style="font-weight: 600; color: #0f172a;">📘 {br['book_title']}</div>
-                            <div style="font-size: 0.83rem; color: #475569; margin-top: 3px;">
-                                Mã mượn: <strong>{br['borrow_id']}</strong> &nbsp;|&nbsp;
-                                Trạng thái: <span style="font-weight: 700; color: {status_color};">{br['status']}</span> &nbsp;|&nbsp;
-                                Ngày mượn: {br['borrow_date']} &nbsp;|&nbsp;
-                                Hạn trả: <strong>{br['due_date']}</strong>{fine_note}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-        resp_to_show = result.get('procedure_draft_response') or result.get('draft_response')
-        if resp_to_show:
-            with st.expander("Hướng Dẫn Giải Quyết Chuẩn Nghiệp Vụ (Theo Quy Trình EAUT)", expanded=True):
-                st.write(resp_to_show)
-
-        # Xem trước Email thực tế gửi cho sinh viên
+        # 4. Xác nhận gửi email thông báo
         last_mail = st.session_state.get('last_sent_email')
         if last_mail:
-            with st.expander("📧 Xem Trước Hộp Thư Email Đã Gửi Tới Sinh Viên (HTML & Plain Text)", expanded=True):
-                st.caption(f"Trạng thái: **{last_mail['status']}** &nbsp;|&nbsp; Người nhận: **{last_mail['recipient']}** &nbsp;|&nbsp; Tiêu đề: **{last_mail['subject']}**")
-                mail_tabs = st.tabs(["📱 Giao diện Email HTML (Trực quan)", "📄 Định dạng Văn bản thuần (Plain Text)"])
-                with mail_tabs[0]:
-                    st.components.v1.html(last_mail['body_html'], height=560, scrolling=True)
-                with mail_tabs[1]:
-                    st.text_area("Nội dung text gửi qua email:", value=last_mail['body_plain'], height=280, disabled=True, key=f"preview_plain_{rid}")
+            st.info(f"📧 **Thông báo:** Đã gửi email xác nhận và hướng dẫn tới hộp thư **{last_mail['recipient']}**.")
+            with st.expander("Xem trước email đã gửi", expanded=False):
+                st.caption(f"Tiêu đề: {last_mail['subject']}")
+                st.text_area("Nội dung thư:", value=last_mail['body_plain'], height=160, disabled=True, key=f"preview_plain_{rid}")
 
-        with st.expander('Tài liệu quy chế tham chiếu (FAQ)', expanded=False):
-            for article in result['articles']:
-                st.markdown(f"**{article['kb_id']} — {article['question_standard']}**")
-                if article['verified']:
-                    st.caption(f"Nguồn chính thức đã xác minh: {article['source_url']}")
-                else:
-                    st.caption('Nội dung minh họa; chưa xác minh quy định chính thức của trường.')
-                st.write(article['content_extract'])
-                st.caption(f"Độ tương đồng ngữ nghĩa: {article['similarity_score']:.3f}")
-            if not result['articles']:
-                st.write('Đã áp dụng trực tiếp quy trình chuyên sâu chuẩn hóa.')
-
-        # Hộp hiển thị minh bạch toàn bộ quá trình xử lý và suy luận nội tâm của Model
-        from app.components.trace_viewer import render_trace_view
-        render_trace_view(
-            trace_data=result.get('execution_trace', {}),
-            terminal_log=result.get('terminal_log', ''),
-            title="Nhật Ký Thực Thi & Suy Luận Chi Tiết Của Máy Học (Execution & LLM Trace)",
-            expanded=True,
-            key_prefix=f"intake_{rid}"
-        )
-
-        with st.expander("🖥️ Console Runtime Logs (Tiến trình gọi Web / Server)", expanded=False):
-            st.caption("Các sự kiện, API và lời gọi hàm vừa được thực thi tự động:")
-            recent_req_logs = get_recent_logs(limit=12)
-            st.markdown(render_log_terminal_html(recent_req_logs, height_px=220), unsafe_allow_html=True)
-
-        if row['status'] == 'pending_review':
-            st.subheader('Soạn thảo bản nháp hoặc chuyển sang bàn duyệt')
+        # 5. Dành cho cán bộ: Bản nháp & Tra cứu quy chế tham chiếu (Tương thích kiểm thử & Xử lý nhanh)
+        with st.expander("🛠️ Dành cho cán bộ tiếp nhận: Chỉnh sửa bản nháp & Tham chiếu quy chế", expanded=(row['status'] == 'pending_review')):
             draft_key = 'intake_draft_' + rid
             if draft_key not in st.session_state:
-                st.session_state[draft_key] = row['draft_response']
+                st.session_state[draft_key] = row.get('draft_response', '')
 
             with st.form('draft_form_' + rid):
-                draft = st.text_area('Bản nháp phản hồi có thể chỉnh sửa', key=draft_key, height=170)
+                draft = st.text_area('Bản nháp phản hồi có thể chỉnh sửa', key=draft_key, height=120)
                 draft_saved = st.form_submit_button('Lưu bản nháp', width='stretch')
 
             if draft_saved:
@@ -951,63 +871,11 @@ with tabs[1]:
                     st.rerun()
                 except ValueError as exc:
                     st.error(str(exc))
-        else:
-            is_auto = 'tự động' in (str(row.get('final_response', '')) + str(row.get('reviewed_at', ''))).lower()
-            if is_auto or row.get('status') == 'reviewed_approve':
-                st.success(f"Yêu cầu đã được phê duyệt và lưu trữ thành công (Độ chắc chắn: {row['confidence_score']:.1%}). Hướng giải quyết đã được gửi về email.")
-            else:
-                st.success('Yêu cầu đã được cán bộ xử lý và phê duyệt.')
-            st.write(row['final_response'])
 
-    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
-    # Tùy chọn gửi file đính kèm đơn lẻ & nạp hàng loạt
-    with st.expander('Tùy chọn: Đính kèm tệp văn bản hoặc nạp danh sách từ Excel / CSV', expanded=False):
-        t1, t2 = st.tabs(['Đính kèm tệp đơn từ / Ảnh minh chứng', 'Nạp danh sách nhiều Ticket từ tệp'])
-        with t1:
-            uploaded_doc = st.file_uploader(
-                'Tải tệp đơn từ (.txt, .docx, .pdf) hoặc ảnh biên lai (.png, .jpg):',
-                type=['txt', 'docx', 'pdf', 'png', 'jpg', 'jpeg'],
-                key='ticket_doc_upload'
-            )
-            if uploaded_doc is not None:
-                doc_name = uploaded_doc.name.lower()
-                if doc_name.endswith(('.png', '.jpg', '.jpeg')):
-                    st.caption(f'Đã đính kèm ảnh minh chứng: **{uploaded_doc.name}**')
-                    st.image(uploaded_doc, width=200)
-                elif doc_name.endswith(('.txt', '.docx', '.pdf')):
-                    content = extract_text_from_upload(uploaded_doc)
-                    if content and not content.startswith("Lỗi"):
-                        st.caption(f'Đã trích xuất nội dung từ **{uploaded_doc.name}** ({len(content)} ký tự).')
-                        if st.button('Điền nội dung tệp vào ô ý kiến cá nhân', key='btn_fill_doc'):
-                            st.session_state['request_text'] = content
-                            st.rerun()
-
-        with t2:
-            batch_file = st.file_uploader(
-                'Chọn tệp bảng tính (.xlsx hoặc .csv):',
-                type=['csv', 'xlsx'],
-                key='batch_file_intake'
-            )
-            if batch_file is not None:
-                try:
-                    df_b = pd.read_csv(batch_file) if batch_file.name.lower().endswith('.csv') else pd.read_excel(batch_file)
-                    if not df_b.empty:
-                        potential = [c for c in df_b.columns if any(k in str(c).lower() for k in ['noi_dung', 'text', 'cau_hoi', 'phan_anh', 'content'])]
-                        col_picked = potential[0] if potential else df_b.columns[0]
-                        col_target = st.selectbox('Cột nội dung:', options=list(df_b.columns), index=list(df_b.columns).index(col_picked), key='batch_col_target')
-                        st.dataframe(df_b[[col_target]].head(3), width='stretch')
-                        if st.button(f'Nạp {min(len(df_b), 50)} Ticket vào Bàn duyệt', type='primary', key='btn_do_batch_import'):
-                            added = 0
-                            for _, r in df_b.head(50).iterrows():
-                                val = str(r[col_target]).strip()
-                                if val and val != 'nan' and val != 'None':
-                                    b_res = service.process(val)
-                                    save_request(b_res, source_type='file_batch')
-                                    added += 1
-                            st.success(f'Đã nạp thành công {added} Ticket vào Bàn duyệt cán bộ!')
-                            st.rerun()
-                except Exception as err:
-                    st.error(f'Lỗi đọc tệp: {err}')
+            if result.get('articles'):
+                st.caption("Các điều khoản FAQ tham chiếu:")
+                for article in result['articles'][:2]:
+                    st.markdown(f"- **{article['kb_id']}**: {article['question_standard']}")
 
 with tabs[2]:
     render_knowledge_center()
@@ -1117,6 +985,34 @@ with tabs[4]:
                 from src.model import train_and_save_production_model
                 clf = train_and_save_production_model()
                 st.success("Đã huấn luyện lại mô hình thành công! Khả năng tự động hóa đã được nâng cấp.")
+
+        st.markdown("---")
+        with st.expander("📥 Nạp danh sách nhiều Ticket từ tệp (.xlsx / .csv)", expanded=False):
+            batch_file = st.file_uploader(
+                'Chọn tệp bảng tính (.xlsx hoặc .csv):',
+                type=['csv', 'xlsx'],
+                key='batch_file_settings'
+            )
+            if batch_file is not None:
+                try:
+                    df_b = pd.read_csv(batch_file) if batch_file.name.lower().endswith('.csv') else pd.read_excel(batch_file)
+                    if not df_b.empty:
+                        potential = [c for c in df_b.columns if any(k in str(c).lower() for k in ['noi_dung', 'text', 'cau_hoi', 'phan_anh', 'content'])]
+                        col_picked = potential[0] if potential else df_b.columns[0]
+                        col_target = st.selectbox('Cột nội dung:', options=list(df_b.columns), index=list(df_b.columns).index(col_picked), key='batch_col_target_settings')
+                        st.dataframe(df_b[[col_target]].head(3), width='stretch')
+                        if st.button(f'Nạp {min(len(df_b), 50)} Ticket vào Bàn duyệt', type='primary', key='btn_do_batch_import_settings'):
+                            added = 0
+                            for _, r in df_b.head(50).iterrows():
+                                val = str(r[col_target]).strip()
+                                if val and val != 'nan' and val != 'None':
+                                    b_res = service.process(val)
+                                    save_request(b_res, source_type='file_batch')
+                                    added += 1
+                            st.success(f'Đã nạp thành công {added} Ticket vào Bàn duyệt cán bộ!')
+                            st.rerun()
+                except Exception as err:
+                    st.error(f'Lỗi đọc tệp: {err}')
 
     with c_cfg2:
         st.markdown("##### 🖥️ Console Nhật ký Web & Server")
