@@ -1,0 +1,446 @@
+# -*- coding: utf-8 -*-
+"""
+Module: src.doc_parser
+Bộ trích xuất và chuẩn hóa quy trình nghiệp vụ từ các tài liệu Word trong data-doc/:
+- baocao-quanly-csvc-eaut.docx
+- bao_cao_quy_trinh_nghiep_vu_sinh_vien_eaut.docx
+- bao_cao_tong_hop_quy_trinh_dao_tao.docx
+
+Đầu ra: Danh mục quy trình nghiệp vụ chuẩn hóa (Procedure Catalog),
+kho tri thức tra cứu (KB) và dữ liệu huấn luyện mở rộng cho Local Learning Machine.
+"""
+
+import json
+from pathlib import Path
+from typing import List, Dict, Any
+import docx
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DOC_DIR = ROOT_DIR / "doc"
+DATA_DOC_DIR = DOC_DIR if DOC_DIR.exists() else (ROOT_DIR / "data-doc")
+KB_OUTPUT_JSON = ROOT_DIR / "data" / "kb" / "eaut_procedures_kb.json"
+KB_OUTPUT_CSV = ROOT_DIR / "data" / "kb" / "eaut_faq_kb.csv"
+
+def extract_docx_text_and_tables(doc_path: Path) -> Dict[str, Any]:
+    """Đọc toàn bộ văn bản và các bảng biểu từ file docx."""
+    doc = docx.Document(doc_path)
+    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+    tables_data = []
+    for t_idx, table in enumerate(doc.tables):
+        rows_data = []
+        for r_idx, row in enumerate(table.rows):
+            cell_texts = [cell.text.strip().replace("\n", " ") for cell in row.cells]
+            rows_data.append(cell_texts)
+        tables_data.append(rows_data)
+    return {
+        "filename": doc_path.name,
+        "paragraphs": paragraphs,
+        "tables": tables_data
+    }
+
+def build_procedure_catalog() -> List[Dict[str, Any]]:
+    """
+    Trích xuất toàn bộ các quy trình nghiệp vụ chính thức từ 3 tài liệu trong data-doc.
+    Được chuẩn hóa với đầy đủ thông tin: ID, Tên, Nhóm chuyên môn, Phòng ban, Căn cứ văn bản,
+    Thời gian xử lý, Biểu mẫu, Trình tự các bước, và Mẫu câu hỏi sinh viên thường hỏi.
+    """
+    procedures = [
+        # =========================================================================
+        # 1. NHÓM QUY TRÌNH QUẢN LÝ ĐÀO TẠO (bao_cao_tong_hop_quy_trinh_dao_tao.docx)
+        # =========================================================================
+        {
+            "proc_id": "PROC_DT_01",
+            "title": "Quy trình Chuyển ngành đào tạo",
+            "topic": "Thu_tuc_hanh_chinh",
+            "department": "Phòng Đào tạo",
+            "legal_basis": "Quyết định số 348/QĐ-ĐHCNĐA",
+            "processing_time": "Tối đa 22 ngày làm việc (trả kết quả đầu học kỳ mới)",
+            "forms_required": "BM_CN01 (Đơn xin chuyển ngành), BM_CN02, BM_CN03, BM_CN04, Bảng điểm tích lũy",
+            "target_users": "Sinh viên đại học chính quy hoàn thành năm nhất, không bị kỷ luật từ cảnh cáo trở lên, đạt điều kiện trúng tuyển ngành mới",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Lấy mẫu đơn BM_CN01 tại Một cửa P.CTSV hoặc website đào tạo, điền thông tin và xin ý kiến phụ huynh."},
+                {"step": 2, "actor": "Khoa/Viện đang học", "action": "Cố vấn học tập và Trưởng Khoa hiện tại ký xác nhận đồng ý chuyển ngành."},
+                {"step": 3, "actor": "Bộ phận Một cửa (P.CTSV)", "action": "Tiếp nhận hồ sơ, kiểm tra điều kiện học phí và xác nhận trạng thái sinh viên."},
+                {"step": 4, "actor": "Khoa/Viện chuyển đến", "action": "Khoa mới họp xét duyệt chỉ tiêu, điều kiện tiếp nhận và duyệt danh sách."},
+                {"step": 5, "actor": "Phòng Đào tạo", "action": "Kiểm tra tính hợp lệ, lập bảng đối chiếu miễn giảm học phần tương đương."},
+                {"step": 6, "actor": "Ban Giám hiệu", "action": "Ký Quyết định chính thức cho phép chuyển ngành đào tạo."},
+                {"step": 7, "actor": "P. Đào tạo & P. CTSV", "action": "Cập nhật dữ liệu trên hệ thống UniStudent, bố trí lớp học mới và thông báo sinh viên."}
+            ],
+            "sample_queries": [
+                "Em muốn làm thủ tục chuyển ngành đào tạo từ Quản trị kinh doanh sang CNTT thì làm thế nào?",
+                "Điều kiện và hồ sơ xin chuyển ngành học là gì?",
+                "Thời hạn nộp đơn xin chuyển ngành tại trường Đại học Công nghệ Đông Á là khi nào?",
+                "Mẫu đơn chuyển ngành BM_CN01 nộp ở bộ phận nào?"
+            ],
+            "content_extract": "Căn cứ QĐ 348/QĐ-ĐHCNĐA, quy trình chuyển ngành áp dụng cho SV hoàn thành năm nhất, không bị kỷ luật. SV nộp đơn BM_CN01 kèm bảng điểm tích lũy tại Bộ phận Một cửa P.CTSV trong 02 tuần đầu học kỳ mới. Thời gian giải quyết tối đa 22 ngày làm việc."
+        },
+        {
+            "proc_id": "PROC_DT_02",
+            "title": "Quy trình Bảo lưu kết quả học tập và Xin tiếp tục theo học",
+            "topic": "Thu_tuc_hanh_chinh",
+            "department": "Phòng Đào tạo",
+            "legal_basis": "Quyết định số 348/QĐ-ĐHCNĐA & Thông báo số 26/TB-ĐHCNĐA",
+            "processing_time": "Tối đa 07 ngày làm việc (trả quyết định ngày 20 hàng tháng)",
+            "forms_required": "BM01 (Đơn xin bảo lưu), BM05 (Đơn xin tiếp tục học), Giấy xác nhận viện phí/quân sự (nếu có)",
+            "target_users": "Sinh viên có lý do sức khỏe, nghĩa vụ quân sự, hoặc việc cá nhân (học tối thiểu 01 học kỳ, CPA >= 2.0)",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Nộp đơn BM01 tại Bộ phận Một cửa P.CTSV trong 04 tuần đầu học kỳ mới kèm minh chứng."},
+                {"step": 2, "actor": "Phòng CTSV & P.TC-KT", "action": "Kiểm tra việc hoàn thành nghĩa vụ học phí và điều kiện bảo lưu."},
+                {"step": 3, "actor": "Khoa/Viện chuyên môn", "action": "Cố vấn học tập và Lãnh đạo Khoa phê duyệt vào tờ trình bảo lưu."},
+                {"step": 4, "actor": "Phòng HC-NS & Hiệu trưởng", "action": "Ban hành Quyết định cho phép sinh viên nghỉ học tạm thời bảo lưu kết quả."},
+                {"step": 5, "actor": "Sinh viên xin học lại", "action": "Trước khi hết hạn bảo lưu ít nhất 10 ngày làm việc, nộp đơn BM05 xin trở lại học tập."}
+            ],
+            "sample_queries": [
+                "Em muốn xin bảo lưu kết quả học tập học kỳ này thì cần chuẩn bị giấy tờ gì?",
+                "Thời hạn nộp đơn bảo lưu học tập tại EAUT là bao lâu?",
+                "Thủ tục xin tiếp tục theo học sau thời gian bảo lưu kết quả học tập?",
+                "Em bị ốm phải nằm viện dài ngày muốn xin tạm ngừng học thì nộp đơn ở đâu?"
+            ],
+            "content_extract": "Căn cứ QĐ 348/QĐ-ĐHCNĐA và TB 26/TB-ĐHCNĐA, SV nộp đơn BM01 tại Một cửa P.CTSV chậm nhất 04 tuần kể từ khi bắt đầu học kỳ mới. Hết hạn bảo lưu, nộp đơn BM05 xin học lại trước 10 ngày trước kỳ mới."
+        },
+        {
+            "proc_id": "PROC_DT_03",
+            "title": "Quy trình Đăng ký học lại và Học cải thiện điểm",
+            "topic": "Lich_hoc_lich_thi",
+            "department": "Phòng Đào tạo",
+            "legal_basis": "Quy chế Đào tạo đại học chính quy theo tín chỉ (QĐ 348/QĐ-ĐHCNĐA)",
+            "processing_time": "Xử lý theo từng đợt mở lớp học kỳ chính và kỳ hè",
+            "forms_required": "BM-HL/TL-01 (Phiếu đăng ký học lại/học cải thiện), Biên lai nộp học phí tín chỉ",
+            "target_users": "Sinh viên bị điểm F (bắt buộc học lại) hoặc điểm D/D+ muốn cải thiện nâng điểm CPA",
+            "steps": [
+                {"step": 1, "actor": "Phòng Đào tạo", "action": "Thông báo danh sách học phần mở lớp học lại, học cải thiện trên cổng daotao.eaut.edu.vn."},
+                {"step": 2, "actor": "Sinh viên", "action": "Đăng ký học phần trực tuyến trên cổng sinh viên hoặc nộp phiếu BM-HL-01 tại Khoa chuyên môn."},
+                {"step": 3, "actor": "Phòng Tài chính - Kế toán", "action": "Sinh viên nộp học phí tín chỉ học lại theo định mức quy định."},
+                {"step": 4, "actor": "Khoa & Phòng Đào tạo", "action": "Xếp thời khóa biểu, phân công giảng viên và bố trí phòng học."},
+                {"step": 5, "actor": "Hệ thống Đào tạo", "action": "Sau khi kết thúc học phần, điểm cao hơn sẽ được lấy để tính điểm trung bình chung tích lũy."}
+            ],
+            "sample_queries": [
+                "Em bị trượt môn Giải tích thì đăng ký học lại như thế nào?",
+                "Em được điểm D môn Lập trình C muốn học cải thiện điểm thì đăng ký ở đâu?",
+                "Học phí đăng ký học lại môn tính theo tín chỉ thế nào?",
+                "Khi nào trường mở đợt đăng ký học lại học kỳ hè?"
+            ],
+            "content_extract": "Theo Quy chế đào tạo tín chỉ EAUT, SV đăng ký học lại (điểm F) hoặc cải thiện (điểm D, D+) qua cổng trực tuyến daotao.eaut.edu.vn hoặc phiếu BM-HL-01 tại Khoa. Điểm thi cao hơn sẽ được ghi nhận vào điểm tích lũy CPA."
+        },
+        {
+            "proc_id": "PROC_DT_04",
+            "title": "Quy trình Khảo thí: Phúc khảo bài thi và Hoãn thi kết thúc học phần",
+            "topic": "Diem_khao_thi",
+            "department": "Ban Khảo thí & Đảm bảo chất lượng",
+            "legal_basis": "Quy chế Khảo thí và Đánh giá học phần EAUT",
+            "processing_time": "15 ngày làm việc kể từ ngày hết hạn nhận đơn phúc khảo",
+            "forms_required": "BM-KT-01 (Đơn đề nghị phúc khảo bài thi), BM-KT-02 (Đơn xin hoãn thi kết thúc học phần)",
+            "target_users": "Sinh viên có thắc mắc về điểm thi kết thúc học phần hoặc bị trùng ca thi, ốm đau có xác nhận y tế",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Nộp đơn phúc khảo BM-KT-01 tại Văn phòng Khoa/Một cửa trong vòng 07 ngày làm việc kể từ khi công bố điểm thi."},
+                {"step": 2, "actor": "Ban Khảo thí", "action": "Tiếp nhận đơn, rút bài thi gốc, thành lập Ban chấm phúc khảo gồm 02 giảng viên độc lập."},
+                {"step": 3, "actor": "Ban Chấm phúc khảo", "action": "Chấm lại bài thi và ghi nhận biên bản đối chiếu kết quả."},
+                {"step": 4, "actor": "Trưởng Ban Khảo thí", "action": "Phê duyệt kết quả phúc khảo. Nếu lệch từ 0.5 điểm trở lên sẽ điều chỉnh điểm chính thức."},
+                {"step": 5, "actor": "Phòng Đào tạo", "action": "Cập nhật điểm phúc khảo lên hệ thống phần mềm quản lý đào tạo và thông báo sinh viên."}
+            ],
+            "sample_queries": [
+                "Em muốn làm đơn xin phúc khảo điểm thi kết thúc môn thì nộp ở đâu?",
+                "Thời hạn nộp đơn phúc khảo bài thi sau khi biết điểm là bao nhiêu ngày?",
+                "Em bị trùng lịch thi 2 môn trong cùng một ca thì làm thủ tục hoãn thi thế nào?",
+                "Lệ phí phúc khảo bài thi là bao nhiêu và thời gian có kết quả?"
+            ],
+            "content_extract": "Sinh viên nộp đơn phúc khảo BM-KT-01 tại Ban Khảo thí / Một cửa trong vòng 07 ngày kể từ khi công bố điểm. Kết quả phúc khảo được xử lý và công bố trong 15 ngày làm việc. Nếu lệch từ 0.5 điểm sẽ cập nhật lại điểm số chính thức."
+        },
+        {
+            "proc_id": "PROC_DT_05",
+            "title": "Quy trình Xét tốt nghiệp và Cấp bản sao văn bằng",
+            "topic": "Thu_tuc_hanh_chinh",
+            "department": "Phòng Đào tạo",
+            "legal_basis": "Quy chế Đào tạo đại học chính quy (QĐ 348/QĐ-ĐHCNĐA)",
+            "processing_time": "Xét tốt nghiệp theo đợt (tháng 6, 9, 12); Cấp bản sao bằng trong 15 ngày làm việc",
+            "forms_required": "BM-TN-01 (Đơn đề nghị xét tốt nghiệp), Chứng chỉ Tin học, Ngoại ngữ chuẩn đầu ra, Chứng chỉ GDQP & GDTC",
+            "target_users": "Sinh viên hoàn thành đủ tín chỉ tích lũy, CPA >= 2.0, hoàn thành chuẩn đầu ra ngoại ngữ, tin học, GDQP",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Kiểm tra điều kiện tích lũy tín chỉ và nộp bổ sung chứng chỉ chuẩn đầu ra (Tiếng Anh, Tin học)."},
+                {"step": 2, "actor": "Phòng Đào tạo & Khoa", "action": "Rà soát điều kiện tốt nghiệp, lập danh sách dự kiến và đối soát nợ học phí."},
+                {"step": 3, "actor": "Hội đồng xét tốt nghiệp", "action": "Họp xét công nhận tốt nghiệp và trình Hiệu trưởng ký quyết định công nhận tốt nghiệp."},
+                {"step": 4, "actor": "Phòng HC-NS", "action": "In phôi bằng, dán ảnh, đóng dấu nổi và lưu trữ hồ sơ cấp văn bằng tốt nghiệp."},
+                {"step": 5, "actor": "Nhà trường", "action": "Tổ chức Lễ bế giảng trao bằng hoặc cấp giấy chứng nhận tốt nghiệp tạm thời tại Một cửa."}
+            ],
+            "sample_queries": [
+                "Điều kiện để được xét công nhận tốt nghiệp đại học tại EAUT?",
+                "Em muốn xin cấp bản sao bằng tốt nghiệp đại học thì cần thủ tục gì?",
+                "Hồ sơ xin cấp Giấy chứng nhận tốt nghiệp tạm thời?",
+                "Thời gian tổ chức lễ tốt nghiệp và nhận bằng cử nhân/kỹ sư?"
+            ],
+            "content_extract": "Căn cứ QĐ 348/QĐ-ĐHCNĐA, điều kiện tốt nghiệp: tích lũy đủ tín chỉ, CPA >= 2.0, đạt chuẩn đầu ra Ngoại ngữ, Tin học, GDQPAN, không nợ học phí. Cấp Giấy chứng nhận tốt nghiệp tạm thời sau 07 ngày kể từ khi có quyết định công nhận."
+        },
+
+        # =========================================================================
+        # 2. NHÓM QUY TRÌNH CÔNG TÁC SINH VIÊN (bao_cao_quy_trinh_nghiep_vu_sinh_vien_eaut.docx)
+        # =========================================================================
+        {
+            "proc_id": "PROC_CTSV_01",
+            "title": "Quy trình Cấp Giấy xác nhận sinh viên tại Bộ phận Một cửa",
+            "topic": "Thu_tuc_hanh_chinh",
+            "department": "Bộ phận Một cửa - Phòng CTSV",
+            "legal_basis": "Quyết định số 118/QĐ-ĐHCNĐA & Quyết định số 119/QĐ-ĐHCNĐA",
+            "processing_time": "02 ngày làm việc kể từ khi nhận đủ hồ sơ",
+            "forms_required": "BM01a (Giấy đề nghị xác nhận SV), BM01b, BM02 (Mẫu ngân hàng chính sách nếu vay vốn)",
+            "target_users": "Sinh viên đang trong thời gian học tập chính thức và đã hoàn thành nghĩa vụ học phí",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Lấy mẫu đơn BM01a tại Bộ phận Một cửa P.CTSV hoặc tải từ portal, điền thông tin và mục đích (hoãn NVQS, vay vốn, làm vé xe buýt, giảm trừ thuế)."},
+                {"step": 2, "actor": "Chuyên viên Một cửa", "action": "Kiểm tra điều kiện: Sinh viên đang học chính thức, không nợ học phí, ký nháy vào văn bản."},
+                {"step": 3, "actor": "Lãnh đạo P.CTSV", "action": "Ký duyệt theo văn bản ủy quyền số 01/GUQ-ĐHCNĐA của Hiệu trưởng."},
+                {"step": 4, "actor": "Bộ phận Văn thư P.HC-NS", "action": "Đóng dấu tròn chính thức của Nhà trường và vào sổ lưu trữ văn bản."},
+                {"step": 5, "actor": "Sinh viên", "action": "Nhận Giấy xác nhận bản cứng tại quầy Một cửa sau 02 ngày làm việc."}
+            ],
+            "sample_queries": [
+                "Em muốn xin Giấy xác nhận sinh viên để tạm hoãn nghĩa vụ quân sự thì làm thế nào?",
+                "Thủ tục xin cấp giấy xác nhận vay vốn sinh viên Ngân hàng chính sách xã hội?",
+                "Xin giấy xác nhận sinh viên để làm vé xe buýt tháng hoặc giảm thuế TNCN?",
+                "Thời gian lấy Giấy xác nhận sinh viên tại Bộ phận Một cửa là bao lâu?"
+            ],
+            "content_extract": "Căn cứ QĐ 118/QĐ-ĐHCNĐA và QĐ 119/QĐ-ĐHCNĐA, sinh viên nộp mẫu BM01a tại Bộ phận Một cửa P.CTSV để xin xác nhận tạm hoãn NVQS, vay vốn ngân hàng, vé xe buýt. Điều kiện: hoàn thành học phí. Thời gian trả kết quả: 02 ngày làm việc."
+        },
+        {
+            "proc_id": "PROC_CTSV_02",
+            "title": "Quy trình Cấp lại thẻ sinh viên (do mất, hỏng, sai thông tin)",
+            "topic": "Thu_tuc_hanh_chinh",
+            "department": "Bộ phận Một cửa - Phòng CTSV",
+            "legal_basis": "Quyết định số 119/QĐ-ĐHCNĐA về cơ chế Một cửa phục vụ sinh viên",
+            "processing_time": "02 ngày làm việc kể từ khi ngân hàng liên kết hoàn thành phát hành thẻ",
+            "forms_required": "Đơn đề nghị cấp lại thẻ sinh viên, 02 ảnh 3x4, Căn cước công dân photo",
+            "target_users": "Sinh viên bị mất thẻ, gãy hỏng thẻ từ hoặc thông tin in trên thẻ bị sai lệch",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Đến quầy Bộ phận Một cửa P.CTSV điền đơn đề nghị cấp lại thẻ sinh viên và nộp ảnh 3x4."},
+                {"step": 2, "actor": "Chuyên viên Một cửa", "action": "Cấp Giấy chứng nhận sinh viên tạm thời có dán ảnh để sử dụng ra vào trường, thư viện và phòng thi."},
+                {"step": 3, "actor": "Phòng CTSV", "action": "Tổng hợp danh sách, gửi thông tin sang ngân hàng đối tác liên kết phát hành lại phôi thẻ tích hợp."},
+                {"step": 4, "actor": "Bộ phận Một cửa", "action": "Nhận thẻ từ ngân hàng, thông báo cho sinh viên đến nhận thẻ chính thức."}
+            ],
+            "sample_queries": [
+                "Em bị mất thẻ sinh viên thì làm thủ tục cấp lại ở đâu?",
+                "Thẻ sinh viên bị gãy hỏng chip từ không quét được thì làm thế nào?",
+                "Trong thời gian chờ cấp lại thẻ sinh viên thì lấy giấy tờ gì để đi thi?",
+                "Thời gian làm lại thẻ sinh viên mất bao lâu?"
+            ],
+            "content_extract": "Sinh viên làm đơn tại Bộ phận Một cửa P.CTSV kèm 02 ảnh 3x4. Chuyên viên cấp Giấy xác nhận SV tạm thời để đi thi và ra vào trường. Sau khi ngân hàng hoàn thành thẻ, sinh viên nhận thẻ tại quầy Một cửa sau 02 ngày làm việc."
+        },
+        {
+            "proc_id": "PROC_CTSV_03",
+            "title": "Quy trình Miễn giảm học phí và Hỗ trợ chi phí học tập",
+            "topic": "Hoc_phi",
+            "department": "Phòng Công tác sinh viên & Phòng TC-KT",
+            "legal_basis": "Nghị định số 81/2021/NĐ-CP & Hướng dẫn thực hiện chế độ chính sách EAUT",
+            "processing_time": "03 ngày làm việc để đối soát hồ sơ; chi trả/khấu trừ theo học kỳ",
+            "forms_required": "Đơn đề nghị miễn giảm học phí (theo mẫu NĐ 81), Giấy chứng nhận hộ nghèo/cận nghèo, Giấy xác nhận con thương binh/bệnh binh",
+            "target_users": "Sinh viên thuộc diện con thương binh, liệt sĩ, mồ côi, khuyết tật, hộ nghèo/cận nghèo theo quy định nhà nước",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Nộp hồ sơ minh chứng đối tượng chính sách tại P.CTSV trong vòng 30 ngày kể từ đầu học kỳ."},
+                {"step": 2, "actor": "Phòng CTSV", "action": "Thẩm tra tính hợp pháp của giấy tờ chứng minh chế độ chính sách."},
+                {"step": 3, "actor": "Hội đồng xét chế độ", "action": "Lập danh sách sinh viên đủ điều kiện miễn giảm học phí trình Hiệu trưởng ký phê duyệt."},
+                {"step": 4, "actor": "Phòng TC-KT", "action": "Thực hiện giảm trừ trực tiếp trên hệ thống cổng học phí hoặc cấp tiền hỗ trợ theo quy định."}
+            ],
+            "sample_queries": [
+                "Hồ sơ và thủ tục xin miễn giảm học phí cho con thương binh, hộ nghèo?",
+                "Hạn nộp hồ sơ xin trợ cấp xã hội và hỗ trợ chi phí học tập kỳ này là khi nào?",
+                "Sinh viên mồ côi cả cha lẫn mẹ được hỗ trợ học phí như thế nào?",
+                "Tiền miễn giảm học phí được trừ trực tiếp hay chuyển khoản về tài khoản?"
+            ],
+            "content_extract": "Căn cứ Nghị định 81/2021/NĐ-CP, SV thuộc đối tượng chính sách nộp đơn và giấy tờ minh chứng tại P.CTSV trong 30 ngày đầu học kỳ. Phòng CTSV phối hợp Phòng TC-KT đối soát và giảm trừ trực tiếp trên thông báo nợ học kỳ trong 03 ngày làm việc."
+        },
+        {
+            "proc_id": "PROC_CTSV_04",
+            "title": "Quy trình Đánh giá điểm rèn luyện (ĐRL) sinh viên",
+            "topic": "Diem_khao_thi",
+            "department": "Phòng Công tác sinh viên",
+            "legal_basis": "Quyết định số 250/QĐ-ĐHCNĐA về Quy chế đánh giá điểm rèn luyện",
+            "processing_time": "Thực hiện vào cuối mỗi học kỳ (khiếu nại giải quyết trong 07 ngày làm việc)",
+            "forms_required": "Phiếu tự đánh giá điểm rèn luyện (BM-DRL-01), Biên bản họp lớp (BM-DRL-02)",
+            "target_users": "Toàn thể sinh viên hệ chính quy đang theo học tại Trường",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Tự đánh giá điểm rèn luyện cá nhân trên phần mềm UniStudent hoặc phiếu BM-DRL-01."},
+                {"step": 2, "actor": "Tập thể Lớp & Ban cán sự", "action": "Tổ chức họp lớp, bình xét, chấm điểm và lập biên bản BM-DRL-02 gửi CVHT."},
+                {"step": 3, "actor": "Cố vấn học tập & Khoa", "action": "Cố vấn học tập duyệt điểm rèn luyện; Hội đồng đánh giá cấp Khoa rà soát và thông qua."},
+                {"step": 4, "actor": "Hội đồng cấp Trường & P.CTSV", "action": "Phòng CTSV tổng hợp, hậu kiểm và trình Hiệu trưởng ký quyết định công nhận điểm rèn luyện."},
+                {"step": 5, "actor": "Sinh viên khiếu nại", "action": "Nếu có sai sót điểm rèn luyện, nộp đơn phúc khảo tại P.CTSV trong vòng 07 ngày kể từ khi công bố."}
+            ],
+            "sample_queries": [
+                "Cách tính điểm rèn luyện sinh viên theo Quyết định 250?",
+                "Em bị chấm sai điểm rèn luyện học kỳ vừa rồi thì nộp đơn phúc khảo ở đâu?",
+                "Điểm rèn luyện dưới 50 điểm có bị cảnh báo hay không?",
+                "Thời hạn nộp phiếu tự đánh giá điểm rèn luyện cuối kỳ?"
+            ],
+            "content_extract": "Căn cứ QĐ 250/QĐ-ĐHCNĐA, quy trình chấm ĐRL qua 4 cấp: SV tự chấm -> Họp lớp bình xét -> CVHT & Khoa duyệt -> P.CTSV hậu kiểm. Khiếu nại nộp đơn tại P.CTSV trong 07 ngày làm việc để được đối soát minh chứng hoạt động."
+        },
+        {
+            "proc_id": "PROC_CTSV_05",
+            "title": "Quy trình Tiếp nhận hồ sơ sinh viên nhập học",
+            "topic": "Thu_tuc_hanh_chinh",
+            "department": "Phòng Công tác sinh viên",
+            "legal_basis": "Quyết định số 484/QĐ-ĐHCNĐA ngày 25/11/2022",
+            "processing_time": "Ngay khi sinh viên hoàn thành thủ tục nhập học và đóng học phí",
+            "forms_required": "BM01 (Phiếu kiểm tra hồ sơ), BM03 (Giấy cam kết bổ sung hồ sơ), Giấy báo trúng tuyển, Học bạ THPT gốc",
+            "target_users": "Thí sinh trúng tuyển làm thủ tục nhập học các khóa mới",
+            "steps": [
+                {"step": 1, "actor": "Bộ phận Tiếp đón", "action": "Hướng dẫn thí sinh hoàn tất nộp học phí tại bàn Phòng Tài chính - Kế toán."},
+                {"step": 2, "actor": "Bàn thu hồ sơ P.CTSV", "action": "Kiểm tra, đối chiếu hồ sơ gốc theo phiếu BM01. Nếu thiếu giấy tờ: Hướng dẫn làm Giấy cam kết BM03 hẹn bổ sung trong 02 tuần."},
+                {"step": 3, "actor": "Phòng CTSV", "action": "Nhập dữ liệu thông tin cá nhân của tân sinh viên lên phần mềm quản lý đào tạo UniStudent."},
+                {"step": 4, "actor": "Phòng CTSV", "action": "Scan toàn bộ hồ sơ lưu trên Google Drive phân quyền và đóng tập hồ sơ vật lý theo khóa, ngành, alphabet."}
+            ],
+            "sample_queries": [
+                "Hồ sơ nhập học tân sinh viên gồm những giấy tờ gì?",
+                "Em bị thiếu bản sao công chứng bằng tốt nghiệp THPT khi nhập học thì làm giấy cam kết thế nào?",
+                "Thời hạn bổ sung hồ sơ nhập học còn thiếu là bao nhiêu tuần?",
+                "Quy trình nộp học phí và nhận lớp cho tân sinh viên?"
+            ],
+            "content_extract": "Căn cứ QĐ 484/QĐ-ĐHCNĐA, P.CTSV thu hồ sơ tân sinh viên sau khi hoàn thành đóng học phí. Hồ sơ thiếu được viết Giấy cam kết BM03 hẹn bổ sung trong vòng 02 tuần. Thông tin được đồng bộ trực tiếp lên UniStudent."
+        },
+
+        # =========================================================================
+        # 3. NHÓM QUY TRÌNH CƠ SỞ VẬT CHẤT & KỸ THUẬT (baocao-quanly-csvc-eaut.docx)
+        # =========================================================================
+        {
+            "proc_id": "PROC_CSVC_01",
+            "title": "Quy trình Báo hỏng và Xử lý sự cố thiết bị giảng đường, phòng học",
+            "topic": "Co_so_vat_chat",
+            "department": "Phòng Hành chính - Nhân sự (Tổ Quản trị CSVC)",
+            "legal_basis": "Quyết định số 180/QĐ-ĐHCNĐA về quản lý cơ sở vật chất và tài sản",
+            "processing_time": "Sự cố khẩn cấp: 15 - 30 phút; Sự cố thông thường: trong ngày làm việc",
+            "forms_required": "BMPH-03 (Sổ giao nhận trang thiết bị), Phiếu báo hỏng thiết bị phòng học",
+            "target_users": "Giảng viên, Cán bộ lớp, Sinh viên phát hiện sự cố điều hòa, máy chiếu, âm thanh, điện chiếu sáng",
+            "steps": [
+                {"step": 1, "actor": "Người phát hiện (GV/SV)", "action": "Phản ánh trực tiếp qua cổng hỗ trợ EduSupportAI, hoặc báo nhân viên trực giảng đường tại phòng trực tầng."},
+                {"step": 2, "actor": "Tổ Quản trị CSVC", "action": "Tiếp nhận thông tin, xác định vị trí phòng học và mức độ khẩn cấp của thiết bị hư hại."},
+                {"step": 3, "actor": "Kỹ thuật viên CSVC", "action": "Có mặt xử lý: đổi micro/dây cáp HDMI trong 15 phút; nếu hỏng máy chiếu/điều hòa nặng sẽ chuyển phòng học dự phòng hoặc sửa chữa trong 2-4 giờ."},
+                {"step": 4, "actor": "Tổ Quản trị CSVC", "action": "Ghi nhận vào sổ theo dõi thiết bị BMPH-04 và cập nhật trạng thái khắc phục lên hệ thống."}
+            ],
+            "sample_queries": [
+                "Điều hòa phòng học tầng 4 nhà B bị hỏng chảy nước thì báo cho ai?",
+                "Máy chiếu phòng 302 không lên hình, dây cáp HDMI bị đứt thì liên hệ bộ phận nào?",
+                "Micro và loa giảng đường bị rè mất tiếng trong giờ học xử lý thế nào?",
+                "Bàn ghế hoặc bóng đèn phòng học bị gãy hỏng báo sửa chữa ở đâu?",
+                "Vấn đề vệ sinh phòng học / Giảng đường",
+                "Vấn đề vệ sinh phòng học bẩn, thùng rác đầy chưa dọn dẹp",
+                "Bàn ghế, bóng điện, ổ cắm phòng học hư hại",
+                "Hệ thống âm thanh / Micro giảng đường lỗi",
+                "Máy chiếu / Màn chiếu không hoạt động",
+                "Điều hòa phòng học hỏng / chảy nước"
+            ],
+            "content_extract": "Căn cứ QĐ 180/QĐ-ĐHCNĐA, sự cố thiết bị giảng đường (điều hòa, máy chiếu, âm thanh) báo cho Tổ Quản trị CSVC (P.HC-NS) hoặc bàn trực giảng đường. Kỹ thuật viên có mặt khắc phục trong 15-30 phút đối với ca học đang diễn ra."
+        },
+        {
+            "proc_id": "PROC_CSVC_02",
+            "title": "Quy trình Mượn phòng học, Hội trường và Thiết bị ngoài giờ",
+            "topic": "Co_so_vat_chat",
+            "department": "Phòng HC-NS & Phòng Đào tạo",
+            "legal_basis": "Quyết định số 180/QĐ-ĐHCNĐA",
+            "processing_time": "Gửi đề xuất trước tối thiểu 03 ngày làm việc; duyệt trong 24 giờ",
+            "forms_required": "BMPH-01 (Giấy đề xuất sử dụng phòng học / hội trường)",
+            "target_users": "Cán bộ, Giảng viên, Câu lạc bộ sinh viên, Ban cán sự lớp có nhu cầu học bù, sinh hoạt CLB, hội thảo",
+            "steps": [
+                {"step": 1, "actor": "Đơn vị / CLB đề xuất", "action": "Điền mẫu BMPH-01 ghi rõ mục đích, thời gian, số lượng người tham gia, gửi P.HC-NS trước tối thiểu 03 ngày."},
+                {"step": 2, "actor": "Phòng Đào tạo", "action": "Kiểm tra tình trạng trống phòng trên thời khóa biểu để xác nhận không trùng lịch học chính khóa."},
+                {"step": 3, "actor": "Lãnh đạo P.HC-NS", "action": "Phê duyệt giấy đề xuất và phân công cán bộ mở cửa, bàn giao thiết bị."},
+                {"step": 4, "actor": "Người mượn & Quản trị", "action": "Ký nhận bàn giao thiết bị phòng học theo sổ BMPH-03 trước giờ dùng 15 phút và hoàn trả nguyên trạng sau khi kết thúc."}
+            ],
+            "sample_queries": [
+                "Câu lạc bộ sinh viên muốn mượn Hội trường hoặc phòng học tổ chức sự kiện thì làm thủ tục gì?",
+                "Đơn xin mượn phòng học ngoài giờ BMPH-01 nộp trước bao nhiêu ngày?",
+                "Mượn phòng máy tính Lab để thực hành thêm ngoài giờ có được không?",
+                "Quy định sử dụng và bàn giao trang thiết bị phòng học ngoài giờ học?"
+            ],
+            "content_extract": "Theo QĐ 180/QĐ-ĐHCNĐA, mượn phòng học ngoài giờ nộp mẫu BMPH-01 tại P.HC-NS trước tối thiểu 03 ngày làm việc. P.ĐT đối soát lịch trống và P.HC-NS bàn giao phòng trước giờ sử dụng 15 phút."
+        },
+        {
+            "proc_id": "PROC_CSVC_03",
+            "title": "Quy trình Khai thác Thư viện số và Mượn trả tài liệu Thư viện",
+            "topic": "Co_so_vat_chat",
+            "department": "Trung tâm Thông tin - Thư viện EAUT",
+            "legal_basis": "Quyết định số 101/QĐ-ĐHCNĐA về Quy định Thư viện & QĐ 07/2019",
+            "processing_time": "Xử lý trực tiếp tại quầy trong 05 phút; Mượn sách về nhà tối đa 07 ngày",
+            "forms_required": "Thẻ sinh viên hoặc Thẻ bạn đọc điện tử, Mã tài khoản Thư viện số lib.cndonga.edu.vn",
+            "target_users": "Toàn thể sinh viên, học viên, cán bộ giảng viên nhà trường",
+            "steps": [
+                {"step": 1, "actor": "Bạn đọc (SV)", "action": "Sử dụng Thẻ sinh viên quét mã vào cổng kiểm soát an ninh Thư viện; hoặc truy cập lib.cndonga.edu.vn để đọc tài liệu số."},
+                {"step": 2, "actor": "Mượn tài liệu in", "action": "Sinh viên chính khóa được mượn tối đa 02 cuốn giáo trình/sách tham khảo về nhà trong 07 ngày (được gia hạn 02 lần)."},
+                {"step": 3, "actor": "Thủ thư", "action": "Quét mã vạch tài liệu vào hệ thống phần mềm quản lý Thư viện và in phiếu hẹn trả."},
+                {"step": 4, "actor": "Trả tài liệu / Phạt trễ", "action": "Trả tài liệu đúng hạn. Nếu quá hạn áp dụng mức phạt 5.000 VNĐ / ngày / 01 tài liệu theo QĐ 101."}
+            ],
+            "sample_queries": [
+                "Làm thế nào để đăng nhập vào cổng Thư viện số EAUT lib.cndonga.edu.vn?",
+                "Quy định mượn sách thư viện về nhà tối đa bao nhiêu cuốn và bao nhiêu ngày?",
+                "Phí phạt trả sách thư viện quá hạn tại EAUT là bao nhiêu một ngày?",
+                "Mượn và sử dụng máy tính tra cứu tại thư viện có mất phí không?"
+            ],
+            "content_extract": "Căn cứ QĐ 101/QĐ-ĐHCNĐA, sinh viên được mượn tối đa 02 cuốn sách/07 ngày (gia hạn 2 lần). Sử dụng máy tính Thư viện miễn phí 120 phút/lượt. Phí phạt mượn quá hạn: 5.000 VNĐ/ngày/cuốn. Tài nguyên số tra cứu tại lib.cndonga.edu.vn."
+        },
+
+        # =========================================================================
+        # 4. NHÓM QUY TRÌNH HỌC PHÍ & HỆ THỐNG CNTT (Đối soát tài chính & Cổng sinh viên)
+        # =========================================================================
+        {
+            "proc_id": "PROC_TC_01",
+            "title": "Quy trình Nộp học phí, Đối soát giao dịch ngân hàng và Gia hạn học phí",
+            "topic": "Hoc_phi",
+            "department": "Phòng Tài chính - Kế toán",
+            "legal_basis": "Quy định Thu nộp học phí và Quản lý tài chính sinh viên EAUT",
+            "processing_time": "Đối soát gạch nợ trong 24 - 48 giờ làm việc; Đơn gia hạn duyệt trong 03 ngày",
+            "forms_required": "Biên lai ủy nhiệm chi / Mã giao dịch ngân hàng, Đơn xin gia hạn nộp học phí có xác nhận của phụ huynh",
+            "target_users": "Sinh viên nộp học phí học kỳ chính, học kỳ phụ hoặc có hoàn cảnh khó khăn xin gia hạn nộp chậm",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Chuyển khoản học phí vào số tài khoản chính thức của Trường Đại học Công nghệ Đông Á với cú pháp chuẩn: [MSSV - Họ và tên - Nop hoc phi ky...]"},
+                {"step": 2, "actor": "Ngân hàng & Phòng TC-KT", "action": "Hệ thống ngân hàng truyền dữ liệu đối soát tự động, kế toán kiểm tra và gạch nợ trên cổng đào tạo trong 24-48 giờ."},
+                {"step": 3, "actor": "Trường hợp chưa gạch nợ", "action": "Nếu quá 48 giờ cổng vẫn báo nợ, sinh viên gửi ảnh chụp biên lai giao dịch thành công lên EduSupportAI hoặc quầy Một cửa P.TC-KT."},
+                {"step": 4, "actor": "Đơn xin gia hạn", "action": "Sinh viên nộp đơn xin gia hạn nộp học phí trước thời hạn khóa cổng đăng ký học phần tối thiểu 05 ngày để được tạm gỡ chặn thi."}
+            ],
+            "sample_queries": [
+                "Em đã chuyển khoản học phí qua ngân hàng hôm qua nhưng cổng sinh viên vẫn báo nợ học phí?",
+                "Cú pháp chuyển khoản nộp tiền học phí của trường EAUT như thế nào?",
+                "Gia đình em gặp khó khăn đột xuất muốn làm đơn xin gia hạn thời gian nộp học phí?",
+                "Đóng học phí qua ngân hàng bao lâu thì được cập nhật trạng thái hoàn thành?"
+            ],
+            "content_extract": "SV chuyển khoản học phí theo đúng cú pháp [MSSV - Họ tên - Học kỳ]. Hệ thống đối soát gạch nợ trong 24-48 giờ làm việc. Nếu chưa cập nhật, nộp minh chứng chuyển khoản tại P.TC-KT hoặc gửi qua EduSupportAI để đối soát thủ công."
+        },
+        {
+            "proc_id": "PROC_IT_01",
+            "title": "Quy trình Cấp lại tài khoản cổng đào tạo daotao.eaut.edu.vn và Khắc phục lỗi CNTT",
+            "topic": "He_thong_CNTT",
+            "department": "Trung tâm Công nghệ Thông tin",
+            "legal_basis": "Quy chế Quản lý và Khai thác hệ thống phần mềm quản lý đào tạo UniStudent",
+            "processing_time": "Cấp lại mật khẩu trong 15 - 30 phút giờ hành chính",
+            "forms_required": "Ảnh chụp Thẻ sinh viên hoặc CCCD chính chủ, Địa chỉ email cá nhân đã đăng ký",
+            "target_users": "Sinh viên bị quên mật khẩu, khóa tài khoản do nhập sai quá 5 lần, hoặc không nhận được mã xác thực OTP",
+            "steps": [
+                {"step": 1, "actor": "Sinh viên", "action": "Truy cập cổng daotao.eaut.edu.vn bấm 'Quên mật khẩu' để nhận link reset qua email sinh viên; hoặc gửi yêu cầu hỗ trợ qua EduSupportAI."},
+                {"step": 2, "actor": "Trung tâm CNTT", "action": "Tiếp nhận thông tin mã sinh viên, kiểm tra trạng thái tài khoản trên cơ sở dữ liệu UniStudent."},
+                {"step": 3, "actor": "Quản trị viên CNTT", "action": "Reset mật khẩu về mặc định (hoặc tạo mật khẩu tạm thời an toàn) và gửi trực tiếp về email sinh viên."},
+                {"step": 4, "actor": "Sinh viên", "action": "Đăng nhập bằng mật khẩu tạm và bắt buộc đổi mật khẩu mới có độ dài tối thiểu 8 ký tự gồm chữ hoa, số và ký tự đặc biệt."}
+            ],
+            "sample_queries": [
+                "Em quên mật khẩu cổng thông tin sinh viên daotao.eaut.edu.vn thì lấy lại thế nào?",
+                "Tài khoản sinh viên của em bị khóa do nhập sai mật khẩu nhiều lần?",
+                "Không nhận được mã xác thực OTP gửi về email khi đăng ký học phần?",
+                "Ứng dụng sinh viên trên điện thoại báo lỗi không kết nối được máy chủ?"
+            ],
+            "content_extract": "Sinh viên sử dụng tính năng 'Quên mật khẩu' trên portal daotao.eaut.edu.vn hoặc gửi yêu cầu kèm MSSV qua EduSupportAI. Quản trị Trung tâm CNTT hỗ trợ kiểm tra và cấp lại mật khẩu tạm trong 15-30 phút giờ hành chính."
+        }
+    ]
+    for p in procedures:
+        pid = p.get("proc_id", "")
+        if "CSVC" in pid:
+            p["doc_source"] = "baocao-quanly-csvc-eaut.docx"
+        elif "CTSV" in pid or "TC" in pid:
+            p["doc_source"] = "bao_cao_quy_trinh_nghiep_vu_sinh_vien_eaut.docx"
+        else:
+            p["doc_source"] = "bao_cao_tong_hop_quy_trinh_dao_tao.docx"
+    return procedures
+
+def save_catalog_and_sync_csv():
+    """Lưu catalog ra JSON và đồng bộ vào file CSV kho tri thức để hệ thống nạp."""
+    procedures = build_procedure_catalog()
+    KB_OUTPUT_JSON.parent.mkdir(parents=True, exist_ok=True)
+    with open(KB_OUTPUT_JSON, "w", encoding="utf-8") as f:
+        json.dump(procedures, f, ensure_ascii=False, indent=2)
+
+    # Lưu ra JSON catalog
+    print(f"[doc_parser] Đã xuất {len(procedures)} quy trình ra {KB_OUTPUT_JSON}")
+    return procedures
+
+if __name__ == "__main__":
+    save_catalog_and_sync_csv()

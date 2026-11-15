@@ -1,0 +1,51 @@
+record_id,raw_text,target_label_gold,priority_gold
+REC_REAL_001,"Dạ em chào thầy cô, em đã chuyển khoản 8.500.000đ học phí kỳ 1 qua Vietcombank hôm qua nhưng cổng sinh viên daotao.eaut.edu.vn vẫn báo nợ, sđt em 0987123456, mssv 2022601234. Mong phòng tài chính kiểm tra giúp em với ạ.",Hoc_phi,Cao
+REC_REAL_002,"Thầy cô cho em hỏi em đóng học phí qua app ngân hàng quét mã QR nhưng nhập nhầm nội dung chuyển khoản, giờ tiền bị treo thì nộp biên lai ở phòng nào ạ? Sđt e: 0912345678",Hoc_phi,Cao
+REC_REAL_003,"Học phí kỳ phụ hè tính bao nhiêu tiền một tín chỉ vậy ạ, đóng trước ngày thi bao nhiêu lâu? Email của em: hung.nv2022@eaut.edu.vn",Hoc_phi,Thấp
+REC_REAL_004,"Dạ em thuộc diện hộ nghèo ở vùng sâu vùng xa, em muốn nộp đơn xin miễn giảm học phí kỳ này thì cần giấy tờ gì của ủy ban xã và nộp trước ngày nào ạ? MSSV 2023602111",Hoc_phi,Bình thường
+REC_REAL_005,"Em bị tính nhầm số tiền học phí môn Lập trình Python, trên cổng báo 3 tín chỉ nhưng lại thu tiền 4 tín chỉ, mssv 2021600889.",Hoc_phi,Cao
+REC_REAL_006,"Hôm nay là hạn cuối đóng học phí rồi mà tài khoản ngân hàng của em bị lỗi giao dịch, em xin gia hạn nộp học phí thêm 3 ngày có được không ạ? Cứu em với không bị cấm thi mất.",Hoc_phi,Khẩn cấp
+REC_REAL_007,cho e hoi hoc phi ki nay nop den ngay nao thi het han a,Hoc_phi,Bình thường
+REC_REAL_008,"Em đã đóng tiền học lại môn Toán cao cấp 2 tuần trước rồi mà danh sách lớp học phần vẫn chưa có tên em, sđt 0977889900.",Hoc_phi,Cao
+REC_REAL_009,Học phí,Hoc_phi,Bình thường
+REC_REAL_010,"Dạ em chào thầy cô, em đã chuyển khoản 8.500.000đ học phí kỳ 1 qua Vietcombank hôm qua nhưng cổng sinh viên daotao.eaut.edu.vn vẫn báo nợ, sđt em 0987123456, mssv 2022601234. Mong phòng tài chính kiểm tra giúp em với ạ.",Hoc_phi,Cao
+REC_REAL_011,"Thưa thầy cô, lịch thi kết thúc học phần môn Mạng máy tính và môn Hệ điều hành của em bị trùng ca thi vào lúc 7h30 sáng ngày 20/10/2026 tại nhà B. Em phải làm đơn chuyển ca thi ở đâu gấp ạ?",Lich_hoc_lich_thi,Khẩn cấp
+REC_REAL_012,"Lớp em sáng nay đến phòng 402 nhà C học môn Trí tuệ nhân tạo nhưng phòng bị khóa cửa, giảng viên và sinh viên đều đang đứng ngoài hành lang không vào được.",Lich_hoc_lich_thi,Cao
+REC_REAL_013,Thầy cô cho em hỏi lịch nghỉ Tết Nguyên Đán 2027 của trường mình đã có văn bản chính thức chưa để em đặt vé xe về quê sớm ạ? Email: linh.nt@eaut.edu.vn,Lich_hoc_lich_thi,Thấp
+REC_REAL_014,"Em bị sốt xuất huyết phải nhập viện điều trị từ ngày 12/10 đến 18/10, trùng với đợt thi môn Cấu trúc dữ liệu. Em muốn xin hoãn thi thì cần nộp giấy xác nhận của bệnh viện cho ai ạ?",Lich_hoc_lich_thi,Khẩn cấp
+REC_REAL_015,"Lịch thi môn Triết học Mác Lê-nin trên cổng thông tin báo phòng 301 nhà A nhưng khi đến nơi phòng lại tổ chức môn khác, sinh viên hoang mang không biết thi ở đâu.",Lich_hoc_lich_thi,Cao
+REC_REAL_016,Khi nào trường mở cổng đăng ký tín chỉ đợt 2 cho sinh viên học cải thiện điểm vậy ạ?,Lich_hoc_lich_thi,Bình thường
+REC_REAL_017,trung ca thi,Lich_hoc_lich_thi,Cao
+REC_REAL_018,Lớp em muốn xin đổi lịch học môn Tiếng Anh chuyên ngành từ chiều thứ 7 sang sáng chủ nhật vì đa số các bạn trùng lịch thực tập doanh nghiệp.,Lich_hoc_lich_thi,Bình thường
+REC_REAL_019,"Thưa thầy cô, lịch thi kết thúc học phần môn Mạng máy tính và môn Hệ điều hành của em bị trùng ca thi vào lúc 7h30 sáng ngày 20/10/2026 tại nhà B. Em phải làm đơn chuyển ca thi ở đâu gấp ạ?",Lich_hoc_lich_thi,Khẩn cấp
+REC_REAL_020,"Dạ em chào thầy cô, điểm thi môn Xác suất thống kê của em trên cổng đang hiển thị 0.0 điểm trong khi hôm thi em làm bài tốt và có ký tên đầy đủ vào tờ danh sách. Em muốn nộp đơn phúc khảo gấp ạ.",Diem_khao_thi,Khẩn cấp
+REC_REAL_021,"Cho em hỏi hạn nộp đơn phúc khảo bài thi học kỳ 2 là đến ngày nào, lệ phí phúc khảo là bao nhiêu tiền một môn và nộp tại phòng Khảo thí ở tầng mấy ạ?",Diem_khao_thi,Bình thường
+REC_REAL_022,Em đã nộp chứng chỉ tiếng Anh TOEIC 550 quốc tế từ tháng trước để xét chuẩn đầu ra tốt nghiệp nhưng trên hệ thống vẫn báo chưa đạt điều kiện. MSSV của em là 2020601999.,Diem_khao_thi,Cao
+REC_REAL_023,"Thầy cô cho em xin bảng điểm tổng kết 3 năm học có đóng dấu đỏ của nhà trường để em nộp hồ sơ ứng tuyển học bổng du học, bao lâu thì nhận được ạ? Sđt: 0934567890",Diem_khao_thi,Bình thường
+REC_REAL_024,"Giảng viên chấm nhầm điểm quá trình môn Kỹ thuật lập trình của em thành 4 điểm thay vì 9 điểm làm điểm tổng kết bị tụt từ B xuống D, giảng viên bảo đã gửi bảng sửa điểm cho phòng Đào tạo rồi.",Diem_khao_thi,Cao
+REC_REAL_025,phuc khao diem,Diem_khao_thi,Cao
+REC_REAL_026,Bao giờ có điểm thi chính thức của đợt thi tốt nghiệp bổ sung tháng 9 vậy ạ?,Diem_khao_thi,Bình thường
+REC_REAL_027,"Điều hòa phòng 503 nhà B bị hỏng chảy nước lênh láng xuống bàn học, quạt trần thì kêu rất to, sinh viên ngồi học rất nóng và mất tập trung, mong nhà trường sửa sớm.",Co_so_vat_chat,Cao
+REC_REAL_028,"Dạ em xin phản ánh khu ký túc xá tầng 3 nhà D bị mất nước sinh hoạt từ 6h sáng đến giờ, sinh viên không có nước sinh hoạt, mong ban quản lý khắc phục khẩn cấp.",Co_so_vat_chat,Khẩn cấp
+REC_REAL_029,"Máy chiếu ở phòng học 204 nhà A bị mờ và nhấp nháy liên tục không nhìn rõ chữ bài giảng của thầy cô, dây cáp HDMI cũng bị gãy chốt cắm.",Co_so_vat_chat,Bình thường
+REC_REAL_030,Hầm gửi xe nhà C lúc tan tầm buổi trưa hay bị nghẽn mạng máy quẹt thẻ làm sinh viên ùn ứ ra tận cổng trường cả tiếng đồng hồ.,Co_so_vat_chat,Khẩn cấp
+REC_REAL_031,"Bàn ghế phòng tự học thư viện tầng 2 có mấy cái bị gãy chân đinh sắt nhô ra rất nguy hiểm, các bạn sơ ý dễ bị rách quần áo hoặc xước chân.",Co_so_vat_chat,Thấp
+REC_REAL_032,hong dieu hoa,Co_so_vat_chat,Cao
+REC_REAL_033,"Dạ em xin phản ánh khu ký túc xá tầng 3 nhà D bị mất nước sinh hoạt từ 6h sáng đến giờ, sinh viên không có nước sinh hoạt, mong ban quản lý khắc phục khẩn cấp.",Co_so_vat_chat,Khẩn cấp
+REC_REAL_034,Em muốn xin giấy xác nhận sinh viên đang theo học tại trường để bổ sung hồ sơ tạm hoãn nghĩa vụ quân sự ở địa phương thì làm đơn online ở đâu hay phải đến trường ạ? MSSV 2023604455.,Thu_tuc_hanh_chinh,Bình thường
+REC_REAL_035,"Thầy cô hướng dẫn giúp em thủ tục bảo lưu kết quả học tập 1 năm vì lý do sức khỏe cần điều trị dài ngày, hồ sơ gồm những biểu mẫu gì ạ? Sđt mẹ em: 0988112233.",Thu_tuc_hanh_chinh,Cao
+REC_REAL_036,"Em bị mất thẻ sinh viên thì làm thủ tục cấp lại thẻ mới ở phòng Công tác sinh viên tầng mấy, lệ phí cấp lại thẻ là bao nhiêu và bao lâu thì có thẻ mới ạ?",Thu_tuc_hanh_chinh,Bình thường
+REC_REAL_037,Em muốn xin rút toàn bộ hồ sơ gốc và học bạ THPT để chuyển trường sang trường khác thì cần những chữ ký xác nhận của các phòng ban nào ạ?,Thu_tuc_hanh_chinh,Cao
+REC_REAL_038,xin giay xn sv,Thu_tuc_hanh_chinh,Bình thường
+REC_REAL_039,"Em quên mật khẩu đăng nhập vào cổng thông tin đào tạo daotao.eaut.edu.vn, ấn nút quên mật khẩu nhưng hệ thống báo lỗi không gửi mã xác nhận về email sv.eaut2022@gmail.com. Mong admin hỗ trợ cấp lại pass gấp.",He_thong_CNTT,Cao
+REC_REAL_040,"Cổng đăng ký tín chỉ sáng nay bị nghẽn mạng sập web hoàn toàn, bấm vào cứ quay vòng tròn báo 504 Gateway Time-out, không thể vào chọn môn học được.",He_thong_CNTT,Khẩn cấp
+REC_REAL_041,"Mạng wifi trường ở khu vực sảnh tầng 1 nhà A không thể kết nối được, cứ báo sai mật khẩu hoặc IP configuration failure.",He_thong_CNTT,Thấp
+REC_REAL_042,"Tài khoản Office 365 và Teams trường cấp cho em bị khóa báo hết hạn bản quyền, em không vào nộp bài tập môn Tiếng Anh được, mssv 2022607890.",He_thong_CNTT,Cao
+REC_REAL_043,quen pass,He_thong_CNTT,Cao
+REC_REAL_044,"Nhà trường có tổ chức xe đưa đón sinh viên về quê dịp Tết Nguyên đán không ạ, đăng ký qua Đoàn thanh niên hay Hội sinh viên vậy thầy cô?",Khac,Thấp
+REC_REAL_045,Cho em hỏi câu lạc bộ Ghita và CLB Bóng đá của trường tuyển thành viên vào thời gian nào vậy ạ?,Khac,Thấp
+REC_REAL_046,alo,Khac,Thấp
+REC_REAL_047,???,Khac,Thấp
+REC_REAL_048,hic,Khac,Thấp
+REC_REAL_049,ad ơi cho e hỏi tí,Khac,Thấp
+REC_REAL_050,Trường mình có sân bóng rổ mở cửa buổi tối cho sinh viên vào chơi miễn phí không ạ?,Khac,Thấp

@@ -1,11 +1,96 @@
-# Môi trường cục bộ
-.venv/
-venv/
-.claude/
+# ==============================================================================
+# EDUSUPPORTAI - GITIGNORE CONFIGURATION
+# ==============================================================================
+
+# 1. Bytecode & Bộ nhớ đệm Python
 __pycache__/
-*.pyc
-# Tệp khóa tạm của Word/Excel khi đang mở
-~$*
-# Hồ sơ nộp thi và tài liệu gốc: có thông tin cá nhân, không đưa lên repo công khai
-HO_SO/
-EduSupportAI_Thuyet_minh_*.docx
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 2. Môi trường ảo (Virtual Environments)
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# 3. Nhật ký hệ thống (Logs)
+*.log
+logs/*.log
+*.log.*
+
+# 4. Tệp tạm & Khóa ghi CSDL SQLite
+EduSupportAI/
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite3-journal
+
+# 5. Hệ điều hành & Trình soạn thảo (OS & IDEs)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# Visual Studio Code & JetBrains
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+
+# 6. Streamlit Cache & Thông tin bảo mật nội bộ
+.streamlit/secrets.toml
+.env
+.env.*
+!.env.example
+
+# 7. Jupyter Notebook & Bộ đệm kiểm thử
+.ipynb_checkpoints/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# 8. AI Assistant / CLI Caches
+.agent/
+.gemini/
+.claude/
+
+# 9. Thư mục công cụ phụ trợ tài liệu & Tệp nén đóng gói cũ
+docs_tools/
+EduSupportAI_MVP/
+EduSupportAI_MVP.zip
+
+# Media & Video outputs
+output/
+*.mp4
+*.docx_backup
+EduSupportAI_Thuyet_minh_vong2(1)_backup.docx

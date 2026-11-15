@@ -1,4 +1,0 @@
-# Công cụ cho người phát triển (không cần khi chỉ chạy demo)
--r requirements.txt
-ruff==0.8.6
-pip-audit==2.10.1
