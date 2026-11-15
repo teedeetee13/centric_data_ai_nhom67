@@ -1,53 +1,28 @@
 # EduSupportAI — Nhóm 67, Centric Data AI 2026
 
-Hệ thống hỗ trợ **cố vấn học tập và Phòng Công tác sinh viên** trả lời thắc mắc của sinh viên
-(Trường Đại học Công nghệ Đông Á). Mỗi câu hỏi được che thông tin cá nhân, phân loại, **ghép với quy trình
-nghiệp vụ của trường** để lập phiếu xử lý (đơn vị đầu mối, hồ sơ, các bước, hạn xử lý), rồi soạn bản nháp trả lời
-bằng mô hình ngôn ngữ chạy ngay trên máy. **Khi vận hành thật, cán bộ là người duyệt cuối cùng.**
+Hỗ trợ **cố vấn học tập và Phòng Công tác sinh viên** (Trường Đại học Công nghệ Đông Á) xử lý thắc mắc của sinh viên.
+Mỗi câu hỏi được che thông tin cá nhân, phân loại, **ghép với 1 trong 33 quy trình nghiệp vụ của trường** để lập phiếu xử lý
+(đơn vị đầu mối, hồ sơ, các bước, hạn xử lý), rồi soạn bản nháp bằng mô hình ngôn ngữ chạy ngay trên máy.
+Khi vận hành thật, cán bộ là người duyệt cuối cùng. Hướng tiếp cận: **Data-Centric AI**.
 
-Hướng tiếp cận: **Data-Centric AI**, tức giữ mô hình nhỏ, minh bạch và tập trung nâng chất lượng dữ liệu, tri thức.
+## Chạy thử (Windows)
 
-## Chạy thử trong 3 bước (Windows)
+1. Cài **Python 3.12** ([python.org](https://www.python.org/downloads/release/python-3120/)), tích *Add Python to PATH*.
+2. Nhấp đúp **`EduSupportAI/CHAY_DEMO_WINDOWS.bat`**. Lần đầu tự cài thư viện (cần Internet, 3–5 phút); không đóng cửa sổ đen.
+3. Trình duyệt tự mở `http://127.0.0.1:8501`. Chọn một tình huống ở khung **Câu hỏi mẫu**, bấm **Điền vào ô nội dung** rồi **Gửi**. Muốn xem thống kê: tab **Thống kê** → **Công cụ cán bộ** → **Nạp dữ liệu mẫu**.
 
-1. Cài **Python 3.12** ([python.org](https://www.python.org/downloads/release/python-3120/)), nhớ tích *Add Python to PATH*.
-2. Mở thư mục `EduSupportAI`, nhấp đúp **`CHAY_DEMO_WINDOWS.bat`**. Lần đầu tự cài thư viện, cần Internet và mất khoảng 3–5 phút; **không đóng cửa sổ đen**, chờ trình duyệt tự mở.
-3. Trình duyệt tự mở `http://127.0.0.1:8501` (mở sớm hơn sẽ báo *refused to connect*). Ở tab *Tiếp nhận yêu cầu*, mở **"Hướng dẫn nhanh và câu hỏi mẫu để demo"**
-   và bấm một câu mẫu.
+## Tài liệu
 
-Tùy chọn: cài [Ollama](https://ollama.com) và chạy `ollama pull qwen2.5:3b` để bản nháp do mô hình ngôn ngữ cục bộ soạn.
-Không có Ollama thì hệ thống vẫn chạy đầy đủ với bản nháp theo mẫu.
-
-macOS / Linux và cách chạy thủ công: xem [EduSupportAI/readme.md](EduSupportAI/readme.md).
-
-## Nên xem gì
-
-| Muốn biết | Xem ở đâu |
-| :--- | :--- |
-| Luồng xử lý, cấu trúc code, lệnh thường dùng | [EduSupportAI/readme.md](EduSupportAI/readme.md) |
-| Kịch bản demo 5 phút và câu hỏi thường gặp của hội đồng | [docs/DEMO_5_PHUT.md](docs/DEMO_5_PHUT.md) |
-| Sơ đồ hệ thống và số liệu thực nghiệm | [docs/SO_DO_HE_THONG_EDUSUPPORT_AI.md](docs/SO_DO_HE_THONG_EDUSUPPORT_AI.md) |
-| Kho 33 quy trình nghiệp vụ | [EduSupportAI/data/kb/eaut_quy_trinh.json](EduSupportAI/data/kb/eaut_quy_trinh.json) |
-| Kết quả thực nghiệm ngay trong app | tab *Dữ liệu và lịch sử* → "Kết quả thực nghiệm của mô hình" |
-| Kết quả kiểm thử và hiệu năng | [docs/KIEM_THU.md](docs/KIEM_THU.md) |
-| Kịch bản video demo vòng 2 | [docs/KICH_BAN_VIDEO.md](docs/KICH_BAN_VIDEO.md) |
-| Hướng dẫn cho sinh viên và cán bộ | [docs/HUONG_DAN_SU_DUNG.md](docs/HUONG_DAN_SU_DUNG.md) |
-| Triển khai, vận hành, bảo trì | [docs/VAN_HANH.md](docs/VAN_HANH.md) |
-| Quy ước đóng góp code | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Kế hoạch, phân công giai đoạn trước | [docs/luu_tru/](docs/luu_tru/) |
-
-## Cấu trúc repo
+Toàn bộ trong một tệp: **[docs/TAI_LIEU.md](docs/TAI_LIEU.md)** (sử dụng, triển khai, vận hành, kỹ thuật, số liệu, quy ước đóng góp).
+Kế hoạch và sơ đồ của vòng 1 nằm ở [docs/luu_tru/](docs/luu_tru/).
 
 ```text
-.
-├── EduSupportAI/      Mã nguồn ứng dụng (Python 3.12, Streamlit)
-├── docs/              Sổ tay vận hành, demo, kiểm thử, sơ đồ; luu_tru/ chứa kế hoạch cũ
-├── .github/           CI, Dependabot, mẫu Pull Request
-├── README.md          Tệp này
-└── CONTRIBUTING.md    Quy ước làm việc chung
+EduSupportAI/   Mã nguồn (Python 3.12, Streamlit, scikit-learn, SQLite, Ollama tùy chọn)
+docs/           TAI_LIEU.md và thư mục lưu trữ
+.github/        CI, Dependabot, mẫu Pull Request
 ```
 
 ## Giới hạn hiện tại
 
-Dữ liệu huấn luyện và đánh giá là **dữ liệu mô phỏng** do nhóm biên soạn. Kho quy trình biên tập từ tài liệu
-hướng dẫn của trường; 10/15 mục FAQ còn là nội dung minh họa. Số liệu trong app và tài liệu đều chạy lại được bằng
-các lệnh trong `EduSupportAI/readme.md`, nhưng chưa phản ánh hiệu quả trên câu hỏi thật của sinh viên.
+Dữ liệu huấn luyện và đánh giá là **dữ liệu mô phỏng** do nhóm biên soạn; chưa có câu hỏi thật của sinh viên.
+10/15 mục FAQ là nội dung minh họa. Mọi số liệu chạy lại được bằng các lệnh trong tài liệu.

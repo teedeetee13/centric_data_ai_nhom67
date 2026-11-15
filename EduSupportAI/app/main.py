@@ -16,8 +16,7 @@ import streamlit as st
 
 from app.components.auth import is_officer, render_officer_gate
 from app.components.dashboard import render_dashboard
-from app.components.demo_guide import render_demo_guide
-from app.components.intake import render_intake_form, render_test_email, render_upload_tools
+from app.components.intake import render_intake_form
 from app.components.result_view import render_result
 from app.components.workbench import render_workbench
 from src.config import KB_PATH, MODEL_PATH, PROCEDURE_KB_PATH, database_path, is_production
@@ -58,32 +57,26 @@ except Exception as exc:
         st.code(str(exc))
     st.stop()
 
-llm_badge = 'Mô hình ngôn ngữ cục bộ: bật' if service.llm.is_available(refresh=True) else 'Bản nháp theo mẫu'
+llm_on = service.llm.is_available(refresh=True)
 st.markdown(f"""
 <div class="app-header">
     <div>
         <div class="app-title">EduSupportAI</div>
-        <div class="app-subtitle">Cổng tiếp nhận, phân loại và xử lý phản ánh học vụ sinh viên</div>
+        <div class="app-subtitle">Hỗ trợ cố vấn học tập và Phòng Công tác sinh viên xử lý thắc mắc của sinh viên</div>
     </div>
-    <div class="status-badge">Hệ thống sẵn sàng · {llm_badge}</div>
+    <div class="status-badge {'' if llm_on else 'status-muted'}">{'Mô hình ngôn ngữ cục bộ: bật' if llm_on else 'Bản nháp theo mẫu'}</div>
 </div>
 """, unsafe_allow_html=True)
 
 if st.session_state.get('notice'):
     st.success(st.session_state.pop('notice'))
 
-tab_intake, tab_review, tab_data = st.tabs(['Tiếp nhận yêu cầu', 'Bàn duyệt cán bộ', 'Dữ liệu và lịch sử'])
+tab_intake, tab_review, tab_data = st.tabs(['Gửi yêu cầu', 'Bàn duyệt', 'Thống kê'])
 
 officer = is_officer()
 
 with tab_intake:
-    st.subheader('Tiếp nhận phản ánh sinh viên')
-    if not is_production():
-        render_demo_guide(service)
-    render_intake_form(service)
-    render_upload_tools(service, officer=officer)
-    if officer and not is_production():
-        render_test_email()
+    render_intake_form(service, demo=not is_production())
     render_result(service, officer=officer)
 
 with tab_review:
@@ -94,4 +87,4 @@ with tab_data:
     if officer:
         render_dashboard(service=service)
     else:
-        st.info('Khu vực này dành cho cán bộ. Đăng nhập ở tab Bàn duyệt cán bộ.')
+        st.info('Khu vực này dành cho cán bộ. Đăng nhập ở tab Bàn duyệt.')

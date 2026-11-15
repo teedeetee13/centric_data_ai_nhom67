@@ -21,7 +21,7 @@ def ensure_ollama():
         return
     exe=shutil.which('ollama') or str(Path(os.environ.get('LOCALAPPDATA',''))/'Programs'/'Ollama'/'ollama.exe')
     if not Path(exe).exists():
-        print('Chưa cài Ollama: bản nháp sẽ dùng mẫu câu. Xem readme mục 8.3 để bật mô hình ngôn ngữ cục bộ.')
+        print('Chưa cài Ollama: bản nháp sẽ dùng mẫu câu. Xem docs/TAI_LIEU.md mục 2 để bật mô hình ngôn ngữ cục bộ.')
         return
     flags=getattr(subprocess,'CREATE_NO_WINDOW',0)
     # Chạy ở thư mục người dùng để tiến trình nền không khóa thư mục dự án

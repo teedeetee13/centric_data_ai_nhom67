@@ -10,7 +10,7 @@ updates:
       python:
         patterns: ["*"]
     ignore:
-      # Mô hình đã lưu gắn với phiên bản này; nâng cấp phải huấn luyện lại (docs/VAN_HANH.md mục 5)
+      # Mô hình đã lưu gắn với phiên bản này; nâng cấp phải huấn luyện lại (docs/TAI_LIEU.md mục 3)
       - dependency-name: scikit-learn
   - package-ecosystem: github-actions
     directory: /

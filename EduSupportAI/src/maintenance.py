@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Module: src.maintenance
-Công cụ bảo trì chạy bằng dòng lệnh, không cần giao diện. Hướng dẫn: docs/VAN_HANH.md
+Công cụ bảo trì chạy bằng dòng lệnh, không cần giao diện. Hướng dẫn: docs/TAI_LIEU.md mục 3
     python -m src.maintenance status
     python -m src.maintenance backup [--dir THU_MUC] [--keep 14]
     python -m src.maintenance restore TEP_SAO_LUU --yes
@@ -58,6 +58,11 @@ def backup(directory=None, keep=14, db_path=None):
     folder.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%f')
     target = folder / f'{BACKUP_PREFIX}{stamp}.db'
+    # Đồng hồ Windows có độ phân giải khoảng 15 ms: hai lần sao lưu liền nhau có thể trùng tên
+    suffix = 1
+    while target.exists():
+        target = folder / f'{BACKUP_PREFIX}{stamp}_{suffix:02d}.db'
+        suffix += 1
     _copy_database(source, target)
     if not _is_intact(target):
         target.unlink()

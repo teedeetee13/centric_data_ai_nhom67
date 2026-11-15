@@ -23,8 +23,9 @@ REGEX_STUDENT_ID = re.compile(r'(?<!\w)20\d{6,8}(?!\w)')
 REGEX_CONTEXT_ID = re.compile(r'((?:mssv|mã\s*(?:sinh\s*viên|sv))\s*[:\-]?\s*)([a-zA-Z0-9]{6,15})\b', re.I)
 REGEX_URL = re.compile(r'(?:https?://|www\.)[^\s<>]+', re.I)
 REGEX_NATIONAL_ID = re.compile(r'(?<!\w)0\d{11}(?!\w)')
-REGEX_CONTEXT_NATIONAL_ID = re.compile(r'((?:cccd|cmnd|căn\s*cước(?:\s*công\s*dân)?|chứng\s*minh(?:\s*nhân\s*dân)?)\s*(?:số|là)?\s*[:\-]?\s*)(\d{9,12})(?!\w)', re.I)
-REGEX_BANK_ACCOUNT = re.compile(r'((?:stk|số\s*tài\s*khoản|so\s*tai\s*khoan)\s*(?:ngân\s*hàng\s*)?(?:số|là)?\s*[:\-]?\s*)(\d[\d .\-]{5,20}\d)(?!\w)', re.I)
+# Từ đệm giữa từ khóa và con số, ví dụ "số tài khoản của em là ..."
+REGEX_CONTEXT_NATIONAL_ID = re.compile(r'((?:cccd|cmnd|căn\s*cước(?:\s*công\s*dân)?|chứng\s*minh(?:\s*nhân\s*dân)?)(?:\s+(?:của|em|mình|tôi|là|số|ngân\s*hàng|cua|minh|toi|la|so))*\s*[:\-]?\s*)(\d{9,12})(?!\w)', re.I)
+REGEX_BANK_ACCOUNT = re.compile(r'((?:stk|số\s*tài\s*khoản|so\s*tai\s*khoan)(?:\s+(?:của|em|mình|tôi|là|số|ngân\s*hàng|cua|minh|toi|la|so))*\s*[:\-]?\s*)(\d[\d .\-]{5,20}\d)(?!\w)', re.I)
 REGEX_NAME_CONTEXT = re.compile(r'((?i:(?:em|mình|tôi)\s+tên\s+(?:là\s+)?|tên\s+(?:của\s+)?(?:em|mình|tôi)\s+là\s+|họ\s+(?:và\s+)?tên\s*(?:là\s*)?[:\-]?\s*))((?:\w+\s*){2,5})')
 # Ký tự vô hình và điều khiển: có thể chèn vào giữa số để né bộ lọc PII
 REGEX_INVISIBLE = re.compile('[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f­​-‏‪-‮⁠-⁤﻿]')

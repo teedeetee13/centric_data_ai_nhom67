@@ -1,108 +1,94 @@
 # -*- coding: utf-8 -*-
 """
 Module: app.components.result_view
-Hiển thị kết quả phân tích một yêu cầu: thẻ chỉ số, phiếu ticket theo quy trình, tài liệu tham chiếu, bản nháp.
+Kết quả xử lý một yêu cầu: tóm tắt, phiếu xử lý theo quy trình, bản nháp, tài liệu tham chiếu.
 """
 
 import html
 
 import streamlit as st
 
-from src.config import TOPICS, describe_flags
+from src.config import TOPICS
 from src.database import get_request, save_draft
 
 PRIORITY_BADGES = {'Khẩn cấp': 'badge-urgent', 'Cao': 'badge-high', 'Bình thường': 'badge-normal', 'Thấp': 'badge-low'}
-
-METRIC_NOTE = (
-    'Chú thích: Đơn vị phụ trách lấy theo quy trình nghiệp vụ nếu ghép được, ngược lại theo nhóm chủ đề. '
-    'Độ tự tin là xác suất mô hình gán cho nhóm đã chọn, chưa phải độ chính xác thực tế; dưới 60% thì cán bộ xác nhận lại. '
-    'Mức ưu tiên do luật từ khóa quyết định (ví dụ "nhập viện" là Khẩn cấp), không do mô hình.'
-)
-
-
-def _metric_card(label, value_html):
-    st.markdown(f'<div class="metric-card"><div class="metric-label">{label}</div>'
-                f'<div class="metric-val">{value_html}</div></div>', unsafe_allow_html=True)
+DRAFT_SOURCES = {
+    'llm': 'Soạn bởi mô hình ngôn ngữ cục bộ, đã kiểm tra bám nguồn.',
+    'template_fallback': 'Theo mẫu (bản của mô hình ngôn ngữ bị loại vì có dữ kiện ngoài quy trình).',
+    'template': 'Theo mẫu từ quy trình / quy chế.',
+}
 
 
-def render_metrics(row, result):
+def _field(label, value_html):
+    st.markdown(f'<div class="field-label">{label}</div><div class="field-value">{value_html}</div>', unsafe_allow_html=True)
+
+
+def render_summary(row, result):
     topic = TOPICS.get(row['predicted_topic'], row['predicted_topic'])
     badge = PRIORITY_BADGES.get(row['priority_level'], 'badge-normal')
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _metric_card('Đơn vị chuyên môn phụ trách', f"{html.escape(row['department'])} <span class=\"metric-sub\">({html.escape(topic)})</span>")
-    with c2:
-        _metric_card('Độ tự tin phân loại', f"{row['confidence_score']:.1%}")
-    with c3:
-        _metric_card('Mức độ ưu tiên', f"<span class=\"{badge}\">{html.escape(row['priority_level'])}</span>")
-
-    st.caption(f"Căn cứ phân cấp ưu tiên: {row['priority_reason']}")
-    st.caption(METRIC_NOTE)
-    if result.get('model_topic') and result['model_topic'] != row['predicted_topic']:
-        st.caption(f"Mô hình phân loại gợi ý nhóm {TOPICS.get(result['model_topic'], result['model_topic'])}; "
-                   f"hệ thống dùng nhóm của quy trình đã khớp.")
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns([3, 2, 1.4, 1.4])
+        with c1:
+            _field('Đơn vị đầu mối', html.escape(row['department']))
+        with c2:
+            _field('Nhóm', html.escape(topic))
+        with c3:
+            _field('Ưu tiên', f"<span class='{badge}'>{html.escape(row['priority_level'])}</span>")
+        with c4:
+            _field('Độ tự tin', f"{row['confidence_score']:.0%}")
+        st.text_area('Nội dung đã lưu (đã che thông tin cá nhân)', value=row['clean_text'], disabled=True,
+                     key='clean_' + row['record_id'], height=80)
+    if result['review_reasons']:
+        st.warning('Cần cán bộ lưu ý:\n' + '\n'.join(f'- {reason}' for reason in result['review_reasons']))
 
 
 def render_ticket_plan(plan, key_prefix):
-    """Phiếu xử lý ticket theo quy trình (dùng chung cho tab Tiếp nhận và các màn hình khác)."""
+    """Phiếu xử lý ticket theo quy trình (dùng chung cho sinh viên và cán bộ)."""
     with st.expander(f"Phiếu xử lý ticket theo quy trình {plan['procedure_id']} — {plan['procedure_name']}", expanded=True):
-        p1, p2, p3 = st.columns(3)
-        p1.markdown(f"**Đơn vị đầu mối**  \n{plan['receiving_unit']}")
-        p2.markdown(f"**Trạng thái**  \n{plan['status']}")
-        p3.markdown(f"**Hạn xử lý dự kiến**  \n{plan['sla_due_date'] or plan['result_time']}")
-        st.caption(f"Căn cứ: {plan['legal_basis']} · Nguồn: {plan['source_doc']} · Độ khớp quy trình: {plan['match_score']:.3f}")
-        st.markdown(f"**Việc tiếp theo:** {plan['next_action']}")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            _field('Nơi tiếp nhận', html.escape(plan['receiving_unit']))
+        with c2:
+            _field('Trạng thái', html.escape(plan['status']))
+        with c3:
+            _field('Hạn xử lý dự kiến', html.escape(plan['sla_due_date'] or plan['result_time']))
         if plan['documents']:
-            st.markdown('**Hồ sơ sinh viên cần chuẩn bị**')
+            st.markdown('**Hồ sơ cần chuẩn bị**')
             for doc in plan['documents']:
                 st.checkbox(doc, key=f"doc_{key_prefix}_{doc}")
-        if plan['submit_window']:
-            st.caption(f"Thời hạn nộp: {plan['submit_window']}")
-        st.dataframe(
-            [{'Bước': i, 'Đơn vị': s['unit'], 'Nội dung': s['action'], 'Thời gian': s['time']}
-             for i, s in enumerate(plan['steps'], 1)],
-            hide_index=True, width='stretch'
-        )
+        st.dataframe([{'Bước': i, 'Đơn vị': s['unit'], 'Nội dung': s['action'], 'Thời gian': s['time']}
+                      for i, s in enumerate(plan['steps'], 1)], hide_index=True, width='stretch')
+        st.caption(f"Thời hạn nộp: {plan['submit_window']} · Căn cứ: {plan['legal_basis']}")
 
 
 def render_articles(articles):
-    with st.expander('Tài liệu quy chế tham chiếu', expanded=True):
+    with st.expander(f'Tài liệu tham chiếu ({len(articles)})'):
+        if not articles:
+            st.write('Chưa tìm thấy tài liệu đủ liên quan. Cán bộ tra cứu trực tiếp.')
         for article in articles:
             st.markdown(f"**{article['kb_id']} — {article['question_standard']}**")
-            if article['verified']:
-                st.caption(f"Nguồn chính thức đã xác minh: {article['source_url']}")
-            else:
-                st.caption('Nội dung minh họa; chưa xác minh quy định chính thức của trường.')
+            st.caption(f"Nguồn đã xác minh: {article['source_url']}" if article['verified']
+                       else 'Nội dung minh họa, chưa xác minh.')
             st.write(article['content_extract'].replace('\n', '  \n'))
-            st.caption(f"Độ tương đồng ngữ nghĩa: {article['similarity_score']:.3f}")
-        if not articles:
-            st.write('Chưa tìm thấy điều khoản quy chế đủ liên quan. Cần cán bộ tra cứu trực tiếp.')
 
 
-def render_draft(row, rid):
+def render_draft(row, rid, source):
+    st.markdown('#### Bản nháp trả lời')
     if row['status'] != 'pending_review':
-        is_auto = 'tự động' in (str(row.get('final_response', '')) + str(row.get('reviewed_at', ''))).lower()
-        if is_auto or row.get('status') == 'reviewed_approve':
-            st.success(f"Yêu cầu đã được phê duyệt và lưu trữ thành công (Độ chắc chắn: {row['confidence_score']:.1%}). "
-                       "Hướng giải quyết đã được gửi về email.")
-        else:
-            st.success('Yêu cầu đã được cán bộ xử lý và phê duyệt.')
+        st.success('Yêu cầu đã được xử lý.')
         st.write(row['final_response'])
         return
-
-    st.subheader('Soạn thảo bản nháp hoặc chuyển sang bàn duyệt')
+    st.caption(DRAFT_SOURCES.get(source, ''))
     draft_key = 'intake_draft_' + rid
     if draft_key not in st.session_state:
         st.session_state[draft_key] = row['draft_response']
-
-    with st.form('draft_form_' + rid):
-        draft = st.text_area('Bản nháp phản hồi có thể chỉnh sửa', key=draft_key, height=170)
-        draft_saved = st.form_submit_button('Lưu bản nháp', width='stretch')
-
-    if draft_saved:
+    with st.form('draft_form_' + rid, border=False):
+        draft = st.text_area('Bản nháp', key=draft_key, height=200, label_visibility='collapsed')
+        saved = st.form_submit_button('Lưu bản nháp')
+    if saved:
         try:
             save_draft(rid, draft)
-            st.session_state['notice'] = f'Đã cập nhật bản nháp cho {rid}.'
+            st.session_state['notice'] = f'Đã lưu bản nháp cho {rid}.'
             st.session_state.pop('response_' + rid, None)
             st.rerun()
         except ValueError as exc:
@@ -111,9 +97,7 @@ def render_draft(row, rid):
 
 def render_student_receipt(result, row, rid):
     """Sinh viên chỉ thấy biên nhận và hướng dẫn đã xác minh, không thấy bản nháp hay nhãn nội bộ."""
-    st.subheader('Đã tiếp nhận yêu cầu')
     st.success(f"Mã yêu cầu của bạn: {rid}. Đơn vị tiếp nhận: {row['department']}. Cán bộ sẽ phản hồi sau khi xem xét.")
-    st.caption('Thông tin cá nhân trong nội dung đã được che trước khi lưu.')
     if result.get('ticket_plan'):
         render_ticket_plan(result['ticket_plan'], rid)
 
@@ -124,30 +108,13 @@ def render_result(service, officer=True):
     row = get_request(rid) if rid else None
     if not (result and row):
         return
-
+    st.divider()
     if not officer:
         render_student_receipt(result, row, rid)
         return
-
-    st.subheader('Kết quả phân tích & Phân luồng')
-    render_metrics(row, result)
-
-    st.text_area('Nội dung đã bảo mật thông tin cá nhân (Che PII)', value=row['clean_text'],
-                 disabled=True, key='clean_' + rid, height=90)
-    st.caption('Chất lượng dữ liệu: ' + describe_flags(row['quality_flags']))
-
-    for reason in result['review_reasons']:
-        st.warning(reason)
-
+    st.markdown(f'#### Kết quả xử lý · {rid}')
+    render_summary(row, result)
     if result.get('ticket_plan'):
         render_ticket_plan(result['ticket_plan'], rid)
-
-    draft_labels = {
-        'llm': f"Bản nháp do mô hình ngôn ngữ cục bộ {result.get('llm_model')} soạn, đã qua kiểm tra bám nguồn.",
-        'template_fallback': 'Bản nháp theo mẫu (bản của mô hình ngôn ngữ bị loại vì không bám nguồn).',
-        'template': 'Bản nháp theo mẫu từ quy trình / quy chế. ' + service.llm.status(),
-    }
-    st.caption(draft_labels.get(result.get('draft_source'), ''))
-
+    render_draft(row, rid, result.get('draft_source'))
     render_articles(result['articles'])
-    render_draft(row, rid)

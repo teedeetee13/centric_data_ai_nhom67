@@ -37,11 +37,11 @@ class AppFlowTests(unittest.TestCase):
         self.assertTrue(any(l.startswith('Phiếu xử lý ticket theo quy trình QT19') for l in labels))
         self.assertTrue(any('Mã sinh viên' in w.value for w in self.app.warning))
 
-    def test_sample_button_fills_request_and_shows_note(self):
-        self.button('Gõ không dấu').click().run()
+    def test_sample_picker_fills_request(self):
+        self.app.selectbox(key='sample_choice').select('Gõ không dấu').run()
+        self.button('Điền vào ô nội dung').click().run()
         self.assertFalse(self.app.exception)
         self.assertEqual(self.app.text_area(key='request_text').value,'em xin giay xac nhan sinh vien de lam ve xe buyt a')
-        self.assertTrue(any('QT11' in i.value for i in self.app.info))
         self.button('Gửi').click().run()
         self.assertFalse(self.app.exception)
         self.assertEqual(get_request(list_requests()[0]['record_id'])['matched_kb_id'],'QT11')
@@ -65,18 +65,19 @@ class AppFlowTests(unittest.TestCase):
         self.app.run()
         self.assertEqual(len(review_history()),1)
 
-    def test_demo_import_is_repeatable_and_preserves_approval(self):
-        self.button('Nạp 3 yêu cầu demo').click().run()
+    def test_sample_import_is_repeatable_and_preserves_approval(self):
+        self.button('Nạp dữ liệu mẫu').click().run()
         self.assertFalse(self.app.exception)
-        self.assertEqual(len(list_requests()),3)
+        self.assertEqual(len(list_requests()),72)
+        self.assertTrue(any(m.label=='Khớp quy trình' for m in self.app.metric))
         rid=self.app.selectbox(key='review_id').value
         self.button('Duyệt và lưu').click().run()
         self.assertFalse(self.app.exception)
-        self.button('Nạp 3 yêu cầu demo').click().run()
+        self.button('Nạp dữ liệu mẫu').click().run()
         self.assertFalse(self.app.exception)
-        self.assertEqual(len(list_requests()),3)
+        self.assertEqual(len(list_requests()),72)
         self.assertEqual(get_request(rid)['status'],'reviewed_approve')
-        self.assertEqual(len(list_requests(pending_only=True)),2)
+        self.assertEqual(len(list_requests(pending_only=True)),71)
 
     def test_short_request_persists_and_profile_is_available(self):
         self.submit('Giúp em với')

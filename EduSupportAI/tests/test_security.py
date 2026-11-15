@@ -22,6 +22,8 @@ class PiiTests(unittest.TestCase):
             'CCCD của em là 001204012345': ('[NATIONAL_ID]', '001204012345'),
             'Căn cước công dân số 012345678': ('[NATIONAL_ID]', '012345678'),
             'Số tài khoản: 1903 5678 9012 ạ': ('[BANK_ACCOUNT]', '1903 5678'),
+            'Số tài khoản của em là 1903 4567 8901, em đã chuyển khoản': ('[BANK_ACCOUNT]', '4567 8901'),
+            'CCCD của mình là 001204012345': ('[NATIONAL_ID]', '001204012345'),
             'Em tên là Nguyễn Văn An, lớp K14': ('[NAME]', 'Nguyễn Văn'),
             'Họ và tên: Trần Thị Bình': ('[NAME]', 'Trần Thị'),
         }
@@ -139,9 +141,9 @@ class OfficerGateTests(unittest.TestCase):
     def test_officer_tools_are_hidden_before_login(self):
         labels = self.labels()
         self.assertNotIn('Gửi email giải quyết mẫu', labels)
-        self.assertNotIn('Nạp 3 yêu cầu demo', labels)
+        self.assertNotIn('Nạp dữ liệu mẫu', labels)
         self.assertNotIn('Duyệt và lưu', labels)
-        self.assertFalse([b for b in labels if b.startswith('NVQS')])
+        self.assertFalse([s for s in self.app.selectbox if s.key == 'sample_choice'])
 
     def test_student_gets_receipt_without_internal_draft(self):
         self.app.text_area(key='request_text').input('Em muốn xin bảo lưu kết quả học tập kỳ này, mã sinh viên 20991234.')
@@ -154,9 +156,9 @@ class OfficerGateTests(unittest.TestCase):
     def test_wrong_password_is_refused_and_correct_password_opens(self):
         self.login('sai-mat-khau')
         self.assertTrue(any('không đúng' in e.value for e in self.app.error))
-        self.assertNotIn('Nạp 3 yêu cầu demo', self.labels())
+        self.assertNotIn('Nạp dữ liệu mẫu', self.labels())
         self.login(self.PASSWORD)
-        self.assertIn('Nạp 3 yêu cầu demo', self.labels())
+        self.assertIn('Nạp dữ liệu mẫu', self.labels())
         self.assertIn('Đăng xuất', self.labels())
 
     def test_repeated_failures_lock_the_form(self):

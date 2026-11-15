@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 # Tệp khóa tạm của Word/Excel khi đang mở
 ~$*
+# Hồ sơ nộp thi và tài liệu gốc: có thông tin cá nhân, không đưa lên repo công khai
+HO_SO/
+EduSupportAI_Thuyet_minh_*.docx

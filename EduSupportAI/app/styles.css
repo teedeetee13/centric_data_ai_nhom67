@@ -1,5 +1,5 @@
 .block-container {
-    padding-top: 1.8rem;
+    padding-top: 1.2rem;
     padding-bottom: 2.5rem;
     max-width: 1220px;
 }
@@ -9,7 +9,7 @@
     justify-content: space-between;
     border-bottom: 1px solid #e2e8f0;
     padding-bottom: 0.9rem;
-    margin-bottom: 1.4rem;
+    margin-bottom: 0.6rem;
 }
 .app-title {
     font-size: 1.6rem;
@@ -75,26 +75,6 @@
     border-color: #94a3b8 !important;
     color: #0f172a !important;
 }
-.metric-card {
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 13px 16px;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-}
-.metric-label {
-    font-size: 0.74rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #64748b;
-    margin-bottom: 4px;
-}
-.metric-val {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #0f172a;
-}
 .badge-urgent {
     color: #991b1b;
     background-color: #fef2f2;
@@ -134,8 +114,29 @@
 section[data-testid="stSidebar"] {
     display: none;
 }
-.metric-sub {
-    font-size: 0.85rem;
-    font-weight: normal;
+.status-muted {
+    color: #475569;
+    background-color: #f1f5f9;
+    border-color: #e2e8f0;
+}
+.field-label {
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: #64748b;
+    margin-bottom: 2px;
+}
+.field-value {
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+[data-testid="stMetricValue"] {
+    font-size: 1.55rem;
+}
+[data-testid="stMetricLabel"] p {
+    color: #475569;
+    font-size: 0.82rem;
 }

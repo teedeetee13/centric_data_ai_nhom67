@@ -31,6 +31,19 @@ def run(path=ROOT / 'data' / 'kb' / 'procedure_eval.csv'):
         'rejection_accuracy_out_of_scope': round(float(out_scope['correct'].mean()), 4),
         'errors': result[~result['correct']][['text', 'expected', 'got', 'score']].to_dict('records'),
     }
+    # Bộ mẫu mở rộng: 72 câu phủ 33 quy trình và 10 loại dịch vụ MIS, có câu ngoài phạm vi, không dấu, chèn lệnh
+    extended = pd.read_csv(ROOT / 'data' / 'mau_mo_rong.csv', keep_default_na=False)
+    got = [(engine.match(t, top_k=1) or [{'procedure': {'id': ''}}])[0]['procedure']['id'] for t in extended['text']]
+    extended['got'] = got
+    extended['correct'] = extended['got'] == extended['procedure']
+    report['extended'] = {
+        'n': int(len(extended)),
+        'overall_accuracy': round(float(extended['correct'].mean()), 4),
+        'in_scope_accuracy': round(float(extended[extended['procedure'] != '']['correct'].mean()), 4),
+        'out_of_scope_rejection': round(float(extended[extended['procedure'] == '']['correct'].mean()), 4),
+        'by_type': {k: round(float(v), 4) for k, v in extended.groupby('loai_mau')['correct'].mean().items()},
+        'errors': extended[~extended['correct']][['id', 'text', 'procedure', 'got']].to_dict('records'),
+    }
     out = ROOT / 'experiments' / 'procedure_routing_report.json'
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(report, ensure_ascii=False, indent=2))

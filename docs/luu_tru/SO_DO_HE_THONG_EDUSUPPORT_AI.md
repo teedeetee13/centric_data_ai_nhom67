@@ -1,7 +1,7 @@
 # HỆ THỐNG SƠ ĐỒ KIẾN TRÚC, USE CASE & TUẦN TỰ HỆ THỐNG EDUSUPPORTAI
 ## Đề tài: Hệ thống nâng cao chất lượng dữ liệu và tự động phân loại phản hồi sinh viên
 **Cuộc thi:** Data Centric AI 2026 (Khoa CNTT - Trường Đại học Công nghệ Đông Á)  
-**Lưu ý:** các sơ đồ vẽ theo thiết kế vòng 1, chưa có tầng quy trình nghiệp vụ và mô hình ngôn ngữ cục bộ; luồng hiện tại xem `EduSupportAI/readme.md`.  
+**Lưu ý:** các sơ đồ vẽ theo thiết kế vòng 1, chưa có tầng quy trình nghiệp vụ và mô hình ngôn ngữ cục bộ; luồng hiện tại xem `docs/TAI_LIEU.md` mục 4.  
 **Định vị tiếp cận:** Data-Centric AI (DCAI) kết hợp Human-in-the-Loop  
 
 ---
