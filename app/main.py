@@ -531,34 +531,14 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # Chọn nhanh tình huống thực tế theo quy trình EAUT
-        with st.expander('💡 Điền nhanh tình huống mẫu (Học phí, Phúc khảo, CSVC, Giấy tờ...)', expanded=False):
-            scenarios = {
-                'Hỏng điều hòa / Vệ sinh CSVC': 'Điều hòa phòng học 402 nhà B bị hỏng chảy nước lênh láng không mát, phòng học có rác chưa được dọn dẹp, đề nghị tổ CSVC kiểm tra.',
-                'Mượn phòng học / Hội trường': 'Câu lạc bộ sinh viên muốn làm thủ tục nộp giấy đề xuất BMPH-01 mượn Hội trường lớn để tổ chức tọa đàm khoa học ngoài giờ.',
-                'Cấp giấy xác nhận SV hoãn NVQS': 'Em cần xin Giấy xác nhận sinh viên tại Bộ phận Một cửa để nộp cho ban chỉ huy quân sự phường xin tạm hoãn nghĩa vụ quân sự năm 2026.',
-                'Làm lại thẻ sinh viên bị mất': 'Em bị rơi mất thẻ sinh viên trên xe buýt, em muốn làm thủ tục cấp lại thẻ sinh viên và xin giấy xác nhận tạm thời để đi thi.',
-                'Đơn đề nghị phúc khảo bài thi': 'Em làm đơn đề nghị phúc khảo bài thi kết thúc học phần môn Toán cao cấp 2, điểm hiện tại báo 4.0 em thấy không chính xác.',
-                'Thủ tục xin chuyển ngành học': 'Em muốn làm thủ tục chuyển ngành đào tạo từ Quản trị kinh doanh sang CNTT theo mẫu BM_CN01, mã sinh viên 2023605678.',
-                'Tra cứu sách Thư viện & Vị trí kệ': 'Cho em hỏi cuốn Giáo trình Kỹ thuật phần mềm còn sách ở thư viện trường không ạ và ở kệ nào?',
-                'Kiểm tra sách mượn & Hạn trả (MSSV)': 'Em mã sinh viên 2021600123 muốn kiểm tra xem đang mượn sách gì và có bị phạt quá hạn không ạ?'
-            }
-            sc_cols = st.columns(4)
-            for idx, (label, text) in enumerate(scenarios.items()):
-                with sc_cols[idx % 4]:
-                    if st.button(f"{label}", key=f"quick_sc_{idx}", width="stretch"):
-                        app_log("INTAKE", "Người dùng chọn tình huống mẫu chuẩn hóa", f"Mẫu: [{label}]")
-                        st.session_state["request_text"] = text
-                        st.rerun()
-
         # Bố cục 2 cột chuẩn Cổng Hỗ trợ Sinh viên mis.eaut.edu.vn/ho-tro
         col_form, col_guide = st.columns([5.5, 4.5], gap="large")
 
         with col_form:
             st.markdown("""
             <div style="background: #cfdce8; border: 1px solid #b8cad8; border-radius: 12px; padding: 16px 20px 8px 20px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">Phiếu Tiếp Nhận & Hỗ Trợ Sinh Viên</div>
-                <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Vui lòng điền thông tin để được bộ phận chức năng xử lý theo đúng quy trình</div>
+                <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; letter-spacing: -0.01em;">Phiếu Tiếp Nhận & Hỗ Trợ Học Vụ</div>
+                <div style="font-size: 0.8rem; color: #475569; margin-top: 2px;">Vui lòng điền đầy đủ thông tin để được bộ phận chức năng xử lý theo đúng quy chế</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -576,33 +556,33 @@ else:
                 'Khác': ('Khac', None),
             }
 
-            service_options = ['-- Chọn dịch vụ hỗ trợ (tùy chọn) --'] + list(service_topic_map.keys())
+            service_options = ['-- Chọn dịch vụ cần hỗ trợ --'] + list(service_topic_map.keys())
 
             with st.form('intake_form', clear_on_submit=False):
                 f_c1, f_c2 = st.columns(2)
                 with f_c1:
-                    in_fullname = st.text_input('Họ và tên *', placeholder='Nhập họ và tên...', key='in_fullname')
+                    in_fullname = st.text_input('Họ và tên sinh viên *', placeholder='Ví dụ: Nguyễn Văn A', key='in_fullname')
                 with f_c2:
                     in_mssv = st.text_input('Mã sinh viên *', placeholder='Ví dụ: 2022601234', key='in_mssv')
 
                 f_c3, f_c4 = st.columns(2)
                 with f_c3:
-                    in_phone = st.text_input('Số điện thoại *', placeholder='Ví dụ: 0987654321', key='in_phone')
+                    in_phone = st.text_input('Số điện thoại liên hệ *', placeholder='Ví dụ: 0987654321', key='in_phone')
                 with f_c4:
-                    in_email = st.text_input('Email *', placeholder='Ví dụ: sinhvien@eaut.edu.vn', key='in_email')
+                    in_email = st.text_input('Email nhận kết quả *', placeholder='Ví dụ: sinhvien@eaut.edu.vn', key='in_email')
 
-                in_service = st.selectbox('Dịch vụ *', options=service_options, key='in_service')
-                in_issue = st.text_input('Vấn đề đang gặp *', placeholder='Tóm tắt vấn đề (Vd: Mượn phòng học, Phúc khảo điểm...)', key='in_issue')
+                in_service = st.selectbox('Nhóm dịch vụ cần hỗ trợ *', options=service_options, key='in_service')
+                in_issue = st.text_input('Tóm tắt vấn đề *', placeholder='Ví dụ: Đề nghị phúc khảo điểm thi môn Toán, Mượn phòng học...', key='in_issue')
 
                 user_text = st.text_area(
-                    'Mô tả thêm nếu có',
+                    'Mô tả chi tiết nội dung',
                     key='request_text',
-                    height=95,
+                    height=110,
                     max_chars=8000,
-                    placeholder='Mô tả chi tiết sự việc, địa điểm (phòng học, tòa nhà), thời gian xảy ra hoặc đề xuất cụ thể của bạn...'
+                    placeholder='Mô tả cụ thể sự việc, địa điểm (phòng học, tòa nhà), thời gian xảy ra hoặc nguyện vọng cụ thể của bạn...'
                 )
 
-                in_file = st.file_uploader('Tệp đính kèm', type=['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'], key='in_file')
+                in_file = st.file_uploader('Tệp đính kèm (Biên lai / Đơn từ / Ảnh minh chứng nếu có):', type=['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'], key='in_file')
 
                 submitted = st.form_submit_button('Gửi phiếu hỗ trợ', type='primary', width='stretch')
 
@@ -610,7 +590,7 @@ else:
             st.markdown("""
             <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 12px;">
                 <div style="font-size: 1.05rem; font-weight: 800; color: #1a508b; margin-bottom: 10px;">
-                    ℹ️ Đầu Mối & Cam Kết Hỗ Trợ Sinh Viên EAUT
+                    ℹ️ Đầu Mối Tiếp Nhận & Cam Kết Phục Vụ
                 </div>
                 <div style="font-size: 0.85rem; color: #334155; line-height: 1.6;">
                     <p style="margin-bottom: 6px;">🏛️ <strong>Bộ phận Một cửa Sinh viên:</strong> Tầng 1 Tòa nhà Hiệu bộ (Cơ sở Hà Nội & Cơ sở Bắc Ninh)</p>
@@ -619,9 +599,9 @@ else:
                     <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 6px; margin: 10px 0;">
                         <strong style="color: #1e40af;">⚡ Cam kết thời hạn xử lý (SLA):</strong>
                         <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 0.82rem; color: #1e3a8a;">
-                            <li>Tiếp nhận & đối soát quy chế: <strong>Tức thì qua AI</strong></li>
-                            <li>Giải quyết thủ tục hành chính, điểm thi: <strong>24 - 48 giờ làm việc</strong></li>
-                            <li>Hồ sơ khẩn cấp (sự cố CSVC, y tế): <strong>Ưu tiên xử lý trong 04 - 12 giờ</strong></li>
+                            <li>Tiếp nhận & đối soát quy chế: <strong>Tức thì</strong></li>
+                            <li>Giải quyết thủ tục hành chính, điểm số: <strong>24 - 48 giờ làm việc</strong></li>
+                            <li>Trường hợp khẩn cấp (sự cố CSVC, y tế): <strong>Ưu tiên xử lý trong 04 - 12 giờ</strong></li>
                         </ul>
                     </div>
                 </div>
@@ -761,8 +741,7 @@ else:
                             )
                             app_log("DISPATCH", f"Tự động phê duyệt hồ sơ [{rid}]", f"Độ tin cậy {result['confidence_score']:.1%} >= {thresh:.0%} chuẩn hóa theo {result['department']}", level="SUCCESS")
                             st.success(
-                                f"TIẾP NHẬN & TỰ ĐỘNG GỬI EMAIL THÀNH CÔNG: Độ tin cậy của AI đạt {result['confidence_score']:.1%} (Đạt chuẩn tự động ≥ {thresh:.0%}). "
-                                f"Model đã gửi thẳng văn bản giải quyết chi tiết tới email: **{target_email}** mà không cần qua cán bộ duyệt thủ công!"
+                                f"🎉 **Tiếp nhận & Giải quyết tự động thành công!** Văn bản giải quyết đã được gửi tới email **{target_email}**."
                             )
                         elif result.get('priority_level') == 'Khẩn cấp':
                             # KHẨN CẤP: Gửi email biên nhận tiếp nhận ưu tiên và chuyển ngay Bàn duyệt cán bộ
@@ -791,8 +770,7 @@ else:
                             }
                             app_log("DISPATCH", f"Chuyển ưu tiên khẩn cấp hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]", level="WARN")
                             st.warning(
-                                f"ĐÃ TIẾP NHẬN ƯU TIÊN KHẨN CẤP: Yêu cầu {rid} thuộc diện khẩn cấp. Email xác nhận tiếp nhận hồ sơ đã được gửi tới **{target_email}**. "
-                                f"Hồ sơ đã được ưu tiên chuyển trực tiếp tới Bàn duyệt cán bộ ({result['department']}) để thụ lý và phản hồi giải pháp ngay."
+                                f"🚨 **Đã tiếp nhận ưu tiên khẩn cấp!** Mã hồ sơ **{rid}**. Email xác nhận đã gửi tới **{target_email}** và hồ sơ đã chuyển thẳng tới bàn trực ban để xử lý ngay."
                             )
                         else:
                             # CHƯA ĐỦ ĐỘ TIN CẬY: Gửi email biên nhận tiếp nhận hồ sơ, chuyển sang Bàn duyệt cán bộ
@@ -820,10 +798,8 @@ else:
                                 "status": f"Đã gửi email biên nhận tiếp nhận hồ sơ (Độ tin cậy: {result['confidence_score']:.1%} < {thresh:.0%})"
                             }
                             app_log("DISPATCH", f"Chưa đủ độ tin cậy ({result['confidence_score']:.1%} < {thresh:.0%}), chuyển hồ sơ [{rid}] sang Bàn duyệt cán bộ", f"Đơn vị: [{result['department']}]")
-                            st.info(
-                                f"ĐÃ TIẾP NHẬN YÊU CẦU: Độ tin cậy của mô hình đạt {result['confidence_score']:.1%} (chưa đủ ngưỡng tự động gửi thẳng ≥ {thresh:.0%}). "
-                                f"Email xác nhận tiếp nhận mã số **{rid}** đã gửi về **{target_email}**. "
-                                f"Hồ sơ đã được chuyển an toàn sang Bàn duyệt cán bộ ({result['department']}) để thẩm định trước khi gửi kết quả hoàn tất."
+                            st.success(
+                                f"✅ **Đã tiếp nhận hồ sơ thành công!** Mã hồ sơ của bạn là **{rid}**. Email xác nhận đã gửi tới **{target_email}**."
                             )
                     except ValueError as exc:
                         st.error(str(exc))
@@ -839,7 +815,7 @@ else:
             prio = row.get('priority_level', 'Bình thường')
             is_auto = (row.get('status') == 'reviewed_approve' or 'tự động' in (str(row.get('final_response', '')) + str(row.get('reviewed_at', ''))).lower())
 
-            status_label = "🟢 ĐÃ PHÊ DUYỆT TỰ ĐỘNG & GỬI EMAIL" if is_auto else ("🔴 TIẾP NHẬN ƯU TIÊN KHẨN CẤP" if prio == "Khẩn cấp" else "🔵 TIẾP NHẬN THÀNH CÔNG")
+            status_label = "🟢 ĐÃ ĐƯỢC PHÊ DUYỆT & GỬI EMAIL" if is_auto else ("🔴 TIẾP NHẬN ƯU TIÊN KHẨN CẤP" if prio == "Khẩn cấp" else "🔵 ĐANG CHỜ PHÒNG BAN THẨM ĐỊNH")
             status_bg = "#f0fdf4" if is_auto else ("#fef2f2" if prio == "Khẩn cấp" else "#eff6ff")
             status_color = "#15803d" if is_auto else ("#dc2626" if prio == "Khẩn cấp" else "#1e40af")
             sla_est = "Trong 04 - 12 giờ làm việc" if prio == "Khẩn cấp" else "Trong 24 - 48 giờ làm việc"
