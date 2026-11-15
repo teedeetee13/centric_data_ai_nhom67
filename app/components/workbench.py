@@ -228,6 +228,20 @@ def render_workbench(faq_engine=None):
         ids = [row['record_id'] for row in queue]
         by_id = {row['record_id']: row for row in queue}
 
+        # Đồng bộ từ click trên bảng hàng đợi (wb_queue_table) TRƯỚC KHI tạo widget selectbox
+        tbl_state = st.session_state.get('wb_queue_table')
+        if tbl_state and isinstance(tbl_state, dict):
+            sel_dict = tbl_state.get('selection', {})
+            sel_rows = sel_dict.get('rows', []) if isinstance(sel_dict, dict) else getattr(sel_dict, 'rows', [])
+            if sel_rows:
+                clicked_idx = sel_rows[0]
+                if clicked_idx != st.session_state.get('_last_wb_tbl_row'):
+                    st.session_state['_last_wb_tbl_row'] = clicked_idx
+                    if 0 <= clicked_idx < len(ids):
+                        st.session_state['review_id'] = ids[clicked_idx]
+            else:
+                st.session_state['_last_wb_tbl_row'] = None
+
         # Quản lý ID đang chọn duyệt
         focus = st.session_state.get('focus_review_id')
         if focus in ids and st.session_state.get('_focused_once') != focus:
@@ -243,7 +257,7 @@ def render_workbench(faq_engine=None):
         rid = st.selectbox(
             "Chọn mã hồ sơ cần xem:",
             options=ids,
-            index=ids.index(st.session_state['review_id']) if st.session_state.get('review_id') in ids else 0,
+            index=None,
             key="review_id",
             format_func=lambda k: f"{'🔴' if by_id[k]['priority_level']=='Khẩn cấp' else ('🟠' if by_id[k]['priority_level']=='Cao' else '🔵')} [{k}] · {TOPICS.get(by_id[k]['predicted_topic'], by_id[k]['predicted_topic'])} · {by_id[k].get('confidence_score', 0):.0%}",
             label_visibility="collapsed"
@@ -263,7 +277,7 @@ def render_workbench(faq_engine=None):
                 'Tóm tắt phản ánh': snip
             })
 
-        tbl_event = st.dataframe(
+        st.dataframe(
             pd.DataFrame(df_rows),
             height=460,
             width="stretch",
@@ -272,21 +286,6 @@ def render_workbench(faq_engine=None):
             selection_mode="single-row",
             key="wb_queue_table"
         )
-
-        selected_rows = []
-        if tbl_event and hasattr(tbl_event, 'selection') and tbl_event.selection:
-            selected_rows = tbl_event.selection.get('rows', []) if isinstance(tbl_event.selection, dict) else getattr(tbl_event.selection, 'rows', [])
-
-        last_tbl_row = st.session_state.get('_last_wb_tbl_row')
-        if selected_rows:
-            clicked_idx = selected_rows[0]
-            if clicked_idx != last_tbl_row:
-                st.session_state['_last_wb_tbl_row'] = clicked_idx
-                if 0 <= clicked_idx < len(ids):
-                    clicked_rid = ids[clicked_idx]
-                    if clicked_rid != st.session_state.get('review_id'):
-                        st.session_state['review_id'] = clicked_rid
-                        st.rerun()
 
         st.caption(f"💡 Đang chọn xem: **{rid}** (Bấm trực tiếp dòng trong bảng hoặc dùng menu trên để chuyển hồ sơ).")
 
