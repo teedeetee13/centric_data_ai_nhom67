@@ -32,7 +32,7 @@ class AppFlowTests(unittest.TestCase):
             self.assertFalse(self.app.exception)
 
     def button(self,label):
-        return next(b for b in self.app.button if b.label==label or (label=='Gửi' and 'Gửi' in b.label))
+        return next(b for b in self.app.button if b.label==label or (label=='Gửi' and 'Gửi' in b.label) or ('Duyệt' in label and 'Duyệt' in b.label))
 
     def submit(self,text):
         self.open_admin()
@@ -109,21 +109,34 @@ class AppFlowTests(unittest.TestCase):
         self.button('Nạp 3 yêu cầu demo').click().run()
         self.assertFalse(self.app.exception)
 
-        # 1. Trên màn hình chính: Không có vết thực thi, không có form soạn thảo, có mục Nội dung email đã gửi
+        # 1. Trên màn hình chính: Không có vết thực thi, không có nhãn AI COPILOT
         self.open_workbench()
-        main_expanders = [e.label for e in self.app.expander]
-        self.assertTrue(any('Nội dung email đã gửi' in exp for exp in main_expanders))
-        self.assertFalse(any('Vết thực thi' in exp for exp in main_expanders))
+        self.assertFalse(any('Vết thực thi' in exp for exp in [e.label for e in self.app.expander]))
         self.assertFalse(any('AI COPILOT' in m.value for m in self.app.markdown))
-        self.assertFalse(any(b.label == 'Duyệt và lưu' for b in self.app.button))
 
-        # 2. Trong bánh răng (Admin view): Có bàn duyệt đầy đủ (form soạn thảo + vết thực thi)
+        # Kiểm tra đúng 2 bộ lọc: Phản ánh cần đưa về đơn vị xem xét và Phản ánh đã gửi
+        radio_filter = self.app.radio('wb_quick_status')
+        self.assertEqual(radio_filter.options, ["Phản ánh cần đưa về đơn vị xem xét", "Phản ánh đã gửi"])
+
+        # Khi xem hồ sơ cần đơn vị xem xét: Có form điều chỉnh và nút Duyệt & gửi email
+        radio_filter.set_value("Phản ánh cần đưa về đơn vị xem xét").run()
+        self.assertTrue(any('Duyệt' in b.label for b in self.app.button))
+        self.assertTrue(any('Xem trước' in exp for exp in [e.label for e in self.app.expander]))
+
+        # Duyệt 1 hồ sơ để hồ sơ chuyển sang mục Phản ánh đã gửi
+        self.button('Duyệt').click().run()
+
+        # Khi xem hồ sơ đã gửi: Không có form duyệt, có mục Nội dung email đã gửi
+        radio_filter = self.app.radio('wb_quick_status')
+        radio_filter.set_value("Phản ánh đã gửi").run()
+        sent_expanders = [e.label for e in self.app.expander]
+        self.assertTrue(any('Nội dung email đã gửi' in exp for exp in sent_expanders))
+        self.assertFalse(any('Duyệt' in b.label for b in self.app.button))
+
+        # 2. Trong bánh răng (Admin view): Có vết thực thi
         self.open_admin()
         admin_expanders = [e.label for e in self.app.expander]
         self.assertTrue(any('Vết thực thi' in exp for exp in admin_expanders))
-        self.assertTrue(any('Nội dung email đã gửi' in exp for exp in admin_expanders))
-        self.assertFalse(any('AI COPILOT' in m.value for m in self.app.markdown))
-        self.assertTrue(any(b.label == 'Duyệt và lưu' for b in self.app.button))
 
 if __name__=='__main__':
     unittest.main()

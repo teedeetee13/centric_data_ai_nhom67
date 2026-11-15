@@ -487,9 +487,9 @@ samples = {
 
 if not is_admin_mode:
     # -------------------------------------------------------------
-    # MÀN HÌNH CHÍNH: BÀN DUYỆT TINH GỌN (CHỈ HIỂN THỊ NỘI DUNG EMAIL ĐÃ GỬI)
+    # MÀN HÌNH CHÍNH: BÀN DUYỆT CÁN BỘ & PHÂN LUỒNG HỌC VỤ EAUT
     # -------------------------------------------------------------
-    render_workbench(show_trace=False, show_review_form=False)
+    render_workbench(show_trace=False)
 else:
     # -------------------------------------------------------------
     # TRANG QUẢN TRỊ & TIỆN ÍCH: ĐẦY ĐỦ CÁC PHẦN (KÈM BÀN DUYỆT CÓ VẾT THỰC THI)

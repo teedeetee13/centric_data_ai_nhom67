@@ -174,7 +174,7 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
         # 1. Bộ lọc trạng thái nhanh
         filter_status = st.radio(
             "Lọc trạng thái:",
-            options=["Chờ duyệt", "Khẩn cấp", "Đã duyệt (AI)", "Tất cả"],
+            options=["Phản ánh cần đưa về đơn vị xem xét", "Phản ánh đã gửi"],
             horizontal=True,
             key="wb_quick_status",
             label_visibility="collapsed"
@@ -198,12 +198,10 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
 
         # Áp dụng bộ lọc
         queue = all_requests
-        if filter_status == "Chờ duyệt":
+        if filter_status == "Phản ánh cần đưa về đơn vị xem xét":
             queue = [r for r in queue if r.get('status') == 'pending_review']
-        elif filter_status == "Khẩn cấp":
-            queue = [r for r in queue if r.get('priority_level') == 'Khẩn cấp']
-        elif filter_status == "Đã duyệt (AI)":
-            queue = [r for r in queue if r.get('status') == 'reviewed_approve']
+        elif filter_status == "Phản ánh đã gửi":
+            queue = [r for r in queue if r.get('status') != 'pending_review']
 
         if selected_dept != "Tất cả phòng ban":
             sel_lower = selected_dept.lower()
@@ -213,14 +211,17 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
             sq = search_query.strip().lower()
             queue = [r for r in queue if sq in r['record_id'].lower() or sq in r['clean_text'].lower()]
 
-        # Luôn bảo toàn yêu cầu vừa nạp trong phiên xuất hiện ngay trên bảng
+        # Luôn bảo toàn yêu cầu vừa nạp trong phiên xuất hiện ngay trên bảng nếu phù hợp bộ lọc
         if recent_rid and not any(r['record_id'] == recent_rid for r in queue):
             recent_req = get_request(recent_rid)
             if recent_req:
-                queue.insert(0, recent_req)
+                r_status = recent_req.get('status')
+                if (filter_status == "Phản ánh cần đưa về đơn vị xem xét" and r_status == 'pending_review') or \
+                   (filter_status == "Phản ánh đã gửi" and r_status != 'pending_review'):
+                    queue.insert(0, recent_req)
 
         if not queue:
-            st.info("Không có yêu cầu nào phù hợp với bộ lọc đã chọn.")
+            st.info(f"Không có yêu cầu nào trong mục '{filter_status}' phù hợp với bộ lọc.")
             return
 
         ids = [row['record_id'] for row in queue]
@@ -396,11 +397,15 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
         email_match = re.search(r'email[:\s]*([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', item['clean_text'], re.IGNORECASE)
         recipient_email = email_match.group(1) if email_match else ("sinhvien.eaut@student.edu.vn" if "[EMAIL]" in item['clean_text'] else "sinhvien@eaut.edu.vn")
 
-        if show_review_form:
+        is_pending = (item.get('status') == 'pending_review')
+        display_review_form = (show_review_form is not False) and is_pending
+
+        if display_review_form:
+            # 4. Form điều chỉnh nội dung email & gửi thư trực tiếp tới sinh viên
             with st.form('review_form_' + rid):
                 st.markdown("""
-                <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                    <span>✍️ Soạn thảo văn bản giải đáp gửi người phản ánh</span>
+                <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span>✍️ Điều chỉnh nội dung & Gửi email giải quyết tới sinh viên</span>
                 </div>
                 """, unsafe_allow_html=True)
                 curr_topic = item['predicted_topic'] if item['predicted_topic'] in topics else topics[0]
@@ -411,7 +416,7 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
                     format_func=lambda t: f"{TOPICS.get(t, t)} — [{get_dept_name(t)}]",
                     key='topic_' + rid
                 )
-                response = st.text_area('Văn bản giải quyết gửi sinh viên:', key=response_key, height=140)
+                response = st.text_area('Văn bản giải quyết gửi sinh viên (nội dung email):', key=response_key, height=140)
                 notes = st.text_input('Ghi chú nội bộ:', key='notes_' + rid, placeholder='Nhập căn cứ xử lý hoặc lý do nếu từ chối...')
 
                 c_rf_m1, c_rf_m2 = st.columns([3, 2])
@@ -422,7 +427,7 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
                     cc_test_mail = st.checkbox(f'Bản sao CC tới {DEFAULT_TEST_EMAIL}', value=True, key='cc_test_' + rid)
 
                 c1, c2, c3 = st.columns([2, 1, 1])
-                approve = c1.form_submit_button('Duyệt và lưu', type='primary', width='stretch')
+                approve = c1.form_submit_button('📧 Duyệt & gửi email', type='primary', width='stretch')
                 draft_button = c2.form_submit_button('Lưu nháp', width='stretch')
                 reject = c3.form_submit_button('Từ chối', width='stretch')
 
@@ -488,39 +493,65 @@ def render_workbench(faq_engine=None, show_trace=True, show_review_form=True):
                                     body_html=s_html,
                                     record_id=rid
                                 )
-                            message = f'Đã phê duyệt và lưu hồ sơ {rid}. {send_msg}'
+                            message = f'Đã phê duyệt và gửi email giải quyết hồ sơ {rid}. {send_msg}'
 
                     st.session_state['notice'] = message
                     st.rerun()
                 except ValueError as exc:
                     st.error(str(exc))
 
-        # 5. Nội dung email đã gửi
-        with st.expander("📧 Nội dung email đã gửi", expanded=True if not show_review_form else False):
-            res_content = st.session_state.get(response_key, item.get('final_response') or item.get('draft_response') or fresh_draft) or ""
-            notes_content = st.session_state.get('notes_' + rid, item.get('review_notes') or '') or ""
-            pv_subj, pv_plain, pv_html = build_rich_resolution_email(
-                record_id=rid,
-                topic=st.session_state.get('topic_' + rid, item.get('final_topic') or item['predicted_topic']),
-                department=item_dept,
-                resolution_text=res_content,
-                confidence_score=conf,
-                is_auto_approved=(item.get('status') == 'reviewed_approve'),
-                student_id=extract_student_id_from_text(item['clean_text']),
-                officer_notes=notes_content
-            )
-            st.caption(f"Tiêu đề: **{pv_subj}** | Người nhận: **{recipient_email}**")
+            # 5a. Xem trước giao diện Email sẽ gửi (HTML) cho hồ sơ đang xem xét
+            with st.expander("👁️ Xem trước giao diện Email sẽ gửi (HTML)", expanded=False):
+                res_content = st.session_state.get(response_key, item.get('final_response') or item.get('draft_response') or fresh_draft) or ""
+                notes_content = st.session_state.get('notes_' + rid, item.get('review_notes') or '') or ""
+                pv_subj, pv_plain, pv_html = build_rich_resolution_email(
+                    record_id=rid,
+                    topic=st.session_state.get('topic_' + rid, item.get('final_topic') or item['predicted_topic']),
+                    department=item_dept,
+                    resolution_text=res_content,
+                    confidence_score=conf,
+                    is_auto_approved=False,
+                    student_id=extract_student_id_from_text(item['clean_text']),
+                    officer_notes=notes_content
+                )
+                st.caption(f"Tiêu đề: **{pv_subj}** | Người nhận: **{recipient_email}**")
 
-            # Tự động tính toán chiều cao để hiển thị trọn vẹn toàn bộ email không bị thanh cuộn cắt ngang
-            lines_cnt = sum(max(1, (len(line) // 48) + 1) for line in res_content.splitlines()) if res_content else 1
-            base_height = 850
-            content_height = lines_cnt * 26
-            notes_height = 110 if notes_content else 0
-            lib_height = 200 if 'CSDL THƯ VIỆN EAUT' in pv_html else 0
-            proc_height = 60 if 'Biểu mẫu yêu cầu' in pv_html else 0
-            email_height = max(950, min(base_height + content_height + notes_height + lib_height + proc_height, 2800))
+                lines_cnt = sum(max(1, (len(line) // 48) + 1) for line in res_content.splitlines()) if res_content else 1
+                base_height = 850
+                content_height = lines_cnt * 26
+                notes_height = 110 if notes_content else 0
+                lib_height = 200 if 'CSDL THƯ VIỆN EAUT' in pv_html else 0
+                proc_height = 60 if 'Biểu mẫu yêu cầu' in pv_html else 0
+                email_height = max(950, min(base_height + content_height + notes_height + lib_height + proc_height, 2800))
+                st.components.v1.html(pv_html, height=email_height, scrolling=True)
 
-            st.components.v1.html(pv_html, height=email_height, scrolling=True)
+        else:
+            # 5b. Nội dung email đã gửi (đối với phản ánh đã gửi giải quyết)
+            with st.expander("📧 Nội dung email đã gửi", expanded=True):
+                res_content = item.get('final_response') or item.get('draft_response') or ""
+                notes_content = item.get('review_notes') or ""
+                pv_subj, pv_plain, pv_html = build_rich_resolution_email(
+                    record_id=rid,
+                    topic=item.get('final_topic') or item['predicted_topic'],
+                    department=item_dept,
+                    resolution_text=res_content,
+                    confidence_score=conf,
+                    is_auto_approved=(item.get('status') == 'reviewed_approve'),
+                    student_id=extract_student_id_from_text(item['clean_text']),
+                    officer_notes=notes_content
+                )
+                reviewed_str = format_datetime_vn(item.get('reviewed_at'), fmt='%d/%m/%Y %H:%M') if item.get('reviewed_at') else 'Đã hoàn tất'
+                st.caption(f"Tiêu đề: **{pv_subj}** | Người nhận: **{recipient_email}** | Trạng thái: **{reviewed_str}**")
+
+                lines_cnt = sum(max(1, (len(line) // 48) + 1) for line in res_content.splitlines()) if res_content else 1
+                base_height = 850
+                content_height = lines_cnt * 26
+                notes_height = 110 if notes_content else 0
+                lib_height = 200 if 'CSDL THƯ VIỆN EAUT' in pv_html else 0
+                proc_height = 60 if 'Biểu mẫu yêu cầu' in pv_html else 0
+                email_height = max(950, min(base_height + content_height + notes_height + lib_height + proc_height, 2800))
+
+                st.components.v1.html(pv_html, height=email_height, scrolling=True)
 
         if show_trace:
             with st.expander("🔬 Vết thực thi & Nhật ký suy luận AI", expanded=False):
