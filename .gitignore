@@ -88,3 +88,9 @@ htmlcov/
 docs_tools/
 EduSupportAI_MVP/
 EduSupportAI_MVP.zip
+
+# Media & Video outputs
+output/
+*.mp4
+*.docx_backup
+EduSupportAI_Thuyet_minh_vong2(1)_backup.docx
